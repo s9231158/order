@@ -22,7 +22,7 @@ class User extends Authenticatable implements JWTSubject
 
     public function recode(): HasMany
     {
-        return $this->hasMany(User_recode::class,'id');
+        return $this->hasMany(User_recode::class,'uid');
     }
     /**
      * The attributes that are mass assignable.

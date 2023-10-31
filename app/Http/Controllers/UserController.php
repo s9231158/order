@@ -4,13 +4,15 @@ namespace App\Http\Controllers;
 
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Models\User;
+use App\Models\User_recode;
 use App\Models\User_wallets;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Nette\Schema\ValidationException;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class UserController extends Controller
@@ -79,12 +81,12 @@ class UserController extends Controller
 
     public function login(Request $request)
     {
-        // //規則
-        // $ruls = [
-        //     'email' => ['required', 'min:15', 'max:50', 'regex:/^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,})$/i'],
-        //     'password' => ['required', 'min:10', 'max:25', 'regex:/^[A-Za-z0-9]+$/'],
-        // ];
-        // //錯誤訊息統整
+        //規則
+        $ruls = [
+            'email' => ['required', 'min:15', 'max:50', 'regex:/^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,})$/i'],
+            'password' => ['required', 'min:10', 'max:25', 'regex:/^[A-Za-z0-9]+$/'],
+        ];
+        //錯誤訊息統整
         $err = [
             //成功
             '0' => 0,
@@ -97,54 +99,61 @@ class UserController extends Controller
             //帳號或密碼錯誤
             '8' => 8
         ];
-        // //什麼錯誤報什麼錯誤訊息
-        // $customMessages = [
-        //     'email.required' => $err['2'], 'email.min' => $err['1'], 'email.max' => $err['1'], 'email.regex' => $err['1'],
-        //     'password.required' => $err['2'], 'password.min' => $err['1'], 'password.max' => $err['1'], 'password.regex' => $err['1']
-        // ];
-        // //驗證輸入數值
-        // $validator = Validator::make($request->all(), $ruls, $customMessages);
+        //什麼錯誤報什麼錯誤訊息
+        $customMessages = [
+            'email.required' => $err['2'], 'email.min' => $err['1'], 'email.max' => $err['1'], 'email.regex' => $err['1'],
+            'password.required' => $err['2'], 'password.min' => $err['1'], 'password.max' => $err['1'], 'password.regex' => $err['1']
+        ];
+        //驗證輸入數值
+        $validator = Validator::make($request->all(), $ruls, $customMessages);
+        //驗證失敗回傳錯誤訊息
+        if ($validator->fails()) {
+            return response()->json(['err' => $validator->errors()->first()]);
+        }
 
 
 
 
-
-        // if ($validator->fails()) {
-        //     return response()->json(['err' => $validator->errors()->first()]);
-        // }
-
-
-
-
-        if (RateLimiter::tooManyAttempts($this->throttleKey($request), 5, 1)) {
+        if (RateLimiter::tooManyAttempts($this->makekey($request), 5, 1)) {
             return response()->json(['err' => $err['7']]);
         }
 
         if (Auth::attempt($request->only('email', 'password'))) {
-            RateLimiter::clear($this->throttleKey($request));
-            $user = Auth::user();
+            RateLimiter::clear($this->makekey($request));
+            $user = User::find(Auth::user()->id);
+            $id = $user->id;
+            $name = $user->name;
+            $email = $request->email;
             $device = $request->header('User-Agent');
             $ip = $request->ip();
-            $time = $request->time();
-            return response()->json(['err' => $err['0'],$ip,$time,$device]);
+            $login = date('Y-m-d H:i:s', time());
+            $recode = new User_recode([
+                'login' => $login,
+                'ip' => $ip,
+                'device' => $device,
+            ]);
+            $user->recode()->save($recode);
+            $userClaims = [
+                'id' => $id,
+                'name' => $name,
+                'email' => $email,
+            ];
+            $time = Carbon::now()->addMinute();
+            $token = JWTAuth::claims($userClaims)->fromUser($user);
+
+            Cache::put($email, $token, 1440);
+            $value = Cache::get($email);
+
+            // return response()->json(['err' => $value]);
+
+            return response()->json(['err' => $err['0'], $value]);
         }
 
-        RateLimiter::hit($this->throttleKey($request));
+        RateLimiter::hit($this->makekey($request));
         return response()->json(['err' => $err['8']]);
-
-
-
-        // $user = User::find(1);
-        // $customClaims = [
-        //     'id' => $user->id,
-        //     'name' => $user->name,
-        //     'email' => $user->email,
-        // ];
-        // $token = JWTAuth::claims($customClaims)->fromUser($user);
-
     }
 
-    protected function throttleKey(Request $request)
+    protected function makekey(Request $request)
     {
         return Str::lower($request->input('email')) . '|' . $request->ip();
     }
