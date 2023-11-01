@@ -142,7 +142,7 @@ class UserController extends Controller
                 'email' => $email,
                 'exp' => $time
             ];
-            //將payload製成token
+            //將payload 製成token
             $token = JWTAuth::claims($userClaims)->fromUser($user);
 
             Cache::put($email, $token, 1440);
