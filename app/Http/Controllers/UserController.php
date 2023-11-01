@@ -15,8 +15,6 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
-use Tymon\JWTAuth\Exceptions\TokenExpiredException;
-use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 
 class UserController extends Controller
 {
@@ -81,7 +79,7 @@ class UserController extends Controller
             $wallet = new User_wallets();
             $wallet->balance = 0;
             $user->wallet()->save($wallet);
-            return response()->json(['err' =>$this->err['0']]);
+            return response()->json(['err' => $this->err['0']]);
         }
     }
 
@@ -165,7 +163,7 @@ class UserController extends Controller
             $payload = JWTAuth::getpayload();
             $email = $payload['email'];
             $redistoken = Cache::get($email);
-            if(Cache::has($email) && $redistoken === $token);
+            if (Cache::has($email) && $redistoken === $token);
             Cache::forget($email);
             return response()->json(['err' => $this->err['0']]);
         } catch (Exception) {
@@ -173,7 +171,7 @@ class UserController extends Controller
         }
         // $user = JWTAuth::parseToken()->authenticate();
         // $payload = JWTAuth::getpayload();
-        return response()->json(['err' => 0,$payload]);
+        return response()->json(['err' => 0, $payload]);
     }
 
 
