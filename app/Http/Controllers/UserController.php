@@ -210,17 +210,22 @@ class UserController extends Controller
     }
 
     public function recode(Request $request)
-    { //規則
+    {
+        //規則
         $ruls = [
             'limit' => ['regex:/^[0-9]+$/'],
             'offset' => ['regex:/^[0-9]+$/'],
-        ]; //什麼錯誤報什麼錯誤訊息
+        ];
+        //什麼錯誤報什麼錯誤訊息
         $rulsMessage = [
             'limit.regex' => $this->err['23'],
             'offset.regex' => $this->err['23']
-        ]; //驗證輸入數值
+        ];
+
         try {
+            //驗證jwt是否被串改
             if (JWTAuth::parseToken()->authenticate()) {
+                //設定limit與offset預設
                 if ($request->limit === null) {
                     $limit = 20;
                 } else {
@@ -231,21 +236,21 @@ class UserController extends Controller
                 } else {
                     $offset = $request->offset;
                 }
-
-                if ($limit || $offset) { 
-                    //驗證失敗回傳錯誤訊息
+                if ($limit || $offset) {
+                    //驗證輸入數值
                     $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+                    //驗證失敗回傳錯誤訊息
                     if ($validator->fails()) {
                         return response()->json(['err' => $validator->errors()->first()]);
                     }
                 }
+                //取得使用者紀錄
                 $user = User::find(Auth::id());
-                $recode = $user->recode()->select('ip', 'login', 'device')->offset($offset)->limit($limit)->get();
+                $recode = $user->recode()->select('ip', 'login', 'device')->offset($offset)->limit($limit)->orderBy('login', 'desc')->get();
                 $count = $user->recode()->get()->count();
                 return response()->json(['err' => $this->err['0'], 'count' => $count, 'data' => $recode]);
             }
         } catch (Exception) {
-
             return response()->json(['err' => $this->err['0']]);
         }
     }
