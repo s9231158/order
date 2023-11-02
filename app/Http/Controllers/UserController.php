@@ -15,8 +15,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
-use Tymon\JWTAuth\Exceptions\TokenExpiredException;
-use Tymon\JWTAuth\Exceptions\TokenInvalidException;
+use PDOException;
 
 class UserController extends Controller
 {
@@ -32,12 +31,20 @@ class UserController extends Controller
         '3' => 3,
         //電話已註冊
         '4' => 4,
+        //系統錯誤,請重新登入
+        '5' => 5,
+        //已登入
+        '6' => 6,
         //短時間內登入次數過多
         '7' => 7,
         //帳號或密碼錯誤
         '8' => 8,
         //token錯誤
         '9' => 9,
+        //無效的範圍
+        '23' => 23,
+        //系統錯誤,稍後在試
+        '26' => 26,
     ];
 
     public function user(Request $request)
@@ -52,7 +59,7 @@ class UserController extends Controller
             'age' => ['required', 'before:2023-08-08', 'date'],
         ];
         //什麼錯誤報什麼錯誤訊息
-        $customMessages = [
+        $rulsMessage = [
             'name.required' => $this->err['2'], 'name.max' => $this->err['1'], 'name.min' => $this->err['1'], 'name.regex' => $this->err['1'],
             'email.required' => $this->err['2'], 'email.unique' => $this->err['3'], 'email.min' => $this->err['1'], 'email.max' => $this->err['1'], 'email.regex' => $this->err['1'],
             'password.required' => $this->err['2'], 'password.min' => $this->err['1'], 'password.max' => $this->err['1'], 'password.regex' => $this->err['1'],
@@ -61,7 +68,7 @@ class UserController extends Controller
             'age.required' => $this->err['2'], 'age.before' => $this->err['1'], 'age.date' => $this->err['1'],
         ];
         //驗證輸入數值
-        $validator = Validator::make($request->all(), $ruls, $customMessages);
+        $validator = Validator::make($request->all(), $ruls, $rulsMessage);
         //如果有錯回報錯誤訊息
         if ($validator->fails()) {
             return response()->json(['err' => $validator->errors()->first()]);
@@ -81,7 +88,7 @@ class UserController extends Controller
             $wallet = new User_wallets();
             $wallet->balance = 0;
             $user->wallet()->save($wallet);
-            return response()->json(['err' =>$this->err['0']]);
+            return response()->json(['err' => $this->err['0']]);
         }
     }
 
@@ -96,12 +103,12 @@ class UserController extends Controller
         ];
 
         //什麼錯誤報什麼錯誤訊息
-        $customMessages = [
+        $rulsMessage = [
             'email.required' => $this->err['2'], 'email.min' => $this->err['1'], 'email.max' => $this->err['1'], 'email.regex' => $this->err['1'],
             'password.required' => $this->err['2'], 'password.min' => $this->err['1'], 'password.max' => $this->err['1'], 'password.regex' => $this->err['1']
         ];
         //驗證輸入數值
-        $validator = Validator::make($request->all(), $ruls, $customMessages);
+        $validator = Validator::make($request->all(), $ruls, $rulsMessage);
         //驗證失敗回傳錯誤訊息
         if ($validator->fails()) {
             return response()->json(['err' => $validator->errors()->first()]);
@@ -115,7 +122,15 @@ class UserController extends Controller
         }
         //檢查是否有該使用者且密碼符合
         if (Auth::attempt($request->only('email', 'password'))) {
-            //清除該key錯誤次數
+            $email = $request->email;
+            $token = $request->header('Authorization');
+            $redistoken = Cache::get($email);
+            // if (Cache::has($email) && $redistoken === $token);
+            // return response()->json(['err' => $this->err['6']]);
+            // if (Cache::has($email) && $redistoken !== $token);
+            // Cache::forget($email);
+            // return response()->json(['err' => $this->err['5']]);
+            // 清除該key錯誤次數
             RateLimiter::clear($this->makekey($request));
             //取得使用者elequent
             $user = User::find(Auth::user()->id);
@@ -129,12 +144,11 @@ class UserController extends Controller
                 'ip' => $ip,
                 'device' => $device,
             ]);
-            $user->recode()->save($recode);
             //取得使用者資訊製作payload
             $id = $user->id;
             $name = $user->name;
-            $email = $request->email;
             $time = Carbon::now()->addDay();
+            $user->recode()->save($recode);
             //payload資訊
             $userClaims = [
                 'id' => $id,
@@ -165,19 +179,76 @@ class UserController extends Controller
             $payload = JWTAuth::getpayload();
             $email = $payload['email'];
             $redistoken = Cache::get($email);
-            if(Cache::has($email) && $redistoken === $token);
+            if (Cache::has($email) && $redistoken === $token);
             Cache::forget($email);
             return response()->json(['err' => $this->err['0']]);
+            if (Cache::has($email) && $redistoken !== $token);
+            Cache::forget($email);
+            return response()->json(['err' => $this->err['5']]);
         } catch (Exception) {
             return response()->json(['err' => $this->err['9']]);
         }
         // $user = JWTAuth::parseToken()->authenticate();
         // $payload = JWTAuth::getpayload();
-        return response()->json(['err' => 0,$payload]);
+        return response()->json(['err' => 0, $payload]);
     }
 
+    public function profile()
+    {
+        try {
+            $aa = JWTAuth::parseToken()->authenticate();
+            $email = $aa->email;
+            $name = $aa->name;
+            $address = $aa->address;
+            $phone = $aa->phone;
+            $age = $aa->age;
+            $bb = ['err' => $this->err['0'], 'email' => $email, 'name' => $name, 'address' => $address, 'phone' => $phone, 'age' => $age];
+            return response()->json($bb);
+        } catch (Exception) {
+            return response()->json(['err' => $this->err['5']]);
+        }
+    }
 
+    public function recode(Request $request)
+    { //規則
+        $ruls = [
+            'limit' => ['regex:/^[0-9]+$/'],
+            'offset' => ['regex:/^[0-9]+$/'],
+        ]; //什麼錯誤報什麼錯誤訊息
+        $rulsMessage = [
+            'limit.regex' => $this->err['23'],
+            'offset.regex' => $this->err['23']
+        ]; //驗證輸入數值
+        try {
+            if (JWTAuth::parseToken()->authenticate()) {
+                if ($request->limit === null) {
+                    $limit = 20;
+                } else {
+                    $limit = $request->limit;
+                }
+                if ($request->offset === null) {
+                    $offset = 0;
+                } else {
+                    $offset = $request->offset;
+                }
 
+                if ($limit || $offset) { 
+                    //驗證失敗回傳錯誤訊息
+                    $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+                    if ($validator->fails()) {
+                        return response()->json(['err' => $validator->errors()->first()]);
+                    }
+                }
+                $user = User::find(Auth::id());
+                $recode = $user->recode()->select('ip', 'login', 'device')->offset($offset)->limit($limit)->get();
+                $count = $user->recode()->get()->count();
+                return response()->json(['err' => $this->err['0'], 'count' => $count, 'data' => $recode]);
+            }
+        } catch (Exception) {
+
+            return response()->json(['err' => $this->err['0']]);
+        }
+    }
 
     protected function makekey(Request $request)
     {
