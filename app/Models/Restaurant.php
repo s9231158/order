@@ -20,4 +20,9 @@ class Restaurant extends Model
         'totalpoint',
         'countpoint',
     ];
+
+
+    public function favorite1(){
+        return $this->belongsToMany(User::class, 'user_favorites', 'rid');
+    }
 }

@@ -107,65 +107,71 @@ class UserController extends Controller
             'email.required' => $this->err['2'], 'email.min' => $this->err['1'], 'email.max' => $this->err['1'], 'email.regex' => $this->err['1'],
             'password.required' => $this->err['2'], 'password.min' => $this->err['1'], 'password.max' => $this->err['1'], 'password.regex' => $this->err['1']
         ];
-        //驗證輸入數值
-        $validator = Validator::make($request->all(), $ruls, $rulsMessage);
-        //驗證失敗回傳錯誤訊息
-        if ($validator->fails()) {
-            return response()->json(['err' => $validator->errors()->first()]);
+        try {
+            //驗證輸入數值
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            //驗證失敗回傳錯誤訊息
+
+
+            if ($validator->fails()) {
+                return response()->json(['err' => $validator->errors()->first()]);
+            }
+
+
+
+            //從redis檢查key是否超過次數
+            if (RateLimiter::tooManyAttempts($this->makekey($request), 5, 1)) {
+                return response()->json(['err' => $this->err['7']]);
+            }
+            //檢查是否有該使用者且密碼符合
+            if (Auth::attempt($request->only('email', 'password'))) {
+                $email = $request->email;
+                $token = $request->header('Authorization');
+                $redistoken = Cache::get($email);
+                $aa = $redistoken == $token;
+                if (Cache::has($email) == true && JWTAuth::parseToken()->authenticate()) {
+                    return response()->json(['err' => $this->err['6']]);
+                }
+                // 清除該key錯誤次數
+                RateLimiter::clear($this->makekey($request));
+                //取得使用者elequent
+                $user = User::find(Auth::user()->id);
+                //取得使用者登入資訊
+                $device = $request->header('User-Agent');
+                $ip = $request->ip();
+                $login = date('Y-m-d H:i:s', time());
+                //將使用者登入資訊存入該使用者user_recode
+                $recode = new User_recode([
+                    'login' => $login,
+                    'ip' => $ip,
+                    'device' => $device,
+                ]);
+                //取得使用者資訊製作payload
+                $id = $user->id;
+                $name = $user->name;
+                $time = Carbon::now()->addDay();
+                $user->recode()->save($recode);
+                //payload資訊
+                $userClaims = [
+                    'id' => $id,
+                    'name' => $name,
+                    'email' => $email,
+                    'exp' => $time
+                ];
+                //將payload 製成token
+                $token = JWTAuth::claims($userClaims)->fromUser($user);
+
+                Cache::put($email, $token, 60*60*24);
+                $value = Cache::get($email);
+
+                return response()->json(['err' => $this->err['0'], 'token' => $token]);
+            }
+
+            RateLimiter::hit($this->makekey($request));
+            return response()->json(['err' => $this->err['8']]);
+        } catch (Exception $e) {
+            return response()->json(['err' => $this->err['5']]);
         }
-
-
-
-        //從redis檢查key是否超過次數
-        if (RateLimiter::tooManyAttempts($this->makekey($request), 5, 1)) {
-            return response()->json(['err' => $this->err['7']]);
-        }
-        //檢查是否有該使用者且密碼符合
-        if (Auth::attempt($request->only('email', 'password'))) {
-            $email = $request->email;
-            $token = $request->header('Authorization');
-            $redistoken = Cache::get($email);
-            // if (Cache::has($email) && $redistoken === $token);
-            // return response()->json(['err' => $this->err['6']]);
-            // if (Cache::has($email) && $redistoken !== $token);
-            // Cache::forget($email);
-            // return response()->json(['err' => $this->err['5']]);
-            // 清除該key錯誤次數
-            RateLimiter::clear($this->makekey($request));
-            //取得使用者elequent
-            $user = User::find(Auth::user()->id);
-            //取得使用者登入資訊
-            $device = $request->header('User-Agent');
-            $ip = $request->ip();
-            $login = date('Y-m-d H:i:s', time());
-            //將使用者登入資訊存入該使用者user_recode
-            $recode = new User_recode([
-                'login' => $login,
-                'ip' => $ip,
-                'device' => $device,
-            ]);
-            //取得使用者資訊製作payload
-            $id = $user->id;
-            $name = $user->name;
-            $time = Carbon::now()->addDay();
-            $user->recode()->save($recode);
-            //payload資訊
-            $userClaims = [
-                'id' => $id,
-                'name' => $name,
-                'email' => $email,
-                'exp' => $time
-            ];
-            //將payload 製成token
-            $token = JWTAuth::claims($userClaims)->fromUser($user);
-
-            Cache::put($email, $token, 1440);
-            $value = Cache::get($email);
-            return response()->json(['err' => $this->err['0'], 'token' => $token]);
-        }
-
-        RateLimiter::hit($this->makekey($request));
-        return response()->json(['err' => $this->err['8']]);
     }
 
 
@@ -175,22 +181,19 @@ class UserController extends Controller
 
         try {
             JWTAuth::parseToken()->authenticate();
-            $token = $request->header('Authorization');
             $payload = JWTAuth::getpayload();
             $email = $payload['email'];
-            $redistoken = Cache::get($email);
-            if (Cache::has($email) && $redistoken === $token);
+            if (Cache::has($email) == true && JWTAuth::parseToken()->authenticate()) {
+                Cache::forget($email);
+                return response()->json(['err' => $this->err['0']]);
+            } else {
+                Cache::forget($email);
+                return response()->json(['err' => $this->err['0']]);
+            }
+        } catch (Exception) {
             Cache::forget($email);
             return response()->json(['err' => $this->err['0']]);
-            if (Cache::has($email) && $redistoken !== $token);
-            Cache::forget($email);
-            return response()->json(['err' => $this->err['5']]);
-        } catch (Exception) {
-            return response()->json(['err' => $this->err['9']]);
         }
-        // $user = JWTAuth::parseToken()->authenticate();
-        // $payload = JWTAuth::getpayload();
-        return response()->json(['err' => 0, $payload]);
     }
 
     public function profile()
@@ -202,8 +205,13 @@ class UserController extends Controller
             $address = $aa->address;
             $phone = $aa->phone;
             $age = $aa->age;
-            $bb = ['err' => $this->err['0'], 'email' => $email, 'name' => $name, 'address' => $address, 'phone' => $phone, 'age' => $age];
-            return response()->json($bb);
+            if (Cache::has($email) && JWTAuth::parseToken()->authenticate()) {
+                $bb = ['err' => $this->err['0'], 'email' => $email, 'name' => $name, 'address' => $address, 'phone' => $phone, 'age' => $age];
+                return response()->json($bb);
+            } else { {
+                    return '幹你娘去登入';
+                }
+            }
         } catch (Exception) {
             return response()->json(['err' => $this->err['5']]);
         }
@@ -248,13 +256,14 @@ class UserController extends Controller
                 $user = User::find(Auth::id());
                 $recode = $user->recode()->select('ip', 'login', 'device')->offset($offset)->limit($limit)->orderBy('login', 'desc')->get();
                 $count = $user->recode()->get()->count();
+
                 return response()->json(['err' => $this->err['0'], 'count' => $count, 'data' => $recode]);
             }
         } catch (Exception) {
             return response()->json(['err' => $this->err['0']]);
         }
     }
-
+     
     protected function makekey(Request $request)
     {
         return Str::lower($request->input('email')) . '|' . $request->ip();

@@ -28,5 +28,8 @@ Route::controller(UserController::class)->group(function () {
     Route::get('/user/recode', 'recode');
 });
 Route::controller(RestaurantController::class)->group(function () {
-    Route::get('restaurant', 'restaurant');
+    Route::get('/restaurant', 'restaurant');
+    Route::post('/user/favorite','favorite')->middleware('token');
+    Route::get('/user/favorite','getfavorite')->middleware('token');
+    Route::delete('/user/favorite','deletefavorite')->middleware('token');
 });

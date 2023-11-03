@@ -22,8 +22,13 @@ class User extends Authenticatable implements JWTSubject
 
     public function recode(): HasMany
     {
-        return $this->hasMany(User_recode::class,'uid');
+        return $this->hasMany(User_recode::class, 'uid');
     }
+    public function favorite()
+    {
+        return $this->belongsToMany(Restaurant::class, 'user_favorites', 'uid', 'rid')->withTimestamps();
+    }
+
     /**
      * The attributes that are mass assignable.
      *
