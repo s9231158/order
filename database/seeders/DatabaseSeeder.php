@@ -20,6 +20,9 @@ class DatabaseSeeder extends Seeder
         //restruant
         \App\Models\Restaurant::factory(8)->create();
 
+
+        //menu
+        
         // \App\Models\User::factory()->create([
         //     'name' => 'Test User',
         //     'email' => 'test@example.com',

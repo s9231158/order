@@ -23,6 +23,16 @@ class Restaurant extends Model
 
 
     public function favorite1(){
-        return $this->belongsToMany(User::class, 'user_favorites', 'rid');
+        return $this->belongsToMany(User::class, 'user_favorites', 'rid','uid');
     }
+    public function history(){
+        return $this->belongsToMany(User::class, 'restaurant_histories', 'rid','uid');
+    }
+    public function comment(){
+        return $this->belongsToMany(User::class, 'restaurant_comments', 'rid','uid');
+    }
+    public function menu(){
+        return $this->hasOne(Oishii_menu::class,'rid');
+    }
+    
 }

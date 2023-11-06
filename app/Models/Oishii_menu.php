@@ -5,12 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class User_favorite extends Model
+class Oishii_menu extends Model
 {
     use HasFactory;
-
-    protected $fillable = [
-        'uid',
-        'rid',
-    ];
+    public function Restaurant(){
+        return $this->hasMany(Restaurant::class,'rid');
+    }
 }

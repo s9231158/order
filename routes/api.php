@@ -21,15 +21,19 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 
 Route::controller(UserController::class)->group(function () {
-    Route::post('/user', 'user');
     Route::post('/login', 'login');
     Route::get('/logout', 'logout');
-    Route::get('/user', 'profile');
-    Route::get('/user/recode', 'recode');
+    Route::post('/user', 'create');
+    Route::get('/user', 'profile')->middleware('token');
+    Route::get('/user/record', 'record')->middleware('token');
+    Route::post('/user/favorite', 'favorite')->middleware('token');
+    Route::get('/user/favorite', 'getfavorite')->middleware('token');
+    Route::delete('/user/favorite', 'deletefavorite')->middleware('token');
+    Route::get('/user/history','history')->middleware('token');
 });
 Route::controller(RestaurantController::class)->group(function () {
     Route::get('/restaurant', 'restaurant');
-    Route::post('/user/favorite','favorite')->middleware('token');
-    Route::get('/user/favorite','getfavorite')->middleware('token');
-    Route::delete('/user/favorite','deletefavorite')->middleware('token');
+    Route::post('/restaurant/comment','comment')->middleware('token');
+    Route::get('/restaurant/comment','getcomment');
+    Route::get('/menu', 'menu');
 });

@@ -28,6 +28,14 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->belongsToMany(Restaurant::class, 'user_favorites', 'uid', 'rid')->withTimestamps();
     }
+    public function history()
+    {
+        return $this->belongsToMany(Restaurant::class, 'restaurant_histories', 'uid', 'rid')->withTimestamps();
+    }
+    public function comment()
+    {
+        return $this->belongsToMany(Restaurant::class, 'restaurant_comments', 'uid', 'rid')->withTimestamps();
+    }
 
     /**
      * The attributes that are mass assignable.
