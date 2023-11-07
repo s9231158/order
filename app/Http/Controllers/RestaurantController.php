@@ -18,6 +18,10 @@ use Illuminate\Support\Facades\Cache;
 use PDOException;
 use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 use Throwable;
+use App\OSmenu;
+use App\Contract\OSmenu as apple;
+use App\Factorise;
+use App\TAmenu;
 
 use function PHPSTORM_META\type;
 
@@ -143,6 +147,9 @@ class RestaurantController extends Controller
                 }
             }
 
+            $rid = $request->rid;
+            $menu = Factorise::Setmenu($rid);
+            $menuresult = $menu->getmenu($limit,$offset);
 
             $userid = $usertoken->id;
             $user = User::find($userid);
@@ -157,16 +164,14 @@ class RestaurantController extends Controller
 
 
 
+
             //未完 有點問題
             $Restaurant = Restaurant::find($rid);
             $Restaurantinfo = $Restaurant->select('title', 'info', 'openday', 'closetime', 'img', 'address', 'totalpoint', 'countpoint')->where('id', '=', $rid)->get();
             $menu = $Restaurant->menu()->limit($limit)->offset($offset)->get();
 
-            
+
             return response()->json(['err' => $this->err['0'], 'data' => $Restaurantinfo, 'menu' => $menu]);
-
-
-
         } catch (TokenInvalidException $e) {
             return response()->json(['err' => $this->err['29']]);
         } catch (Exception $e) {
@@ -238,15 +243,37 @@ class RestaurantController extends Controller
             }
             $rid = $request->rid;
             $comment = Restaurant_comment::select('users.name', 'restaurant_comments.point', 'restaurant_comments.comment', 'restaurant_comments.created_at')
-            ->join('users', 'users.id', '=', 'restaurant_comments.uid')->where('restaurant_comments.rid', '=', $rid)
-            ->offset($offset)->limit($limit)->orderBy('restaurant_comments.created_at', 'desc')->get();
+                ->join('users', 'users.id', '=', 'restaurant_comments.uid')->where('restaurant_comments.rid', '=', $rid)
+                ->offset($offset)->limit($limit)->orderBy('restaurant_comments.created_at', 'desc')->get();
             return response()->json([$comment, 'err' => $this->err['0']],);
         } catch (Exception $e) {
             return response()->json([$e, 'err' => $this->err['26']]);
-        }
-        catch(Throwable){
+        } catch (Throwable) {
             return response()->json(['err' => $this->err['26']]);
-
         }
     }
+
+    public function test(Request $request)
+    {
+        $offset = '0';
+        $limit = '22';
+        $rid = $request->rid;
+        $menu = Factorise::Setmenu($rid);
+        return $menu->getmenu($limit,$offset);
+    }
+
+    // public function foo(apple $menu)
+    // {
+    //     $b = $menu->getmenu();
+    //     dump($b);
+    //     return $b;
+    // }
+
+    // public function printMenu(apple $menu)
+    // {
+    //     dump($menu->getmenu());
+    // }
+    //有回傳與無回傳
+    //有回傳有分型別
+    //區域變數
 }

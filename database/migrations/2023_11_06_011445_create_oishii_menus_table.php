@@ -17,6 +17,7 @@ return new class extends Migration
             $table->id();
             $table->bigInteger('rid')->unsigned();
             $table->string('info');
+            $table->string('name');
             $table->integer('price');
             $table->string('img');
             $table->bigInteger('tid');
