@@ -10,14 +10,12 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Models\User;
-use App\Models\User_favorite;
 use Exception;
-use Faker\Core\Number;
-use Illuminate\Queue\Console\RestartCommand;
 use Illuminate\Support\Facades\Cache;
-use PDOException;
+use App\Contracts\GetmenuInterface;
 use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 use Throwable;
+use App\Restaurants\Restaurant1;
 
 use function PHPSTORM_META\type;
 
@@ -157,16 +155,13 @@ class RestaurantController extends Controller
 
 
 
-            //未完 有點問題
+            //未完  有點問題
             $Restaurant = Restaurant::find($rid);
             $Restaurantinfo = $Restaurant->select('title', 'info', 'openday', 'closetime', 'img', 'address', 'totalpoint', 'countpoint')->where('id', '=', $rid)->get();
             $menu = $Restaurant->menu()->limit($limit)->offset($offset)->get();
 
-            
+
             return response()->json(['err' => $this->err['0'], 'data' => $Restaurantinfo, 'menu' => $menu]);
-
-
-
         } catch (TokenInvalidException $e) {
             return response()->json(['err' => $this->err['29']]);
         } catch (Exception $e) {
@@ -238,15 +233,35 @@ class RestaurantController extends Controller
             }
             $rid = $request->rid;
             $comment = Restaurant_comment::select('users.name', 'restaurant_comments.point', 'restaurant_comments.comment', 'restaurant_comments.created_at')
-            ->join('users', 'users.id', '=', 'restaurant_comments.uid')->where('restaurant_comments.rid', '=', $rid)
-            ->offset($offset)->limit($limit)->orderBy('restaurant_comments.created_at', 'desc')->get();
+                ->join('users', 'users.id', '=', 'restaurant_comments.uid')->where('restaurant_comments.rid', '=', $rid)
+                ->offset($offset)->limit($limit)->orderBy('restaurant_comments.created_at', 'desc')->get();
             return response()->json([$comment, 'err' => $this->err['0']],);
         } catch (Exception $e) {
             return response()->json([$e, 'err' => $this->err['26']]);
-        }
-        catch(Throwable){
+        } catch (Throwable) {
             return response()->json(['err' => $this->err['26']]);
-
         }
+    }
+
+    public function test()
+    {
+        dump(new Restaurant1());
+        // $this->foo1(1,1);
+        // $menu = new Apple();
+        // return $this->foo($menu);
+        // try {
+        //     $result = $apple->get();
+        //     return $result;
+        // } catch (Exception $e) {
+        //     return '3123';
+        // }
+    }
+
+    public function foo(GetmenuInterface $menu) {
+        return $menu->get();
+    }
+
+    public function foo1($x, $y) {
+        return $x + $y;
     }
 }

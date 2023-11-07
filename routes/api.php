@@ -36,4 +36,5 @@ Route::controller(RestaurantController::class)->group(function () {
     Route::post('/restaurant/comment','comment')->middleware('token');
     Route::get('/restaurant/comment','getcomment');
     Route::get('/menu', 'menu');
+    Route::get('/test','test');
 });
