@@ -117,27 +117,39 @@ class RestaurantController extends Controller
             'offset.regex' => $this->err['23'],
             'rid.regex' => $this->err['23'], 'rid.required' => $this->err['2'],
         ];
+
         try {
+            //預設limit&offset
             if ($request->limit == null) {
-                $limit = 20;
+                $limit = '20';
             } else {
                 $limit = $request->limit;
             }
             if ($request->offset === null) {
-                $offset = 0;
+                $offset = '0';
             } else {
                 $offset = $request->offset;
             }
+            //驗證參輸入數
             $validator = Validator::make($request->all(), $ruls, $rulsMessage);
             if ($validator->fails()) {
                 return response()->json(['err' => $validator->errors()->first()]);
             }
 
+            //取得餐廳資訊&菜單
+            $rid = $request->rid;
+            $menufactors = Factorise::Setmenu($rid);
+            $menu = $menufactors->getmenu($limit, $offset);
+            $Restaurantinfo = Restaurant::select('title', 'info', 'openday', 'closetime', 'img', 'address', 'totalpoint', 'countpoint')->where('id', '=', $rid)->get();
+
+
+            //如果有登出
             $clienttoken = $request->header('Authorization');
             if ($clienttoken) {
                 $usertoken = JWTAuth::parseToken()->authenticate();
                 $email = $usertoken->email;
                 $redietoken = 'Bearer ' . Cache::get($email);
+                //檢查session
                 if (Cache::has($email) && $clienttoken !== $redietoken) {
                     Cache::forget($email);
                     return response()->json(['1', 'err' => $this->err['28']]);
@@ -145,39 +157,26 @@ class RestaurantController extends Controller
                 if (!Cache::has($email)) {
                     return response()->json(['err' => $this->err['28']]);
                 }
+                //取得token使用者資料
+                $usertoken = JWTAuth::parseToken()->authenticate();
+                $userid = $usertoken->id;
+                $user = User::find($userid);
+                $now = Carbon::now();
+                //存入使用者瀏覽餐廳歷史紀錄
+                $already = $user->history()->where('rid', '=', $rid)->count();
+                if ($already === 0) {
+                    $user->history()->attach($rid);
+                } else {
+                    $user->history()->select('restaurant_histories.updated_at')->update(['restaurant_histories.updated_at' => $now]);
+                }
             }
-
-            $rid = $request->rid;
-            $menu = Factorise::Setmenu($rid);
-            $menuresult = $menu->getmenu($limit,$offset);
-
-            $userid = $usertoken->id;
-            $user = User::find($userid);
-            $now = Carbon::now();
-            $rid = $request->rid;
-            $already = $user->history()->where('rid', '=', $rid)->count();
-            if ($already === 0) {
-                $user->history()->attach($rid);
-            } else {
-                $user->history()->select('restaurant_histories.updated_at')->update(['restaurant_histories.updated_at' => $now]);
-            }
-
-
-
-
-            //未完 有點問題
-            $Restaurant = Restaurant::find($rid);
-            $Restaurantinfo = $Restaurant->select('title', 'info', 'openday', 'closetime', 'img', 'address', 'totalpoint', 'countpoint')->where('id', '=', $rid)->get();
-            $menu = $Restaurant->menu()->limit($limit)->offset($offset)->get();
-
-
             return response()->json(['err' => $this->err['0'], 'data' => $Restaurantinfo, 'menu' => $menu]);
         } catch (TokenInvalidException $e) {
-            return response()->json(['err' => $this->err['29']]);
+            return response()->json(['err' => $this->err['29'], 'data' => $Restaurantinfo, 'menu' => $menu]);
         } catch (Exception $e) {
-            return response()->json(['err' => $this->err['26']]);
-        } catch (Throwable) {
-            return response()->json(['err' => $this->err['26']]);
+            return response()->json([$e, 'err' => $this->err['26'], 'data' => $Restaurantinfo, 'menu' => $menu]);
+        } catch (Throwable $e) {
+            return response()->json([$e, 'err' => $this->err['26'], 'data' => $Restaurantinfo, 'menu' => $menu]);
         }
     }
     public function comment(Request $request)
@@ -259,7 +258,7 @@ class RestaurantController extends Controller
         $limit = '22';
         $rid = $request->rid;
         $menu = Factorise::Setmenu($rid);
-        return $menu->getmenu($limit,$offset);
+        return $menu->getmenu($limit, $offset);
     }
 
     // public function foo(apple $menu)

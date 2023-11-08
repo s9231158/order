@@ -32,7 +32,7 @@ class Restaurant extends Model
         return $this->belongsToMany(User::class, 'restaurant_comments', 'rid','uid');
     }
     public function menu(){
-        return $this->hasOne(Oishii_menu::class,'rid');
+        return $this->hasMany(Oishii_menu::class,'rid');
     }
     
 }

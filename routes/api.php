@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PayController;
 use App\Http\Controllers\RestaurantController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -37,4 +38,8 @@ Route::controller(RestaurantController::class)->group(function () {
     Route::get('/restaurant/comment','getcomment');
     Route::get('/menu', 'menu');
     Route::get('test','test');
+});
+
+Route::controller(PayController::class)->group(function(){
+Route::post('/otherpay','otherpay')->middleware('token');
 });

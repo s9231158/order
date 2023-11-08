@@ -5,10 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Oishii_menu extends Model
+class Tasty_menu extends Model
 {
     use HasFactory;
-    public function Restaurant(){
-        return $this->belongsTo(Restaurant::class,'rid');
-    }
 }

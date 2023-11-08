@@ -13,7 +13,7 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('oishii_menus', function (Blueprint $table) {
+        Schema::create('tasty_menus', function (Blueprint $table) {
             $table->id();
             $table->bigInteger('rid')->unsigned();
             $table->string('info')->nullable();
@@ -35,6 +35,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('oishii_menus');
+        Schema::dropIfExists('tasty_menus');
     }
 };
