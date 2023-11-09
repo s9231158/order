@@ -42,4 +42,5 @@ Route::controller(RestaurantController::class)->group(function () {
 
 Route::controller(PayController::class)->group(function(){
 Route::post('/otherpay','otherpay')->middleware('token');
+Route::get('/tt','tt');
 });

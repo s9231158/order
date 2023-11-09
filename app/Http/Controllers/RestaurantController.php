@@ -19,6 +19,7 @@ use PDOException;
 use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 use Throwable;
 use App\OSmenu;
+use GuzzleHttp\Client;
 use App\Contract\OSmenu as apple;
 use App\Factorise;
 use App\TAmenu;
@@ -118,6 +119,10 @@ class RestaurantController extends Controller
             'rid.regex' => $this->err['23'], 'rid.required' => $this->err['2'],
         ];
 
+
+
+
+
         try {
             //預設limit&offset
             if ($request->limit == null) {
@@ -139,7 +144,9 @@ class RestaurantController extends Controller
             //取得餐廳資訊&菜單
             $rid = $request->rid;
             $menufactors = Factorise::Setmenu($rid);
-            $menu = $menufactors->getmenu($limit, $offset);
+            $menu = $menufactors->getmenu($offset, $limit);
+
+
             $Restaurantinfo = Restaurant::select('title', 'info', 'openday', 'closetime', 'img', 'address', 'totalpoint', 'countpoint')->where('id', '=', $rid)->get();
 
 
@@ -172,11 +179,11 @@ class RestaurantController extends Controller
             }
             return response()->json(['err' => $this->err['0'], 'data' => $Restaurantinfo, 'menu' => $menu]);
         } catch (TokenInvalidException $e) {
-            return response()->json(['err' => $this->err['29'], 'data' => $Restaurantinfo, 'menu' => $menu]);
-        } catch (Exception $e) {
-            return response()->json([$e, 'err' => $this->err['26'], 'data' => $Restaurantinfo, 'menu' => $menu]);
-        } catch (Throwable $e) {
-            return response()->json([$e, 'err' => $this->err['26'], 'data' => $Restaurantinfo, 'menu' => $menu]);
+        //     return response()->json(['err' => $this->err['29'], 'data' => $Restaurantinfo, 'menu' => $menu]);
+        // } catch (Exception $e) {
+        //     return response()->json([$e, 'err' => $this->err['26'], 'data' => $Restaurantinfo, 'menu' => $menu]);
+        // } catch (Throwable $e) {
+        //     return response()->json([$e, 'err' => $this->err['26'], 'data' => $Restaurantinfo, 'menu' => $menu]);
         }
     }
     public function comment(Request $request)
@@ -260,19 +267,4 @@ class RestaurantController extends Controller
         $menu = Factorise::Setmenu($rid);
         return $menu->getmenu($limit, $offset);
     }
-
-    // public function foo(apple $menu)
-    // {
-    //     $b = $menu->getmenu();
-    //     dump($b);
-    //     return $b;
-    // }
-
-    // public function printMenu(apple $menu)
-    // {
-    //     dump($menu->getmenu());
-    // }
-    //有回傳與無回傳
-    //有回傳有分型別
-    //區域變數
 }

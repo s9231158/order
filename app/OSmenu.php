@@ -10,17 +10,40 @@ use App\Contract\OSmenu as ContractOSmenu;
 use App\Models\Restaurant;
 use Faker\Core\Uuid;
 use Symfony\Component\Uid\UuidV8;
+use GuzzleHttp\Client;
+use PhpParser\Node\Stmt\Return_;
 
 use function PHPUnit\Framework\returnSelf;
 
 class OSmenu implements ContractOSmenu
 {
     public function Getmenu($offset, $limit)
+    //修改為從api取得
     {
-        $menu = Oishii_menu::select('rid', 'id', 'info', 'price', 'img')->where('rid', '=', 1)->get();
-        return $menu;
+        $a = 'http://neil.xincity.xyz:9998/oishii/api/menu/all' . '?limit=' . $limit . '&offset=' . $offset;
+        try {
+            $client  =  new  Client();
+            $res = $client->request('GET', $a);
+            $goodres = $res->getBody();
+            $s = json_decode($goodres, true);
+            $ss = $s['menu'];
+            $targetData =[];
+            foreach ($ss as $a) {
+                $menu = [
+                    'rid' => 1,
+                    'id' => $a['meal_id'],
+                    'info' => $a['meal_type'],
+                    'name' => $a['meal_name'],
+                    'price' => $a['price'],
+                    'img' => ''
+                ];
+                $targetData[] = $menu;
+            }
+            return $targetData;
+        } catch (\GuzzleHttp\Exception\BadResponseException $e) {
+        }
     }
-    public function Menuenable($order)
+    public function Menuenable($order) //修改改為傳入id陣列
     {
         $menu  = 0;
         foreach ($order as $v) {
@@ -45,7 +68,7 @@ class OSmenu implements ContractOSmenu
     }
 
 
-    public function Change($order,$order2)
+    public function Change($order, $order2)
     {
         $uid = (string)Str::uuid();
 
@@ -65,8 +88,16 @@ class OSmenu implements ContractOSmenu
                 'memo' => $a['description'],
             ];
             $targetData['orders'][] = $orders;
-            // return $orders;
         }
         return $targetData;
+    }
+
+    public function Sendapi($order)
+    {
+        $client  =  new  Client();
+        $res = $client->request('POST', 'http://neil.xincity.xyz:9998/tasty/api/order', $order);
+        $goodres = $res->getBody();
+        $s = json_decode($goodres);
+        return $s;
     }
 }

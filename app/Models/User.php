@@ -36,6 +36,10 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->belongsToMany(Restaurant::class, 'restaurant_comments', 'uid', 'rid')->withTimestamps();
     }
+    public function order()
+    {
+        return $this->hasMany(Order::class,'uid');
+    }
 
     /**
      * The attributes that are mass assignable.
