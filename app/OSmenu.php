@@ -70,13 +70,13 @@ class OSmenu implements ContractOSmenu
 
     public function Change($order, $order2)
     {
-        $uid = (string)Str::uuid();
+        $uid2 = (string)Str::uuid();
 
         $targetData = [
-            'id' => $uid,
+            'id' => $uid2,
             'name' => $order->name,
-            'phone_number' => (string) $order->phone,
-            'pickup_time' => now()->toIso8601String(),
+            'phone_number' => '0'.(string) $order->phone,
+            'pickup_time' => '2016-06-01T14:41:36+08:00',
             'total_price' => $order->totalprice,
             'orders' => [],
         ];
@@ -95,7 +95,7 @@ class OSmenu implements ContractOSmenu
     public function Sendapi($order)
     {
         $client  =  new  Client();
-        $res = $client->request('POST', 'http://neil.xincity.xyz:9998/tasty/api/order', $order);
+        $res = $client->request('POST', 'http://neil.xincity.xyz:9998/oishii/api/notify/order', ['json' => $order]);
         $goodres = $res->getBody();
         $s = json_decode($goodres);
         return $s;

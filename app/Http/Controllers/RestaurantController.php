@@ -126,6 +126,7 @@ class RestaurantController extends Controller
         try {
             //預設limit&offset
             if ($request->limit == null) {
+                //改int
                 $limit = '20';
             } else {
                 $limit = $request->limit;

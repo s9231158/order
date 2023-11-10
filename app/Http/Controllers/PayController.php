@@ -11,8 +11,12 @@ use Exception;
 use Illuminate\Http\Request;
 
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use GuzzleHttp\Client;
+use App\CheckMacValueService;
+use App\Models\Ecpay_back;
+use Illuminate\Support\Facades\Cache;
 
 class PayController extends Controller
 {
@@ -92,8 +96,6 @@ class PayController extends Controller
 
             //轉換店家要求api格式
             $changedata = $Factorise->Change($request, $orders1);
-
-
             //寄送api
             $Sendapi = $Factorise->Sendapi($changedata);
             $user = JWTAuth::parseToken()->authenticate();
@@ -101,6 +103,7 @@ class PayController extends Controller
             $userid = $user->id;
             $now = Carbon::now();
             $taketime = $request->taketime;
+            //存入order orderiofo資料庫
             $orderr = new Order([
                 'ordertime' => $now,
                 'taketime'  => $taketime,
@@ -113,7 +116,6 @@ class PayController extends Controller
             $aa->order()->save($orderr);
             $orderinfo = new Order_info();
             $reqorder = $request['orders'];
-            // // return gettype($reqorder);
             foreach ($reqorder as $a) {
                 $orderinfo = new Order_info([
                     'price' => $a['price'],
@@ -123,20 +125,67 @@ class PayController extends Controller
                 ]);
                 $orderr->orderinfo()->save($orderinfo);
             }
-
-
-
-            // $orderinfo = Order_info::create([
-            //     'price'=>$oprice,
-            //     'quanlity'=>$oquanlity,
-            //     'name'=>$oname,
-            //     'oid'=>$oid,
-            //     'description'=>$odescription
-            // ]);
-
+            //是否響應成功
             $CallbackStatus = $Sendapi->error_code;
+            if ($CallbackStatus != 0) {
+                return '訂單失敗';
+            }
+            //將資訊傳至第三方付款資訊
+            $uid = (string)Str::uuid();
+            $uuid20Char = substr($uid, 0, 20);
+            $key = '0dd22e31042fbbdd';
+            $iv = 'e62f6e3bbd7c2e9d';
+            $a = [
+                "merchant_id" => 11,
+                "merchant_trade_no" => $uuid20Char,
+                "merchant_trade_date" => "2023/10/20 11:59:59",
+                "payment_type" => "aio",
+                "amount" => 123,
+                "trade_desc" => "購買商品",
+                "item_name" => "尬雞堡#尬雞堡",
+                "return_url" => "http://192.168.83.26:9999/api/qwe",
+                "choose_payment" => "Credit",
+                "check_mac_value" => "6CC73080A3CF1EA1A844F1EEF96A873FA4D1DD485BDA6517696A4D8EF0EAC94E",
+                "encrypt_type" => 1,
+                "lang" => "en"
+            ];
 
-            return $Sendapi;
+            $d = new CheckMacValueService($key, $iv);
+            $e = $d->generate($a);
+            $a['check_mac_value'] = $e;
+            $client  =  new  Client();
+            $res = $client->request('POST', 'http://neil.xincity.xyz:9997/api/Cashier/AioCheckOut', ['json' => $a]);
+            $goodres = $res->getBody();
+            $s = json_decode($goodres);
+            echo '123';
+            return $s;
+
+
+
+            // return $Sendapi;
+        } catch (Exception $e) {
+            return $e;
+        }
+    }
+
+
+    public function qwe(Request $request)
+    {
+
+        try {
+            $requestData = $request->all();
+            Cache::set($request->merchant_trade_no, $requestData);
+            $ecpayback = new Ecpay_back([
+                'merchant_trade_no' => $request->merchant_trade_no,
+                'merchant_id'  => $request->merchant_id,
+                'trade_date' => $request->trade_date,
+                'check_mac_value' => $request->check_mac_value,
+                'rtn_code' => $request->rtn_code,
+                'rtn_msg' => $request->rtn_msg,
+                'amount' => $request->amount,
+                'payment_date' => $request->payment_date,
+            ]);
+            $ecpayback->save();
         } catch (Exception $e) {
             return $e;
         }
@@ -145,10 +194,33 @@ class PayController extends Controller
     {
 
         try {
+            $uid = (string)Str::uuid();
+            $uuid20Char = substr($uid, 0, 20);
+            $key = '0dd22e31042fbbdd';
+            $iv = 'e62f6e3bbd7c2e9d';
+            $a = [
+                "merchant_id" => 11,
+                "merchant_trade_no" => $uuid20Char,
+                "merchant_trade_date" => "2023/10/20 11:59:59",
+                "payment_type" => "aio",
+                "amount" => 123,
+                "trade_desc" => "購買商品",
+                "item_name" => "product#dskjf",
+                "return_url" => "http://192.168.83.26:9999/api/qwe",
+                "choose_payment" => "Credit",
+                "check_mac_value" => "6CC73080A3CF1EA1A844F1EEF96A873FA4D1DD485BDA6517696A4D8EF0EAC94E",
+                "encrypt_type" => 1,
+                "lang" => "en"
+            ];
+
+            $d = new CheckMacValueService($key, $iv);
+            $e = $d->generate($a);
+            $a['check_mac_value'] = $e;
             $client  =  new  Client();
-            $res = $client->request('POST', 'http://neil.xincity.xyz:9997/api/Cashier/AioCheckOut');
+            $res = $client->request('POST', 'http://neil.xincity.xyz:9997/api/Cashier/AioCheckOut', ['json' => $a]);
             $goodres = $res->getBody();
             $s = json_decode($goodres);
+            echo '123';
             return $s;
         } catch (\GuzzleHttp\Exception\BadResponseException $e) {
         }
