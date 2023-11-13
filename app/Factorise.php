@@ -14,10 +14,10 @@ class Factorise
             '1' => (function () {
                 return new OSmenu();
             })(),
-            '2' => (function () {
+            '11' => (function () {
                 return new TAmenu();
             })(),
-            '3' => (function () {
+            '12' => (function () {
                 return new SHmenu();
             })(),
         };
