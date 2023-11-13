@@ -174,7 +174,7 @@ class PayController extends Controller
 
 
 
-            //將資訊傳至第三方付款資訊
+             //將資訊傳至第三方付款資訊
 
             $CheckMacValueService = new CheckMacValueService($key, $iv);
             $CheckMacValue = $CheckMacValueService->generate($data);
