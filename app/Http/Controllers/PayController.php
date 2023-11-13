@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Factorise;
+use App\Models\Ecpay;
 use App\Models\Order;
 use App\Models\Order_info;
 use App\Models\Restaurant;
 use App\Models\User;
+use App\Models\Wallet_Record;
 use Exception;
 use Illuminate\Http\Request;
 
@@ -91,19 +93,19 @@ class PayController extends Controller
             $realmenu = $Hasmenu->original[0];
             $ordermenu = $Hasmenu->original[1];
             if ($realmenu != $ordermenu) {
-                return '幹你娘不要點菜單沒有的';
+                return '不要點菜單沒有的';
             }
 
             //轉換店家要求api格式
             $changedata = $Factorise->Change($request, $orders1);
             //寄送api
             $Sendapi = $Factorise->Sendapi($changedata);
-            $user = JWTAuth::parseToken()->authenticate();
-            $aa = User::find($userid);
+            $usertoken = JWTAuth::parseToken()->authenticate();
+            $user = User::find($userid);
             $userid = $user->id;
             $now = Carbon::now();
             $taketime = $request->taketime;
-            //存入order orderiofo資料庫
+            //存入order資料庫
             $orderr = new Order([
                 'ordertime' => $now,
                 'taketime'  => $taketime,
@@ -113,7 +115,8 @@ class PayController extends Controller
                 'status' => '付款中',
                 'rid' => $rid,
             ]);
-            $aa->order()->save($orderr);
+            $user->order()->save($orderr);
+            //存入orderiofo資料庫
             $orderinfo = new Order_info();
             $reqorder = $request['orders'];
             foreach ($reqorder as $a) {
@@ -125,17 +128,14 @@ class PayController extends Controller
                 ]);
                 $orderr->orderinfo()->save($orderinfo);
             }
-            //是否響應成功
-            $CallbackStatus = $Sendapi->error_code;
-            if ($CallbackStatus != 0) {
-                return '訂單失敗';
-            }
-            //將資訊傳至第三方付款資訊
             $uid = (string)Str::uuid();
+
             $uuid20Char = substr($uid, 0, 20);
+
+
             $key = '0dd22e31042fbbdd';
             $iv = 'e62f6e3bbd7c2e9d';
-            $a = [
+            $data = [
                 "merchant_id" => 11,
                 "merchant_trade_no" => $uuid20Char,
                 "merchant_trade_date" => "2023/10/20 11:59:59",
@@ -149,15 +149,40 @@ class PayController extends Controller
                 "encrypt_type" => 1,
                 "lang" => "en"
             ];
+            $ecpay = new Ecpay($data);
+            $ecpay->save();
 
-            $d = new CheckMacValueService($key, $iv);
-            $e = $d->generate($a);
-            $a['check_mac_value'] = $e;
+            // 存入wallet record
+            $wrecord = new Wallet_Record([
+                'out' => $totalprice,
+                'uid' => $userid,
+                'eid' => $uuid20Char,
+                'status' => '交易中',
+            ]);
+            $orderr->record()->save($wrecord);
+
+
+            //是否響應成功
+            $CallbackStatus = $Sendapi->error_code;
+            if ($CallbackStatus != 0) {
+                $wrecord->status = '交易失敗';
+                $wrecord->save();
+                $orderr->status = '交易失敗';
+                $orderr->save();
+                return '訂單失敗';
+            }
+
+
+
+            //將資訊傳至第三方付款資訊
+
+            $CheckMacValueService = new CheckMacValueService($key, $iv);
+            $CheckMacValue = $CheckMacValueService->generate($data);
+            $data['check_mac_value'] = $CheckMacValue;
             $client  =  new  Client();
-            $res = $client->request('POST', 'http://neil.xincity.xyz:9997/api/Cashier/AioCheckOut', ['json' => $a]);
+            $res = $client->request('POST', 'http://neil.xincity.xyz:9997/api/Cashier/AioCheckOut', ['json' => $data]);
             $goodres = $res->getBody();
             $s = json_decode($goodres);
-            echo '123';
             return $s;
 
 

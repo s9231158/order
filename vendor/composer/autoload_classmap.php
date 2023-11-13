@@ -6,6 +6,7 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'App\\CheckMacValueService' => $baseDir . '/app/CheckMacValueService.php',
     'App\\Console\\Kernel' => $baseDir . '/app/Console/Kernel.php',
     'App\\Contract\\OSmenu' => $baseDir . '/app/Contract/OSmenu.php',
     'App\\Exceptions\\Handler' => $baseDir . '/app/Exceptions/Handler.php',
@@ -26,7 +27,12 @@ return array(
     'App\\Http\\Middleware\\ValidateSignature' => $baseDir . '/app/Http/Middleware/ValidateSignature.php',
     'App\\Http\\Middleware\\VerifyCsrfToken' => $baseDir . '/app/Http/Middleware/VerifyCsrfToken.php',
     'App\\Http\\Requests\\basevalid' => $baseDir . '/app/Http/Requests/basevalid.php',
+    'App\\Models\\Ecpay' => $baseDir . '/app/Models/Ecpay.php',
+    'App\\Models\\Ecpay_back' => $baseDir . '/app/Models/Ecpay_back.php',
     'App\\Models\\Oishii_menu' => $baseDir . '/app/Models/Oishii_menu.php',
+    'App\\Models\\Order' => $baseDir . '/app/Models/Order.php',
+    'App\\Models\\Order_info' => $baseDir . '/app/Models/Order_info.php',
+    'App\\Models\\Payment' => $baseDir . '/app/Models/Payment.php',
     'App\\Models\\Restaurant' => $baseDir . '/app/Models/Restaurant.php',
     'App\\Models\\Restaurant_comment' => $baseDir . '/app/Models/Restaurant_comment.php',
     'App\\Models\\Restaurant_history' => $baseDir . '/app/Models/Restaurant_history.php',
@@ -36,6 +42,7 @@ return array(
     'App\\Models\\User_favorite' => $baseDir . '/app/Models/User_favorite.php',
     'App\\Models\\User_recode' => $baseDir . '/app/Models/User_recode.php',
     'App\\Models\\User_wallets' => $baseDir . '/app/Models/User_wallets.php',
+    'App\\Models\\Wallet_Record' => $baseDir . '/app/Models/Wallet_Record.php',
     'App\\OSmenu' => $baseDir . '/app/OSmenu.php',
     'App\\Providers\\AppServiceProvider' => $baseDir . '/app/Providers/AppServiceProvider.php',
     'App\\Providers\\AuthServiceProvider' => $baseDir . '/app/Providers/AuthServiceProvider.php',

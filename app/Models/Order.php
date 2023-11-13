@@ -24,4 +24,7 @@ class Order extends Model
     public function user(){
         return $this->belongsTo(User::class,'id');
     }
+    public function record(){
+        return $this->hasMany(Wallet_Record::class,'oid');
+    }
 }

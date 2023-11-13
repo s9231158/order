@@ -314,16 +314,14 @@ class UserController extends Controller
             }
             $user = User::find(Auth::id());
             $count = $user->favorite()->count();
-            $result = $user->favorite()->select('rid','totalpoint','countpoint','title','img')->limit($limit)->offset($offset)->orderBy('user_favorites.created_at', 'desc')->get()->map(function($item){
+            $result = $user->favorite()->select('rid', 'totalpoint', 'countpoint', 'title', 'img')->limit($limit)->offset($offset)->orderBy('user_favorites.created_at', 'desc')->get()->map(function ($item) {
                 unset($item->pivot);
                 return $item;
             });
-            return response()->json(['err' => $this->err['0'], 'count' => $count, 'data'=>$result]);
-        }
-         catch (Exception $e) {
-            return response()->json([$e,'err' => $this->err['26']]);
-        }
-         catch (Throwable) {
+            return response()->json(['err' => $this->err['0'], 'count' => $count, 'data' => $result]);
+        } catch (Exception $e) {
+            return response()->json([$e, 'err' => $this->err['26']]);
+        } catch (Throwable) {
             return response()->json(['err' => $this->err['26']]);
         }
     }

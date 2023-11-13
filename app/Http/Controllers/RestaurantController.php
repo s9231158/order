@@ -180,11 +180,11 @@ class RestaurantController extends Controller
             }
             return response()->json(['err' => $this->err['0'], 'data' => $Restaurantinfo, 'menu' => $menu]);
         } catch (TokenInvalidException $e) {
-        //     return response()->json(['err' => $this->err['29'], 'data' => $Restaurantinfo, 'menu' => $menu]);
-        // } catch (Exception $e) {
-        //     return response()->json([$e, 'err' => $this->err['26'], 'data' => $Restaurantinfo, 'menu' => $menu]);
-        // } catch (Throwable $e) {
-        //     return response()->json([$e, 'err' => $this->err['26'], 'data' => $Restaurantinfo, 'menu' => $menu]);
+            //     return response()->json(['err' => $this->err['29'], 'data' => $Restaurantinfo, 'menu' => $menu]);
+            // } catch (Exception $e) {
+            //     return response()->json([$e, 'err' => $this->err['26'], 'data' => $Restaurantinfo, 'menu' => $menu]);
+            // } catch (Throwable $e) {
+            //     return response()->json([$e, 'err' => $this->err['26'], 'data' => $Restaurantinfo, 'menu' => $menu]);
         }
     }
     public function comment(Request $request)

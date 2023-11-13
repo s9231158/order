@@ -546,6 +546,7 @@ class ComposerStaticInitccbd816a07b206f971042295b899d1ba
     );
 
     public static $classMap = array (
+        'App\\CheckMacValueService' => __DIR__ . '/../..' . '/app/CheckMacValueService.php',
         'App\\Console\\Kernel' => __DIR__ . '/../..' . '/app/Console/Kernel.php',
         'App\\Contract\\OSmenu' => __DIR__ . '/../..' . '/app/Contract/OSmenu.php',
         'App\\Exceptions\\Handler' => __DIR__ . '/../..' . '/app/Exceptions/Handler.php',
@@ -566,7 +567,12 @@ class ComposerStaticInitccbd816a07b206f971042295b899d1ba
         'App\\Http\\Middleware\\ValidateSignature' => __DIR__ . '/../..' . '/app/Http/Middleware/ValidateSignature.php',
         'App\\Http\\Middleware\\VerifyCsrfToken' => __DIR__ . '/../..' . '/app/Http/Middleware/VerifyCsrfToken.php',
         'App\\Http\\Requests\\basevalid' => __DIR__ . '/../..' . '/app/Http/Requests/basevalid.php',
+        'App\\Models\\Ecpay' => __DIR__ . '/../..' . '/app/Models/Ecpay.php',
+        'App\\Models\\Ecpay_back' => __DIR__ . '/../..' . '/app/Models/Ecpay_back.php',
         'App\\Models\\Oishii_menu' => __DIR__ . '/../..' . '/app/Models/Oishii_menu.php',
+        'App\\Models\\Order' => __DIR__ . '/../..' . '/app/Models/Order.php',
+        'App\\Models\\Order_info' => __DIR__ . '/../..' . '/app/Models/Order_info.php',
+        'App\\Models\\Payment' => __DIR__ . '/../..' . '/app/Models/Payment.php',
         'App\\Models\\Restaurant' => __DIR__ . '/../..' . '/app/Models/Restaurant.php',
         'App\\Models\\Restaurant_comment' => __DIR__ . '/../..' . '/app/Models/Restaurant_comment.php',
         'App\\Models\\Restaurant_history' => __DIR__ . '/../..' . '/app/Models/Restaurant_history.php',
@@ -576,6 +582,7 @@ class ComposerStaticInitccbd816a07b206f971042295b899d1ba
         'App\\Models\\User_favorite' => __DIR__ . '/../..' . '/app/Models/User_favorite.php',
         'App\\Models\\User_recode' => __DIR__ . '/../..' . '/app/Models/User_recode.php',
         'App\\Models\\User_wallets' => __DIR__ . '/../..' . '/app/Models/User_wallets.php',
+        'App\\Models\\Wallet_Record' => __DIR__ . '/../..' . '/app/Models/Wallet_Record.php',
         'App\\OSmenu' => __DIR__ . '/../..' . '/app/OSmenu.php',
         'App\\Providers\\AppServiceProvider' => __DIR__ . '/../..' . '/app/Providers/AppServiceProvider.php',
         'App\\Providers\\AuthServiceProvider' => __DIR__ . '/../..' . '/app/Providers/AuthServiceProvider.php',

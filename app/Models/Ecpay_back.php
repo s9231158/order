@@ -19,4 +19,8 @@ class Ecpay_back extends Model
         'payment_date',
         'check_mac_value '
     ];
+
+    public function Record(){
+        return $this->belongsTo(Wallet_Record::class,'eid');
+    }
 }

@@ -27,7 +27,7 @@ class OSmenu implements ContractOSmenu
             $goodres = $res->getBody();
             $s = json_decode($goodres, true);
             $ss = $s['menu'];
-            $targetData =[];
+            $targetData = [];
             foreach ($ss as $a) {
                 $menu = [
                     'rid' => 1,
@@ -75,7 +75,7 @@ class OSmenu implements ContractOSmenu
         $targetData = [
             'id' => $uid2,
             'name' => $order->name,
-            'phone_number' => '0'.(string) $order->phone,
+            'phone_number' => '0' . (string) $order->phone,
             'pickup_time' => '2016-06-01T14:41:36+08:00',
             'total_price' => $order->totalprice,
             'orders' => [],

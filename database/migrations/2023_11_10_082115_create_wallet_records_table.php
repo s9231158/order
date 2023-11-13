@@ -19,12 +19,13 @@ return new class extends Migration
             $table->integer('out')->nullable();
             $table->integer('in')->nullable();
             $table->bigInteger('oid');
-            $table->bigInteger('uid');
-            $table->string('eid');
+            $table->bigInteger('uid')->unsigned();
             $table->string('status');
-            $table->bigInteger('pid');
-            $table->foreign('uid')->references('id')->on('orders');
+            $table->bigInteger('pid')->unsigned()->nullable();
+            $table->string('eid')->index();
+            $table->foreign('uid')->references('id')->on('users');
             $table->foreign('pid')->references('id')->on('payments');
+            $table->foreign('eid')->references('merchant_trade_no')->on('ecpays');
         });
     }
 
