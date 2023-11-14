@@ -1,12 +1,12 @@
 <?php
 namespace App;
 
-use App\Contract\OSmenu as ContractOSmenu;
+use App\Contract\RestaurantInterface;
 use App\Models\Restaurant;
 use App\Models\Steakhome_menu;
 use GuzzleHttp\Client;
 use Illuminate\Support\Str;
-class SHmenu implements ContractOSmenu{
+class SHmenu implements RestaurantInterface{
     public function Getmenu($offset, $limit)
     //修改為從api取得
     {
@@ -90,4 +90,13 @@ class SHmenu implements ContractOSmenu{
         $s = json_decode($goodres);
         return $s;
     }
+
+    public function HasRestraunt($rid)
+    {
+        $hasRestraunt = Restaurant::where('id', '=', $rid)->count();
+        if ($hasRestraunt != 1) {
+            return false;
+        }
+    }
+
 }

@@ -5,19 +5,24 @@ namespace App;
 use App\OSmenu;
 use App\TAmenu;
 use App\SHmenu;
+use Exception;
 
 class Factorise
 {
+    public function apple()
+    {
+        return '87';
+    }
     public static function Setmenu($rid)
     {
         return match ($rid) {
             '1' => (function () {
                 return new OSmenu();
             })(),
-            '11' => (function () {
+            '2' => (function () {
                 return new TAmenu();
             })(),
-            '12' => (function () {
+            '3' => (function () {
                 return new SHmenu();
             })(),
         };

@@ -17,11 +17,15 @@ use Illuminate\Support\Str;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use GuzzleHttp\Client;
 use App\CheckMacValueService;
-use App\Models\Ecpay_back;
 use Illuminate\Support\Facades\Cache;
+use App\Models\Ecpay_back;
+use PhpParser\JsonDecoder;
 
 class PayController extends Controller
 {
+    private $err = [
+        '16' => 16 //查無此餐廳
+    ];
     private $traslate = [
         'Monday' => 1,
         'Tuesday' => 2,
@@ -47,11 +51,15 @@ class PayController extends Controller
         $ridString = strval($rid);
 
         try {
-
             //訂單總金額是否正確
             $realtotalprice = 0;
             foreach ($orders1 as $a) {
                 $realtotalprice += $a['price'] * $a['quanlity'];
+                //是否有該餐廳
+                $hasrestaurant = Restaurant::where('id', '=', $rid)->count();
+                if ($hasrestaurant === 0) {
+                    return response()->json(['err' => $this->err['16']]);
+                }
                 //訂單是否都來自同一間餐廳
                 if ($a['rid'] != $rid) {
                     return '點同一間好嗎';
@@ -174,7 +182,7 @@ class PayController extends Controller
 
 
 
-             //將資訊傳至第三方付款資訊
+            //將資訊傳至第三方付款資訊
 
             $CheckMacValueService = new CheckMacValueService($key, $iv);
             $CheckMacValue = $CheckMacValueService->generate($data);
@@ -199,55 +207,60 @@ class PayController extends Controller
 
         try {
             $requestData = $request->all();
+            $json = json_encode($requestData);
+            $json = json_decode($json);
             Cache::set($request->merchant_trade_no, $requestData);
-            $ecpayback = new Ecpay_back([
-                'merchant_trade_no' => $request->merchant_trade_no,
-                'merchant_id'  => $request->merchant_id,
-                'trade_date' => $request->trade_date,
-                'check_mac_value' => $request->check_mac_value,
-                'rtn_code' => $request->rtn_code,
-                'rtn_msg' => $request->rtn_msg,
-                'amount' => $request->amount,
-                'payment_date' => $request->payment_date,
+            $data = Cache::get($request->merchant_trade_no);
+            // $ecpayback =Ecpay_back::create([
+            //     'merchant_trade_no' => $requestData['merchant_trade_no'],
+            //     'merchant_id'  => $requestData['merchant_id'],
+            //     'trade_date' => $requestData['trade_date'],
+            //     'check_mac_value' => $requestData['check_mac_value'],
+            //     'rtn_code' => $requestData['rtn_code'],
+            //     'rtn_msg' => $requestData['rtn_msg'],
+            //     'amount' => $requestData['amount'],
+            //     'payment_date' => $requestData['payment_date'],
+            // ]);
+            $ecpay1 = Ecpay::select('merchant_trade_no')->where('merchant_trade_no','=','1111111111')->get();
+            $ecpay = Ecpay::select('merchant_trade_no')->where('merchant_trade_no','=','5bbef417-39df-49f4-a')->get();
+            $ecpay3 = Ecpay::select('merchant_trade_no')->where('merchant_trade_no','=','1111-1111-cccc')->get();
+            $ecpay4 = Ecpay::select('merchant_trade_no')->where('merchant_trade_no','=','123a456b789-123')->get();
+            return response([$ecpay,$ecpay1,$ecpay3,$ecpay4]) ;  
+            $ecpayback =new Ecpay_back([
+                'merchant_trade_no' => $data['merchant_trade_no'],
+                'merchant_id'  => $data['merchant_id'],
+                'trade_date' => $data['trade_date'],
+                'check_mac_value' => $data['check_mac_value'],
+                'rtn_code' => $data['rtn_code'],
+                'rtn_msg' => $data['rtn_msg'],
+                'amount' => $data['amount'],
+                'payment_date' => $data['payment_date'],
             ]);
-            $ecpayback->save();
+            $ecpay->ecpayback()->save($ecpayback);
+            // $ecpayback = new Ecpay_back([
+            //     'merchant_trade_no' => $data->merchant_trade_no,
+            //     'merchant_id'  => $data->merchant_id,
+            //     'trade_date' => $data->trade_date,
+            //     'check_mac_value' => $data->check_mac_value,
+            //     'rtn_code' => $data->rtn_code,
+            //     'rtn_msg' => $data->rtn_msg,
+            //     'amount' => $data->amount,
+            //     'payment_date' => $data->payment_date,
+            // ]);
+
+            // $ecpayback = new Ecpay_back([
+            //     'merchant_trade_no' => $request->merchant_trade_no,
+            //     'merchant_id'  => $request->merchant_id,
+            //     'trade_date' => $request->trade_date,
+            //     'check_mac_value' => $request->check_mac_value,
+            //     'rtn_code' => $request->rtn_code,
+            //     'rtn_msg' => $request->rtn_msg,
+            //     'amount' => $request->amount,
+            //     'payment_date' => $request->payment_date,
+            // ]);
+            // $ecpayback->save();
         } catch (Exception $e) {
             return $e;
-        }
-    }
-    public function tt()
-    {
-
-        try {
-            $uid = (string)Str::uuid();
-            $uuid20Char = substr($uid, 0, 20);
-            $key = '0dd22e31042fbbdd';
-            $iv = 'e62f6e3bbd7c2e9d';
-            $a = [
-                "merchant_id" => 11,
-                "merchant_trade_no" => $uuid20Char,
-                "merchant_trade_date" => "2023/10/20 11:59:59",
-                "payment_type" => "aio",
-                "amount" => 123,
-                "trade_desc" => "購買商品",
-                "item_name" => "product#dskjf",
-                "return_url" => "http://192.168.83.26:9999/api/qwe",
-                "choose_payment" => "Credit",
-                "check_mac_value" => "6CC73080A3CF1EA1A844F1EEF96A873FA4D1DD485BDA6517696A4D8EF0EAC94E",
-                "encrypt_type" => 1,
-                "lang" => "en"
-            ];
-
-            $d = new CheckMacValueService($key, $iv);
-            $e = $d->generate($a);
-            $a['check_mac_value'] = $e;
-            $client  =  new  Client();
-            $res = $client->request('POST', 'http://neil.xincity.xyz:9997/api/Cashier/AioCheckOut', ['json' => $a]);
-            $goodres = $res->getBody();
-            $s = json_decode($goodres);
-            echo '123';
-            return $s;
-        } catch (\GuzzleHttp\Exception\BadResponseException $e) {
         }
     }
 }

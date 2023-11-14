@@ -21,7 +21,7 @@ return new class extends Migration
             $table->integer('price');
             $table->string('img')->nullable();
             $table->bigInteger('tid')->unsigned();
-            $table->boolean('enable');
+            $table->boolean('enable')->default(true);
             $table->timestamps();
             $table->foreign('rid')->references('id')->on('restaurants');
             $table->foreign('tid')->references('id')->on('type');

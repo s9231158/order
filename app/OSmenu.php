@@ -6,7 +6,7 @@ use Illuminate\Support\Str;
 
 use App\Models\Oishii_menu;
 
-use App\Contract\OSmenu as ContractOSmenu;
+use App\Contract\RestaurantInterface;
 use App\Models\Restaurant;
 use Faker\Core\Uuid;
 use Symfony\Component\Uid\UuidV8;
@@ -15,7 +15,7 @@ use PhpParser\Node\Stmt\Return_;
 
 use function PHPUnit\Framework\returnSelf;
 
-class OSmenu implements ContractOSmenu
+class OSmenu implements RestaurantInterface
 {
     public function Getmenu($offset, $limit)
     //修改為從api取得
@@ -99,5 +99,13 @@ class OSmenu implements ContractOSmenu
         $goodres = $res->getBody();
         $s = json_decode($goodres);
         return $s;
+    }
+
+    public function HasRestraunt($rid)
+    {
+        $hasRestraunt = Restaurant::where('id', '=', $rid)->count();
+        if ($hasRestraunt != 1) {
+            return false;
+        }
     }
 }

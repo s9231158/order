@@ -15,7 +15,8 @@ class Order_info extends Model
         'oid ',
         'description',
     ];
-    public function order(){
-        return $this->belongsTo(Order::class,'rid');
+    public function order()
+    {
+        return $this->belongsTo(Order::class, 'rid');
     }
 }

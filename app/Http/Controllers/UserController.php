@@ -34,6 +34,8 @@ class UserController extends Controller
         '7' => 7, //短時間內登入次數過多
         '8' => 8, //帳號或密碼錯誤
         '9' => 9, //token錯誤
+        '15' => 15, //重複新增我的最愛
+        '16' => 16, //查無此餐廳
         '23' => 23, //無效的範圍
         '26' => 26, //系統錯誤
     ];
@@ -42,7 +44,7 @@ class UserController extends Controller
     {
         //規則
         $ruls = [
-            'name' => ['required', 'max:25', 'min:3', 'regex:/^[A-Za-z0-9\s]+$/'],
+            'name' => ['required', 'max:25', 'min:3'],
             'email' => ['required', 'unique:users,email', 'min:15', 'max:50', 'regex:/^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,})$/i'],
             'password' => ['required', 'min:10', 'max:25', 'regex:/^[A-Za-z0-9]+$/'],
             'phone' => ['required', 'string', 'size:9', 'regex:/^[0-9]+$/', 'unique:users,phone'],
@@ -51,7 +53,7 @@ class UserController extends Controller
         ];
         //什麼錯誤報什麼錯誤訊息
         $rulsMessage = [
-            'name.required' => $this->err['2'], 'name.max' => $this->err['1'], 'name.min' => $this->err['1'], 'name.regex' => $this->err['1'],
+            'name.required' => $this->err['2'], 'name.max' => $this->err['1'], 'name.min' => $this->err['1'],
             'email.required' => $this->err['2'], 'email.unique' => $this->err['3'], 'email.min' => $this->err['1'], 'email.max' => $this->err['1'], 'email.regex' => $this->err['1'],
             'password.required' => $this->err['2'], 'password.min' => $this->err['1'], 'password.max' => $this->err['1'], 'password.regex' => $this->err['1'],
             'phone.required' => $this->err['2'], 'phone.string' => $this->err['1'], 'phone.size' => $this->err['1'], 'phone.regex' => $this->err['1'], 'phone.unique' => $this->err['4'],
@@ -67,6 +69,7 @@ class UserController extends Controller
             }
             //沒錯的話存入資料庫
             else {
+                //使用hash將使用者密碼加密
                 $password = Hash::make($request->input('password'));
                 $user = User::create([
                     'email' => $request->input('email'),
@@ -104,7 +107,6 @@ class UserController extends Controller
         try {
             $ip = $request->ip();
             $email = $request->email;
-
             //驗證輸入數值
             $validator = Validator::make($request->all(), $ruls, $rulsMessage);
             //驗證失敗回傳錯誤訊息
@@ -122,7 +124,7 @@ class UserController extends Controller
                 if (Cache::has($email) && $token === $redietoken) {
                     return response()->json(['err' => $this->err['6']]);
                 }
-                // 清除該key錯誤次數
+                //清除該key錯誤次數
                 RateLimiter::clear($this->makekey($email, $ip));
                 //取得使用者elequent
                 $user = User::find(Auth::user()->id);
@@ -151,9 +153,9 @@ class UserController extends Controller
                 $token = JWTAuth::claims($userClaims)->fromUser($user);
                 //設定redis內存活時間
                 Cache::put($email, $token, 60 * 60 * 24);
-                $value = Cache::get($email);
                 return response()->json(['err' => $this->err['0'], 'token' => $token]);
             }
+            //對這個email 錯誤次數+1
             RateLimiter::hit($this->makekey($email, $ip));
             return response()->json(['err' => $this->err['8']]);
         } catch (Exception $e) {
@@ -231,19 +233,17 @@ class UserController extends Controller
             } else {
                 $offset = $request->offset;
             }
-            if ($limit || $offset) {
-                //驗證輸入數值
-                $validator = Validator::make($request->all(), $ruls, $rulsMessage);
-                //驗證失敗回傳錯誤訊息
-                if ($validator->fails()) {
-                    return response()->json(['err' => $validator->errors()->first()]);
-                }
-                //取得使用者紀錄
-                $user = User::find(Auth::id());
-                $recode = $user->recode()->select('ip', 'login', 'device')->offset($offset)->limit($limit)->orderBy('login', 'desc')->get();
-                $count = $user->recode()->get()->count();
-                return response()->json(['err' => $this->err['0'], 'count' => $count, 'data' => $recode]);
+            //驗證輸入數值
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            //驗證失敗回傳錯誤訊息
+            if ($validator->fails()) {
+                return response()->json(['err' => $validator->errors()->first()]);
             }
+            //取得使用者紀錄
+            $user = User::find(Auth::id());
+            $recode = $user->recode()->select('ip', 'login', 'device')->offset($offset)->limit($limit)->orderBy('login', 'desc')->get();
+            $count = $user->recode()->get()->count();
+            return response()->json(['err' => $this->err['0'], 'count' => $count, 'data' => $recode]);
         } catch (Exception) {
             return response()->json(['err' => $this->err['26']]);
         } catch (Throwable) {
@@ -255,29 +255,32 @@ class UserController extends Controller
     public function favorite(Request $request)
     {
         try {
-            $a = JWTAuth::parseToken()->authenticate();
-            $email = $a->email;
+            // $a = JWTAuth::parseToken()->authenticate();
+            // $email = $a->email;
             $rid = $request->rid;
             $user = User::find(Auth::id());
-            $databaserestruant = Restaurant::select('id')->where('id', '=', $rid)->count();
+            $databaserestruant = Restaurant::where('id', '=', $rid)->count();
+            //餐廳資料表內是否有該rid
             if ($databaserestruant === 0) {
                 return response()->json(['err' => $this->err['16']]);
             }
-            $exzest = $user->favorite()->select('rid')->where('rid', '=', $rid)->get()->count();
             $count = $user->favorite()->count();
+            //該使用者我的最愛資料表內是否超過20筆
             if ($count >= 20) {
                 return response()->json(['err' => $this->err['28']]);
             }
-            if (!$exzest) {
+            $exzest = $user->favorite()->where('rid', '=', $rid)->get()->count();
+            //我的最愛資料表內是否有該rid
+            if ($exzest === 0) {
                 $user->favorite()->attach($rid);
-                return response()->json(['err' => 0]);
+                return response()->json(['err' => $this->err['0']]);
             } else {
                 return response()->json(['err' => $this->err['15']]);
             }
         } catch (PDOException $e) {
-            return response()->json([$databaserestruant, $e, 'err' => $this->err['1']]);
+            return response()->json(['err' => $this->err['26']]);
         } catch (Exception $e) {
-            return response()->json([$e, 'err' => $this->err['26']]);
+            return response()->json(['err' => $this->err['26']]);
         } catch (Throwable) {
             return response()->json(['err' => $this->err['26']]);
         }
@@ -341,6 +344,8 @@ class UserController extends Controller
         } catch (PDOException) {
             return response()->json(['err' => $this->err['1']]);
         } catch (Exception) {
+            return response()->json(['err' => $this->err['26']]);
+        } catch (Throwable) {
             return response()->json(['err' => $this->err['26']]);
         }
     }

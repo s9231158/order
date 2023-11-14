@@ -1,16 +1,16 @@
 <?php
 namespace App;
 
-use App\Contract\OSmenu as ContractOSmenu;
+use App\Contract\RestaurantInterface;
 use App\Models\Restaurant;
 use App\Models\Tasty_menu;
 use GuzzleHttp\Client;
 use Illuminate\Support\Str;
-class TAmenu implements ContractOSmenu{
+class TAmenu implements RestaurantInterface{
     public function Getmenu($offset, $limit)
     //修改為從api取得
     {
-        $a = 'http://neil.xincity.xyz:9998/tasty/api/menu' . '?LT=' . $limit . '&PG=' . $offset;
+        $a = 'http://neil.xincity.xyz:9998/tasty/api/menu' . '?limit=' . $limit . '&offset=' . $offset;
         try {
             $client  =  new  Client();
             $res = $client->request('GET', $a);
@@ -96,5 +96,13 @@ class TAmenu implements ContractOSmenu{
         $goodres = $res->getBody();
         $s = json_decode($goodres);
         return $s;
+    }
+
+    public function HasRestraunt($rid)
+    {
+        $hasRestraunt = Restaurant::where('id', '=', $rid)->count();
+        if ($hasRestraunt != 1) {
+            return false;
+        }
     }
 }
