@@ -11,5 +11,7 @@ interface RestaurantInterface
     public function Change($order, $order2);
     public function Sendapi($order);
     public function HasRestraunt($order);
+    public function Menucorrect($order);
+    public function Geterr($callback);
     
 }

@@ -1,4 +1,5 @@
 <?php
+
 namespace App;
 
 use App\Contract\RestaurantInterface;
@@ -6,7 +7,9 @@ use App\Models\Restaurant;
 use App\Models\Steakhome_menu;
 use GuzzleHttp\Client;
 use Illuminate\Support\Str;
-class SHmenu implements RestaurantInterface{
+
+class SHmenu implements RestaurantInterface
+{
     public function Getmenu($offset, $limit)
     //修改為從api取得
     {
@@ -20,7 +23,7 @@ class SHmenu implements RestaurantInterface{
             $targetData = [];
             foreach ($ss as $a) {
                 $menu = [
-                    'rid' => 12,
+                    'rid' => 3,
                     'id' => $a['ID'],
                     'info' => '',
                     'name' => $a['NA'],
@@ -63,21 +66,24 @@ class SHmenu implements RestaurantInterface{
         $uid2 = (string)Str::uuid();
 
         $targetData = [
-            'id' => $uid2,
-            'name' => $order->name,
-            'phone_number' => '0' . (string) $order->phone,
-            'pickup_time' => '2016-06-01T14:41:36+08:00',
-            'total_price' => $order->totalprice,
-            'orders' => [],
+            'OID' => $uid2,
+            'NA' => $order->name,
+            'PH_NUM' => '0' . (string) $order->phone,
+            'TOL_PRC' => $order->totalprice,
+            'LS' => [],
         ];
 
         foreach ($order2 as $a) {
-            $orders = [
-                'meal_id' => $a['id'],
-                'count' => $a['quanlity'],
-                'memo' => $a['description'],
-            ];
-            $targetData['orders'][] = $orders;
+            if (isset($a['description'])) {
+                $LS = [
+                    'ID' => $a['id'],
+                    'NOTE' => $a['description'],
+                ];
+            } else {
+                return false;
+            }
+
+            $targetData['LS'][] = $LS;
         }
         return $targetData;
     }
@@ -85,7 +91,7 @@ class SHmenu implements RestaurantInterface{
     public function Sendapi($order)
     {
         $client  =  new  Client();
-        $res = $client->request('POST', 'http://neil.xincity.xyz:9998/oishii/api/notify/order', ['json' => $order]);
+        $res = $client->request('POST', 'http://neil.xincity.xyz:9998/steak_home/api/mk/order', ['json' => $order]);
         $goodres = $res->getBody();
         $s = json_decode($goodres);
         return $s;
@@ -98,5 +104,39 @@ class SHmenu implements RestaurantInterface{
             return false;
         }
     }
+    public function Menucorrect($order)
+    {
+        foreach ($order as $a) {
+            $client  =  new  Client();
+            $res = $client->request('GET', 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls?ID=' . $a['id']);
+            $goodres = $res->getBody();
+            $s = json_decode($goodres, true);
+            $ordername = $a['name'];
+            $orderprice = $a['price'];
+            $orderid = $a['id'];
 
+            $realname = $s['LS'][0]['NA'];
+            $realid = $s['LS'][0]['ID'];
+            $realprice = $s['LS'][0]['PRC'];
+
+            if ($ordername != $realname) {
+                return false;
+            }
+            if ($orderprice != $realprice) {
+                return false;
+            }
+            if ($orderid != $realid) {
+                return false;
+            }
+        }
+        return;
+    }
+
+    public function Geterr($callbcak)
+    {
+        if ($callbcak->ERR == 0) {
+            return true;
+        }
+        return false;
+    }
 }

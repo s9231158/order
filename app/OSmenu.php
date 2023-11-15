@@ -12,6 +12,7 @@ use Faker\Core\Uuid;
 use Symfony\Component\Uid\UuidV8;
 use GuzzleHttp\Client;
 use PhpParser\Node\Stmt\Return_;
+use Spatie\FlareClient\Http\Exceptions\NotFound;
 
 use function PHPUnit\Framework\returnSelf;
 
@@ -82,11 +83,21 @@ class OSmenu implements RestaurantInterface
         ];
 
         foreach ($order2 as $a) {
-            $orders = [
-                'meal_id' => $a['id'],
-                'count' => $a['quanlity'],
-                'memo' => $a['description'],
-            ];
+            if (isset($a['description'])) {
+                $orders = [
+                    'meal_id' => $a['id'],
+                    'count' => $a['quanlity'],
+                    'memo' => $a['description'],
+                ];
+            } else {
+                $orders = [
+                    'meal_id' => $a['id'],
+                    'count' => $a['quanlity'],
+                ];
+            }
+
+
+
             $targetData['orders'][] = $orders;
         }
         return $targetData;
@@ -107,5 +118,40 @@ class OSmenu implements RestaurantInterface
         if ($hasRestraunt != 1) {
             return false;
         }
+    }
+
+    public function Menucorrect($order)
+    {
+        foreach ($order as $a) {
+            $client  =  new  Client();
+            $res = $client->request('GET', 'http://neil.xincity.xyz:9998/oishii/api/menu/all?meal_id=' . $a['id']);
+            $goodres = $res->getBody();
+            $s = json_decode($goodres, true);
+            $ordername = $a['name'];
+            $orderprice = $a['price'];
+            $orderid = $a['id'];
+
+            $realname = $s['menu'][0]['meal_name'];
+            $realid = $s['menu'][0]['meal_id'];
+            $realprice = $s['menu'][0]['price'];
+
+            if ($ordername != $realname) {
+                return false;
+            }
+            if ($orderprice != $realprice) {
+                return false;
+            }
+            if ($orderid != $realid) {
+                return false;
+            }
+        }
+        return;
+    }
+    public function Geterr($callbcak)
+    {
+        if ($callbcak->error_code == 0) {
+            return true;
+        }
+        return false;
     }
 }

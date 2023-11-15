@@ -27,4 +27,5 @@ class Order extends Model
     public function record(){
         return $this->hasMany(Wallet_Record::class,'oid');
     }
+
 }

@@ -28,4 +28,5 @@ class Wallet_Record extends Model
         return $this->belongsTo(Order::class,'id');
     }
 
+
 }

@@ -1,4 +1,5 @@
 <?php
+
 namespace App;
 
 use App\Contract\RestaurantInterface;
@@ -6,7 +7,9 @@ use App\Models\Restaurant;
 use App\Models\Tasty_menu;
 use GuzzleHttp\Client;
 use Illuminate\Support\Str;
-class TAmenu implements RestaurantInterface{
+
+class TAmenu implements RestaurantInterface
+{
     public function Getmenu($offset, $limit)
     //修改為從api取得
     {
@@ -20,21 +23,19 @@ class TAmenu implements RestaurantInterface{
             $ss = $s['data']['list'];
             $targetData = [];
             foreach ($ss as $a) {
-                if($a['enable']!='0'){
+                if ($a['enable'] != '0') {
                     $menu = [
-                    'rid' => 11,
-                    'id' => $a['id'],
-                    'info' => '',
-                    'name' => $a['name'],
-                    'price' => $a['price'],
-                    'img' => ''
-                ];
-                $targetData[] = $menu;
-                }
-                else{
+                        'rid' => 2,
+                        'id' => $a['id'],
+                        'info' => '',
+                        'name' => $a['name'],
+                        'price' => $a['price'],
+                        'img' => ''
+                    ];
+                    $targetData[] = $menu;
+                } else {
                     $menu = '870';
                 }
-                
             }
             return $targetData;
         } catch (\GuzzleHttp\Exception\BadResponseException $e) {
@@ -70,21 +71,29 @@ class TAmenu implements RestaurantInterface{
         $uid2 = (string)Str::uuid();
 
         $targetData = [
-            'id' => $uid2,
+            'order_id' => $uid2,
             'name' => $order->name,
             'phone_number' => '0' . (string) $order->phone,
             'pickup_time' => '2016-06-01T14:41:36+08:00',
             'total_price' => $order->totalprice,
-            'orders' => [],
+            'order' => ['list' => []],
         ];
 
         foreach ($order2 as $a) {
-            $orders = [
-                'meal_id' => $a['id'],
-                'count' => $a['quanlity'],
-                'memo' => $a['description'],
-            ];
-            $targetData['orders'][] = $orders;
+            if (isset($a['description'])) {
+                $list = [
+                    'id' => $a['id'],
+                    'count' => $a['quanlity'],
+                    'description' => $a['description'],
+                ];
+            } else {
+                $list = [
+                    'id' => $a['id'],
+                    'count' => $a['quanlity'],
+                ];
+            }
+
+            $targetData['order']['list'][] = $list;
         }
         return $targetData;
     }
@@ -92,7 +101,7 @@ class TAmenu implements RestaurantInterface{
     public function Sendapi($order)
     {
         $client  =  new  Client();
-        $res = $client->request('POST', 'http://neil.xincity.xyz:9998/oishii/api/notify/order', ['json' => $order]);
+        $res = $client->request('POST', 'http://neil.xincity.xyz:9998/tasty/api/order', ['json' => $order]);
         $goodres = $res->getBody();
         $s = json_decode($goodres);
         return $s;
@@ -104,5 +113,38 @@ class TAmenu implements RestaurantInterface{
         if ($hasRestraunt != 1) {
             return false;
         }
+    }
+    public function Menucorrect($order)
+    {
+        foreach ($order as $a) {
+            $client  =  new  Client();
+            $res = $client->request('GET', 'http://neil.xincity.xyz:9998/tasty/api/menu?id=' . $a['id']);
+            $goodres = $res->getBody();
+            $s = json_decode($goodres, true);
+            $ordername = $a['name'];
+            $orderprice = $a['price'];
+            $orderid = $a['id'];
+
+            $realname = $s['data']['list'][0]['name'];
+            $realid = $s['data']['list'][0]['id'];
+            $realprice = $s['data']['list'][0]['price'];
+            if ($ordername != $realname) {
+                return false;
+            }
+            if ($orderprice != $realprice) {
+                return false;
+            }
+            if ($orderid != $realid) {
+                return false;
+            }
+        }
+        return;
+    }
+    public function Geterr($callbcak)
+    {
+        if ($callbcak->error_code == 0) {
+            return true;
+        }
+        return false;
     }
 }

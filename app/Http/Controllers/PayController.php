@@ -13,6 +13,7 @@ use Exception;
 use Illuminate\Http\Request;
 
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use GuzzleHttp\Client;
@@ -24,7 +25,21 @@ use PhpParser\JsonDecoder;
 class PayController extends Controller
 {
     private $err = [
-        '16' => 16 //查無此餐廳
+        '0' => 0, //成功
+        '1' => 1, //資料填寫與規格不符
+        '2' => 2, //必填資料未填
+        '3' => 3, //email已註冊
+        '4' => 4, //電話已註冊
+        '5' => 5, //系統錯誤,請重新登入
+        '6' => 6, //已登入
+        '7' => 7, //短時間內登入次數過多
+        '8' => 8, //帳號或密碼錯誤
+        '9' => 9, //token錯誤
+        '15' => 15, //重複新增我的最愛
+        '16' => 16, //查無此餐廳
+        '23' => 23, //無效的範圍
+        '26' => 26, //系統錯誤
+        '30' => 30 //菜單資訊有誤
     ];
     private $traslate = [
         'Monday' => 1,
@@ -37,6 +52,37 @@ class PayController extends Controller
     ];
     public function otherpay(Request $request)
     {
+        //規則
+        $ruls = [
+            'name' => ['required', 'max:25', 'min:3'],
+            'address' => ['required', 'min:10', 'max:25'],
+            'phone' => ['required', 'string', 'size:9', 'regex:/^[0-9]+$/'],
+            'totalprice' => ['required', 'regex:/^[0-9]+$/'],
+            'taketime' => ['required', 'date'],
+            'orders' => ['required', 'array'],
+            'orders.*.rid' => ['required', 'regex:/^[0-9]+$/'],
+            'orders.*.id' => ['required'],
+            'orders.*.name' => ['required', 'max:25', 'min:1'],
+            'orders.*.price' => ['required'],
+        ];
+        //什麼錯誤報什麼錯誤訊息
+        $rulsMessage = [
+            'name.required' => $this->err['2'], 'name.max' => $this->err['1'], 'name.min' => $this->err['1'],
+            'address.required' => $this->err['2'], 'address.min' => $this->err['1'], 'address.max' => $this->err['1'],
+            'phone.required' => $this->err['2'], 'phone.string' => $this->err['1'], 'phone.size' => $this->err['1'], 'phone.regex' => $this->err['1'],
+            'totalprice.required' => $this->err['2'], 'totalprice.regex' => $this->err['1'],
+            'taketime.required' => $this->err['2'], 'taketime.date' => $this->err['1'],
+            'orders.required' => $this->err['1'], 'orders.array' => $this->err['1'],
+            'orders.*.rid.required' => $this->err['1'], 'orders.*.rid.regex' => $this->err['2'],
+            'orders.*.id.required' => $this->err['2'], 'orders.*.id.regex' => $this->err['2'],
+            'orders.*.name.required' => $this->err['1'], 'orders.*.name.max' => $this->err['1'], 'orders.*.name.min' => $this->err['1'],
+            'orders.*.price.required' => $this->err['1'], 'orders.*.price.regex' => $this->err['1'],
+        ];
+        $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+        //如果有錯回報錯誤訊息
+        if ($validator->fails()) {
+            return response()->json(['err' => $validator->errors()->first()]);
+        }
         $name = $request->name;
         $address = $request->address;
         $phone = $request->phone;
@@ -47,10 +93,17 @@ class PayController extends Controller
         $oid = $orders1[0]['id'];
         $oprice = $orders1[0]['price'];
         $oquanlity = $orders1[0]['quanlity'];
-        $odescription = $orders1[0]['description'];
+        // $odescription = $orders1[0]['description'];
         $ridString = strval($rid);
 
         try {
+            $Factorise = Factorise::Setmenu($ridString);
+            $Menucorrect = $Factorise->Menucorrect($orders1);
+            if ($Menucorrect === false) {
+                return response()->json(['err' => $this->err['30']]);
+            }
+
+
             //訂單總金額是否正確
             $realtotalprice = 0;
             foreach ($orders1 as $a) {
@@ -106,6 +159,10 @@ class PayController extends Controller
 
             //轉換店家要求api格式
             $changedata = $Factorise->Change($request, $orders1);
+            if ($changedata === false) {
+                return response()->json(['err' => $this->err['1']]);
+            }
+
             //寄送api
             $Sendapi = $Factorise->Sendapi($changedata);
             $usertoken = JWTAuth::parseToken()->authenticate();
@@ -127,30 +184,52 @@ class PayController extends Controller
             //存入orderiofo資料庫
             $orderinfo = new Order_info();
             $reqorder = $request['orders'];
+            $item_name = '';
+
+            $sameorder = [];
             foreach ($reqorder as $a) {
-                $orderinfo = new Order_info([
-                    'price' => $a['price'],
-                    'name' => $a['name'],
-                    'description' => $a['description'],
-                    'quanlity' => $a['quanlity']
-                ]);
-                $orderr->orderinfo()->save($orderinfo);
+                $item_name = $a['name'] . '#' . $item_name;
+                array_push($sameorder, $a['id']);
+
+                if (isset($a['description'])) {
+                    $orderinfo = new Order_info([
+                        'price' => $a['price'],
+                        'name' => $a['name'],
+                        'description' => $a['description'],
+                        'quanlity' => $a['quanlity']
+                    ]);
+                    $orderr->orderinfo()->save($orderinfo);
+                } else {
+                    $orderinfo = new Order_info([
+                        'price' => $a['price'],
+                        'name' => $a['name'],
+                        'quanlity' => $a['quanlity'],
+                    ]);
+                    $orderr->orderinfo()->save($orderinfo);
+                }
             }
+            //是否有多筆一樣餐點
+            $oldcount = count($sameorder);
+            $sameorder = array_unique($sameorder);
+            $newcount = count($sameorder);
+            if ($oldcount != $newcount) {
+                return '一樣的餐點';
+            }
+
             $uid = (string)Str::uuid();
 
             $uuid20Char = substr($uid, 0, 20);
-
-
+            $date = Carbon::now()->format('Y/m/d H:i:s');
             $key = '0dd22e31042fbbdd';
             $iv = 'e62f6e3bbd7c2e9d';
             $data = [
                 "merchant_id" => 11,
                 "merchant_trade_no" => $uuid20Char,
-                "merchant_trade_date" => "2023/10/20 11:59:59",
+                "merchant_trade_date" => $date,
                 "payment_type" => "aio",
-                "amount" => 123,
-                "trade_desc" => "購買商品",
-                "item_name" => "尬雞堡#尬雞堡",
+                "amount" => $totalprice,
+                "trade_desc" => $userid . '訂餐',
+                "item_name" => $item_name,
                 "return_url" => "http://192.168.83.26:9999/api/qwe",
                 "choose_payment" => "Credit",
                 "check_mac_value" => "6CC73080A3CF1EA1A844F1EEF96A873FA4D1DD485BDA6517696A4D8EF0EAC94E",
@@ -169,10 +248,12 @@ class PayController extends Controller
             ]);
             $orderr->record()->save($wrecord);
 
-
             //是否響應成功
-            $CallbackStatus = $Sendapi->error_code;
-            if ($CallbackStatus != 0) {
+            $errcode = $Factorise->Geterr($Sendapi);
+
+
+
+            if ($errcode = false) {
                 $wrecord->status = '交易失敗';
                 $wrecord->save();
                 $orderr->status = '交易失敗';
@@ -192,10 +273,6 @@ class PayController extends Controller
             $goodres = $res->getBody();
             $s = json_decode($goodres);
             return $s;
-
-
-
-            // return $Sendapi;
         } catch (Exception $e) {
             return $e;
         }
@@ -207,58 +284,38 @@ class PayController extends Controller
 
         try {
             $requestData = $request->all();
-            $json = json_encode($requestData);
-            $json = json_decode($json);
             Cache::set($request->merchant_trade_no, $requestData);
-            $data = Cache::get($request->merchant_trade_no);
-            // $ecpayback =Ecpay_back::create([
-            //     'merchant_trade_no' => $requestData['merchant_trade_no'],
-            //     'merchant_id'  => $requestData['merchant_id'],
-            //     'trade_date' => $requestData['trade_date'],
-            //     'check_mac_value' => $requestData['check_mac_value'],
-            //     'rtn_code' => $requestData['rtn_code'],
-            //     'rtn_msg' => $requestData['rtn_msg'],
-            //     'amount' => $requestData['amount'],
-            //     'payment_date' => $requestData['payment_date'],
-            // ]);
-            $ecpay1 = Ecpay::select('merchant_trade_no')->where('merchant_trade_no','=','1111111111')->get();
-            $ecpay = Ecpay::select('merchant_trade_no')->where('merchant_trade_no','=','5bbef417-39df-49f4-a')->get();
-            $ecpay3 = Ecpay::select('merchant_trade_no')->where('merchant_trade_no','=','1111-1111-cccc')->get();
-            $ecpay4 = Ecpay::select('merchant_trade_no')->where('merchant_trade_no','=','123a456b789-123')->get();
-            return response([$ecpay,$ecpay1,$ecpay3,$ecpay4]) ;  
-            $ecpayback =new Ecpay_back([
-                'merchant_trade_no' => $data['merchant_trade_no'],
-                'merchant_id'  => $data['merchant_id'],
-                'trade_date' => $data['trade_date'],
-                'check_mac_value' => $data['check_mac_value'],
-                'rtn_code' => $data['rtn_code'],
-                'rtn_msg' => $data['rtn_msg'],
-                'amount' => $data['amount'],
-                'payment_date' => $data['payment_date'],
-            ]);
-            $ecpay->ecpayback()->save($ecpayback);
-            // $ecpayback = new Ecpay_back([
-            //     'merchant_trade_no' => $data->merchant_trade_no,
-            //     'merchant_id'  => $data->merchant_id,
-            //     'trade_date' => $data->trade_date,
-            //     'check_mac_value' => $data->check_mac_value,
-            //     'rtn_code' => $data->rtn_code,
-            //     'rtn_msg' => $data->rtn_msg,
-            //     'amount' => $data->amount,
-            //     'payment_date' => $data->payment_date,
-            // ]);
+            $trade_date = Carbon::createFromFormat('d/M/y H:m:s', $request->trade_date);
+            $payment_date = Carbon::createFromFormat('d/M/y H:m:s', $request->payment_date);
+            $ecpay1 = Ecpay::find($requestData['merchant_trade_no']);
 
-            // $ecpayback = new Ecpay_back([
-            //     'merchant_trade_no' => $request->merchant_trade_no,
-            //     'merchant_id'  => $request->merchant_id,
-            //     'trade_date' => $request->trade_date,
-            //     'check_mac_value' => $request->check_mac_value,
-            //     'rtn_code' => $request->rtn_code,
-            //     'rtn_msg' => $request->rtn_msg,
-            //     'amount' => $request->amount,
-            //     'payment_date' => $request->payment_date,
-            // ]);
-            // $ecpayback->save();
+            $ecpayback = new Ecpay_back([
+                'merchant_id'  => $request->merchant_id,
+                'trade_date' => $trade_date,
+                'check_mac_value' => $request->check_mac_value,
+                'rtn_code' => $request->rtn_code,
+                'rtn_msg' => $request->rtn_msg,
+                'amount' => $request->amount,
+                'payment_date' => $payment_date,
+            ]);
+            $ecpay1->ecpayback()->save($ecpayback);
+
+
+            if ($request->rtn_code == 1) {
+                $apple = $ecpay1->Record()->get();
+                $apple[0]->status = '成功';
+                $ecpay1->Record()->saveMany($apple);
+                $recrd = Order::find($apple[0]->oid);
+                $recrd->status = '成功';
+                $recrd->save();
+            }else{
+                $apple = $ecpay1->Record()->get();
+                $apple[0]->status = '失敗';
+                $ecpay1->Record()->saveMany($apple);
+                $recrd = Order::find($apple[0]->oid);
+                $recrd->status = '失敗';
+                $recrd->save();
+            }
         } catch (Exception $e) {
             return $e;
         }
