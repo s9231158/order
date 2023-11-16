@@ -44,4 +44,7 @@ Route::controller(PayController::class)->group(function(){
 Route::post('/otherpay','otherpay')->middleware('token');
 Route::get('/tt','tt');
 Route::post('/qwe','qwe');
+Route::get('order','order')->middleware('token');
+Route::get('orderinfo','orderinfo')->middleware('token');
+Route::post('money','money')->middleware('token');
 });

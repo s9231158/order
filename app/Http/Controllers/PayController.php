@@ -25,6 +25,10 @@ use Throwable;
 
 class PayController extends Controller
 {
+    private $payment = [
+        'ecpay' => 2,
+        'local' => 1,
+    ];
     private $err = [
         '0' => 0, //成功
         '1' => 1, //資料填寫與規格不符
@@ -36,9 +40,17 @@ class PayController extends Controller
         '7' => 7, //短時間內登入次數過多
         '8' => 8, //帳號或密碼錯誤
         '9' => 9, //token錯誤
+        '11' => 11, //餐廳已停用
         '15' => 15, //重複新增我的最愛
         '16' => 16, //查無此餐廳
+        '17' => 17, //餐廳未營業
+        '18' => 18, //錢包餘額不足
+        '19' => 19, //查無此訂單
+        '20' => 20, //金額錯誤
+        '22' => 22, //同張訂單內請選擇同餐廳餐點
         '23' => 23, //無效的範圍
+        '24' => 24, //查無此餐點
+        '25' => 25, //餐點已停用
         '26' => 26, //系統錯誤
         '30' => 30 //菜單資訊有誤
     ];
@@ -92,14 +104,19 @@ class PayController extends Controller
         $ridString = strval($rid);
 
         try {
+            //是否有該餐廳
+            foreach ($orders1 as $order) {
+                $hasRestraunt = Restaurant::where('id', '=', $order['rid'])->count();
+                if ($hasRestraunt != 1) {
+                    return response()->json(['err' => $this->err['16']]);
+                }
+            }
             //檢查菜單金額名稱id是否與店家一致
             $Factorise = Factorise::Setmenu($ridString);
             $Menucorrect = $Factorise->Menucorrect($orders1);
             if ($Menucorrect === false) {
                 return response()->json(['err' => $this->err['30']]);
             }
-
-
             //訂單總金額是否正確
             $realtotalprice = 0;
             foreach ($orders1 as $a) {
@@ -111,46 +128,50 @@ class PayController extends Controller
                 }
                 //訂單是否都來自同一間餐廳
                 if ($a['rid'] != $rid) {
-                    return '點同一間好嗎';
+                    return response()->json(['err' => $this->err['22']]);
                 }
             }
             if ($realtotalprice != $totalprice) {
-                return response()->json(['err' => '價格錯誤']);
+                return response()->json(['err' => $this->err['20']]);
             }
-            //錢包餘額是否大於totoprice
             $usertoken = JWTAuth::parseToken()->authenticate();
             $userid = $usertoken->id;
             $user = User::find($userid);
             $wallet = $user->wallet()->get();
             $balance =  $wallet[0]['balance'];
-            if ($balance < $realtotalprice) {
-                return '錢不夠好嗎';
+            //錢包餘額是否大於totoprice
+            if ($request->payment == 'local') {
+                if ($balance < $realtotalprice) {
+                    return response()->json(['err' => $this->err['18']]);
+                }
             }
+
             //餐點餐廳今天是否有營業
             $day = Carbon::now()->format('l');
             $daynumber = $this->traslate[$day];
             $Restaurantopen = Restaurant::where('id', '=', $rid)->where('openday', 'like', '%' . $daynumber . '%')->count();
             if ($Restaurantopen == 0) {
-                return '就沒開好嗎';
+                return response()->json(['err' => $this->err['17']]);
             }
             $Factorise = Factorise::Setmenu($ridString);
             // 餐點是否停用
             $Menuenable = $Factorise->Menuenable($orders1);
             if ($Menuenable != 0) {
-                return '就停用好嗎';
+                return response()->json(['err' => $this->err['25']]);
             }
             //餐廳是否停用
             $Restrauntenable = $Factorise->Restrauntenable($ridString);
             if ($Restrauntenable != 0) {
-                return '餐廳就停用好嗎';
+                return response()->json(['err' => $this->err['11']]);
             }
 
             //是否有該餐點
             $Hasmenu = $Factorise->Hasmenu($orders1);
+            // return reset($Hasmenu);
             $realmenu = $Hasmenu->original[0];
             $ordermenu = $Hasmenu->original[1];
             if ($realmenu != $ordermenu) {
-                return '不要點菜單沒有的';
+                return response()->json(['err' => $this->err['24']]);
             }
 
             $Hasapi = Restaurant::where('id', '=', $rid)->where('api', '!=', null)->where('api', '!=', '')->count();
@@ -224,6 +245,31 @@ class PayController extends Controller
             $uid = (string)Str::uuid();
 
             $uuid20Char = substr($uid, 0, 20);
+            if ($request->payment == 'local') {
+                try {
+                    //將user錢包扣款
+                    $wallet[0]->balance -= $totalprice;
+                    $user->wallet()->saveMany($wallet);
+                    // 存入wallet record
+                    $wrecord = new Wallet_Record([
+                        'out' => $totalprice,
+                        'uid' => $userid,
+                        'status' => '成功',
+                        'pid' => $this->payment[$request->payment],
+                    ]);
+                    $orderr->record()->save($wrecord);
+                    $orderr->status = '成功';
+                    $orderr->save();
+
+                    return response()->json(['err' => $this->err['0'], 'oid' => $orderr->id]);
+                } catch (Throwable $e) {
+                    $wrecord->status = '失敗';
+                    $wrecord->save();
+                    $orderr->status = '失敗';
+                    $orderr->save();
+                    return '訂單失敗';
+                }
+            }
             $date = Carbon::now()->format('Y/m/d H:i:s');
             $key = '0dd22e31042fbbdd';
             $iv = 'e62f6e3bbd7c2e9d';
@@ -250,6 +296,7 @@ class PayController extends Controller
                 'uid' => $userid,
                 'eid' => $uuid20Char,
                 'status' => '交易中',
+                'pid' => $this->payment[$request->payment],
             ]);
             $orderr->record()->save($wrecord);
 
@@ -257,9 +304,9 @@ class PayController extends Controller
             if ($Hasapi != 0) {
                 $errcode = $Factorise->Geterr($Sendapi);
                 if ($errcode = false) {
-                    $wrecord->status = '交易失敗';
+                    $wrecord->status = '失敗';
                     $wrecord->save();
-                    $orderr->status = '交易失敗';
+                    $orderr->status = '失敗';
                     $orderr->save();
                     return '訂單失敗';
                 }
@@ -275,7 +322,7 @@ class PayController extends Controller
             $s = json_decode($goodres);
             return $s;
         } catch (Exception $e) {
-            return $e;
+            return response()->json(['err' => $this->err['26']]);
         } catch (Throwable $e) {
             return response()->json(['err' => $this->err['26']]);
         }
@@ -322,7 +369,110 @@ class PayController extends Controller
         } catch (Exception $e) {
             return $e;
         } catch (Throwable $e) {
-            return response()->json(['err' => $this->err['26']]);
+            return response()->json([$e, 'err' => $this->err['26']]);
         }
+    }
+
+
+    public function order(Request $request)
+    {
+        //規則
+        $ruls = [
+            'limit' => ['regex:/^[0-9]+$/'],
+            'offset' => ['regex:/^[0-9]+$/'],
+            'rid' => ['regex:/^[0-9]+$/'],
+        ];
+        //什麼錯誤報什麼錯誤訊息
+        $rulsMessage = [
+            'limit.regex' => $this->err['23'],
+            'offset.regex' => $this->err['23'],
+            'rid.regex' => $this->err['23'], 'rid.required' => $this->err['2'],
+        ];
+
+        try {
+            //驗證參輸入數
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            if ($validator->fails()) {
+                return response()->json(['err' => $validator->errors()->first()]);
+            }
+
+            $userinfo = JWTAuth::parseToken()->authenticate();
+            $user = User::find($userinfo->id);
+            //是否有填入oid
+            if ($request->oid != null) {
+                $oid = $request->oid;
+                $order = $user->order()->select('id', 'ordertime', 'taketime', 'total', 'status')->where('id', '=', $oid)->get();
+                $count = $user->order()->where('id', '=', $oid)->count();
+                if ($count == 0) {
+                    return response()->json(['err' => $this->err['19']]);
+                }
+                return response()->json(['err' => $this->err['0'], 'order' => $order[0]]);
+            }
+
+            if ($request->limit == null) {
+                $limit = '20';
+            } else {
+                $limit = $request->limit;
+            }
+            if ($request->offset === null) {
+                $offset = '0';
+            } else {
+                $offset = $request->offset;
+            }
+            $order = $user->order()->select('id', 'ordertime', 'taketime', 'total', 'status')->limit($limit)->offset($offset)->orderBy('ordertime', 'desc')->get();
+            $count = $user->order()->select('id', 'ordertime', 'taketime', 'total', 'status')->count();
+            return response()->json(['err' => $this->err['0'], 'count' => $count, 'order' => $order]);
+        } catch (Throwable $e) {
+            return response()->json([$e, 'err' => $this->err['26']]);
+        }
+    }
+    public function orderinfo(Request $request)
+    {
+        //規則
+        $ruls = [
+            'oid' => ['regex:/^[0-9]+$/'],
+        ];
+        //什麼錯誤報什麼錯誤訊息
+        $rulsMessage = [
+            'oid.regex' => $this->err['1']
+        ];
+
+        try {
+            //驗證參輸入數
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            if ($validator->fails()) {
+                return response()->json(['err' => $validator->errors()->first()]);
+            }
+            $oid = $request->oid;
+            $orderinfno = Order_info::select('id', 'name', 'quanlity', 'price', 'description')->where('oid', '=', $oid)->get();
+            $count = Order_info::select('id', 'name', 'quanlity', 'price', 'description')->where('oid', '=', $oid)->count();
+            if ($count ===   0) {
+                return response()->json(['err' => $this->err['19']]);
+            }
+            return response()->json(['err' => $this->err['0'], 'ordersinfo' => $orderinfno]);
+        } catch (Throwable $e) {
+            return response()->json([$e, 'err' => $this->err['26']]);
+        }
+    }
+
+
+    public function money(Request $request)
+    {
+        $key = '0dd22e31042fbbdd';
+        $iv = 'e62f6e3bbd7c2e9d';
+        $userinfo = JWTAuth::parseToken()->authenticate();
+        $user = User::find($userinfo->id);
+$data = ['money'=>$request->moeny];
+
+        //將資訊傳至第三方付款資訊
+        $CheckMacValueService = new CheckMacValueService($key, $iv);
+        $CheckMacValue = $CheckMacValueService->generate($data);
+        $data['check_mac_value'] = $CheckMacValue;
+        $client  =  new  Client();
+        $res = $client->request('POST', 'http://neil.xincity.xyz:9997/api/Cashier/AioCheckOut', ['json' => $data]);
+        $goodres = $res->getBody();
+        $s = json_decode($goodres);
+        return $s;
+        return '21343121432';
     }
 }

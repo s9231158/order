@@ -121,6 +121,10 @@ class TAmenu implements RestaurantInterface
             $res = $client->request('GET', 'http://neil.xincity.xyz:9998/tasty/api/menu?id=' . $a['id']);
             $goodres = $res->getBody();
             $s = json_decode($goodres, true);
+            
+            if ($s['data']['list'] === []) {
+                return false;
+            }
             $ordername = $a['name'];
             $orderprice = $a['price'];
             $orderid = $a['id'];

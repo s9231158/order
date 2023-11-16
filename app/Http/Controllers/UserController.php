@@ -114,7 +114,7 @@ class UserController extends Controller
                 return response()->json(['err' => $validator->errors()->first()]);
             }
             //從redis檢查key是否超過次數
-            if (RateLimiter::tooManyAttempts($this->makekey($email, $ip), 5, 1)) {
+            if (RateLimiter::tooManyAttempts($this->makekey($email, $ip), 5)) {
                 return response()->json(['err' => $this->err['7']]);
             }
             //檢查是否有該使用者且密碼符合
@@ -137,11 +137,11 @@ class UserController extends Controller
                     'ip' => $ip,
                     'device' => $device,
                 ]);
+                $user->recode()->save($recode);
                 //取得使用者資訊製作payload
                 $id = $user->id;
                 $name = $user->name;
                 $time = Carbon::now()->addDay();
-                $user->recode()->save($recode);
                 //payload資訊
                 $userClaims = [
                     'id' => $id,
@@ -155,7 +155,7 @@ class UserController extends Controller
                 Cache::put($email, $token, 60 * 60 * 24);
                 return response()->json(['err' => $this->err['0'], 'token' => $token]);
             }
-            //對這個email 錯誤次數+1
+            // 對這個email 錯誤次數+1
             RateLimiter::hit($this->makekey($email, $ip));
             return response()->json(['err' => $this->err['8']]);
         } catch (Exception $e) {

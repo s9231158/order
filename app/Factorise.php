@@ -6,6 +6,7 @@ use App\OSmenu;
 use App\TAmenu;
 use App\SHmenu;
 use App\Localmenu;
+use App\Other;
 
 class Factorise
 {
@@ -27,6 +28,9 @@ class Factorise
             })(),
             '4' => (function () {
                 return new Localmenu();
+            })(),
+            default => (function () {
+                return new Other();
             })(),
         };
     }

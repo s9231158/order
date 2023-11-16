@@ -124,7 +124,6 @@ class RestaurantController extends Controller
         try {
             //預設limit&offset
             if ($request->limit == null) {
-                //改int data改restaurant 不要[]
                 $limit = '20';
             } else {
                 $limit = $request->limit;
@@ -139,12 +138,18 @@ class RestaurantController extends Controller
             if ($validator->fails()) {
                 return response()->json(['err' => $validator->errors()->first()]);
             }
+            $rid = $request->rid;
+            
+            //是否有該餐廳
+            $hasRestraunt = Restaurant::where('id', '=', $rid)->count();
+            if ($hasRestraunt != 1) {
+                return response()->json(['err' => $this->err['16']]);
+            }
 
             //取得餐廳資訊&菜單
-            $rid = $request->rid;
             $menufactors = Factorise::Setmenu($rid);
             $menu = $menufactors->getmenu($offset, $limit);
-            $Restaurantinfo = Restaurant::select('title', 'info', 'openday','opentime', 'closetime', 'img', 'address', 'totalpoint', 'countpoint')->where('id', '=', $rid)->get();
+            $Restaurantinfo = Restaurant::select('title', 'info', 'openday', 'opentime', 'closetime', 'img', 'address', 'totalpoint', 'countpoint')->where('id', '=', $rid)->get();
 
 
             //如果有登出
@@ -275,8 +280,8 @@ class RestaurantController extends Controller
             $comment = Restaurant_comment::select('users.name', 'restaurant_comments.point', 'restaurant_comments.comment', 'restaurant_comments.created_at')
                 ->join('users', 'users.id', '=', 'restaurant_comments.uid')->where('restaurant_comments.rid', '=', $rid)
                 ->offset($offset)->limit($limit)->orderBy('restaurant_comments.created_at', 'desc')->get();
-                $count = Restaurant_comment::where('restaurant_comments.rid', '=', $rid)->count();
-            return response()->json(['err' => $this->err['0'],'count'=>$count, 'commentdata' => $comment]);
+            $count = Restaurant_comment::where('restaurant_comments.rid', '=', $rid)->count();
+            return response()->json(['err' => $this->err['0'], 'count' => $count, 'commentdata' => $comment]);
         } catch (Exception $e) {
             return response()->json([$e, 'err' => $this->err['26']]);
         } catch (Throwable) {

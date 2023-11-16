@@ -13,10 +13,10 @@ class SHmenu implements RestaurantInterface
     public function Getmenu($offset, $limit)
     //修改為從api取得
     {
-        $a = 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls' . '?LT=' . $limit . '&PG=' . $offset;
+        $url = 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls' . '?LT=' . $limit . '&PG=' . $offset;
         try {
             $client  =  new  Client();
-            $res = $client->request('GET', $a);
+            $res = $client->request('GET', $url);
             $goodres = $res->getBody();
             $s = json_decode($goodres, true);
             $ss = $s['LS'];
@@ -111,6 +111,9 @@ class SHmenu implements RestaurantInterface
             $res = $client->request('GET', 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls?ID=' . $a['id']);
             $goodres = $res->getBody();
             $s = json_decode($goodres, true);
+            if ($s['LS'] === []) {
+                return false;
+            }
             $ordername = $a['name'];
             $orderprice = $a['price'];
             $orderid = $a['id'];

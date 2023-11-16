@@ -18,7 +18,7 @@ class DatabaseSeeder extends Seeder
         // \App\Models\User::factory(10)->create();
 
         //restruant
-        \App\Models\Restaurant::factory(8)->create();
+        \App\Models\Restaurant::factory(20)->create();
 
 
         //menu

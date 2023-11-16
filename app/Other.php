@@ -10,13 +10,13 @@ use GuzzleHttp\Client;
 use Illuminate\Support\Str;
 use Throwable;
 
-class Localmenu implements RestaurantInterface
+class Other implements RestaurantInterface
 {
     public function Getmenu($offset, $limit)
     {
         try {
             $menu = Local_menu::select('rid', 'id', 'info', 'name', 'price', 'img')->limit($limit)->offset($offset)->get();
-            return $menu;
+            return '87';
         } catch (\GuzzleHttp\Exception\BadResponseException $e) {
         }
     }
@@ -26,12 +26,12 @@ class Localmenu implements RestaurantInterface
         foreach ($order as $v) {
             $menu += Tasty_menu::where('id', '=', $v['id'])->where('enable', '=', 0)->count();
         }
-        return $menu;
+        return '87';
     }
     public function Restrauntenable($rid)
     {
         $renable = Restaurant::where('id', '=', $rid)->where('enable', '=', 0)->count();
-        return $renable;
+        return '87';
     }
     public function Hasmenu($order)
     {
@@ -41,7 +41,7 @@ class Localmenu implements RestaurantInterface
             $ordermenu += 1;
             $realmenu += Tasty_menu::where('id', '=', $v['id'])->count();
         }
-        return response([$realmenu, $ordermenu]);
+        return '87';
     }
 
 
@@ -74,7 +74,7 @@ class Localmenu implements RestaurantInterface
 
             $targetData['order']['list'][] = $list;
         }
-        return $targetData;
+        return '87';
     }
 
     public function Sendapi($order)
@@ -83,14 +83,14 @@ class Localmenu implements RestaurantInterface
         $res = $client->request('POST', 'http://neil.xincity.xyz:9998/tasty/api/order', ['json' => $order]);
         $goodres = $res->getBody();
         $s = json_decode($goodres);
-        return $s;
+        return '87';
     }
 
     public function HasRestraunt($rid)
     {
         $hasRestraunt = Restaurant::where('id', '=', $rid)->count();
         if ($hasRestraunt != 1) {
-            return false;
+            return '87';
         }
     }
     public function Menucorrect($order)
@@ -105,27 +105,25 @@ class Localmenu implements RestaurantInterface
                 $realid = $menu[0]['id'];
                 $realprice = $menu[0]['price'];
                 if ($ordername != $realname) {
-                    return false;
+                    return '87';
                 }
                 if ($orderprice != $realprice) {
-                    return false;
+                    return '87';
                 }
                 if ($orderid != $realid) {
-                    return false;
+                    return '87';
                 }
             }
-            return true;
+            return '87';
         } catch (Throwable $e) {
-            return false;
+            return '87';
         }
     }
     public function Geterr($callbcak)
     {
         if ($callbcak->error_code == 0) {
-            return true;
+            return '87';
         }
-        return false;
+        return '87';
     }
-
-
 }

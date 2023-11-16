@@ -13,6 +13,7 @@ use Symfony\Component\Uid\UuidV8;
 use GuzzleHttp\Client;
 use PhpParser\Node\Stmt\Return_;
 use Spatie\FlareClient\Http\Exceptions\NotFound;
+use Throwable;
 
 use function PHPUnit\Framework\returnSelf;
 
@@ -42,6 +43,8 @@ class OSmenu implements RestaurantInterface
             }
             return $targetData;
         } catch (\GuzzleHttp\Exception\BadResponseException $e) {
+        } catch (Throwable $e) {
+            return $e;
         }
     }
     public function Menuenable($order) //修改改為傳入id陣列
@@ -115,6 +118,7 @@ class OSmenu implements RestaurantInterface
     public function HasRestraunt($rid)
     {
         $hasRestraunt = Restaurant::where('id', '=', $rid)->count();
+        return $hasRestraunt;
         if ($hasRestraunt != 1) {
             return false;
         }
@@ -127,6 +131,9 @@ class OSmenu implements RestaurantInterface
             $res = $client->request('GET', 'http://neil.xincity.xyz:9998/oishii/api/menu/all?meal_id=' . $a['id']);
             $goodres = $res->getBody();
             $s = json_decode($goodres, true);
+            if ($s['menu'] === []) {
+                return false;
+            }
             $ordername = $a['name'];
             $orderprice = $a['price'];
             $orderid = $a['id'];
