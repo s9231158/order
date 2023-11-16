@@ -21,6 +21,7 @@ use App\CheckMacValueService;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Ecpay_back;
 use PhpParser\JsonDecoder;
+use Throwable;
 
 class PayController extends Controller
 {
@@ -83,20 +84,15 @@ class PayController extends Controller
         if ($validator->fails()) {
             return response()->json(['err' => $validator->errors()->first()]);
         }
-        $name = $request->name;
         $address = $request->address;
         $phone = $request->phone;
         $totalprice = $request->totalprice;
         $orders1 = $request->orders;
-        $oname = $orders1[0]['name'];
         $rid = $orders1[0]['rid'];
-        $oid = $orders1[0]['id'];
-        $oprice = $orders1[0]['price'];
-        $oquanlity = $orders1[0]['quanlity'];
-        // $odescription = $orders1[0]['description'];
         $ridString = strval($rid);
 
         try {
+            //檢查菜單金額名稱id是否與店家一致
             $Factorise = Factorise::Setmenu($ridString);
             $Menucorrect = $Factorise->Menucorrect($orders1);
             if ($Menucorrect === false) {
@@ -157,19 +153,28 @@ class PayController extends Controller
                 return '不要點菜單沒有的';
             }
 
-            //轉換店家要求api格式
-            $changedata = $Factorise->Change($request, $orders1);
-            if ($changedata === false) {
-                return response()->json(['err' => $this->err['1']]);
-            }
+            $Hasapi = Restaurant::where('id', '=', $rid)->where('api', '!=', null)->where('api', '!=', '')->count();
 
-            //寄送api
-            $Sendapi = $Factorise->Sendapi($changedata);
-            $usertoken = JWTAuth::parseToken()->authenticate();
-            $user = User::find($userid);
-            $userid = $user->id;
+
+
+            if ($Hasapi != 0) {
+                //轉換店家要求api格式
+                $changedata = $Factorise->Change($request, $orders1);
+                if ($changedata === false) {
+                    return response()->json(['err' => $this->err['1']]);
+                }
+
+                //寄送api
+                $Sendapi = $Factorise->Sendapi($changedata);
+                $usertoken = JWTAuth::parseToken()->authenticate();
+                $user = User::find($userid);
+                $userid = $user->id;
+                $now = Carbon::now();
+                $taketime = $request->taketime;
+            }
             $now = Carbon::now();
             $taketime = $request->taketime;
+
             //存入order資料庫
             $orderr = new Order([
                 'ordertime' => $now,
@@ -248,23 +253,19 @@ class PayController extends Controller
             ]);
             $orderr->record()->save($wrecord);
 
-            //是否響應成功
-            $errcode = $Factorise->Geterr($Sendapi);
-
-
-
-            if ($errcode = false) {
-                $wrecord->status = '交易失敗';
-                $wrecord->save();
-                $orderr->status = '交易失敗';
-                $orderr->save();
-                return '訂單失敗';
+            //是否有api  是否響應成功
+            if ($Hasapi != 0) {
+                $errcode = $Factorise->Geterr($Sendapi);
+                if ($errcode = false) {
+                    $wrecord->status = '交易失敗';
+                    $wrecord->save();
+                    $orderr->status = '交易失敗';
+                    $orderr->save();
+                    return '訂單失敗';
+                }
             }
 
-
-
             //將資訊傳至第三方付款資訊
-
             $CheckMacValueService = new CheckMacValueService($key, $iv);
             $CheckMacValue = $CheckMacValueService->generate($data);
             $data['check_mac_value'] = $CheckMacValue;
@@ -275,6 +276,8 @@ class PayController extends Controller
             return $s;
         } catch (Exception $e) {
             return $e;
+        } catch (Throwable $e) {
+            return response()->json(['err' => $this->err['26']]);
         }
     }
 
@@ -308,7 +311,7 @@ class PayController extends Controller
                 $recrd = Order::find($apple[0]->oid);
                 $recrd->status = '成功';
                 $recrd->save();
-            }else{
+            } else {
                 $apple = $ecpay1->Record()->get();
                 $apple[0]->status = '失敗';
                 $ecpay1->Record()->saveMany($apple);
@@ -318,6 +321,8 @@ class PayController extends Controller
             }
         } catch (Exception $e) {
             return $e;
+        } catch (Throwable $e) {
+            return response()->json(['err' => $this->err['26']]);
         }
     }
 }

@@ -144,7 +144,7 @@ class RestaurantController extends Controller
             $rid = $request->rid;
             $menufactors = Factorise::Setmenu($rid);
             $menu = $menufactors->getmenu($offset, $limit);
-            $Restaurantinfo = Restaurant::select('title', 'info', 'openday', 'closetime', 'img', 'address', 'totalpoint', 'countpoint')->where('id', '=', $rid)->get();
+            $Restaurantinfo = Restaurant::select('title', 'info', 'openday','opentime', 'closetime', 'img', 'address', 'totalpoint', 'countpoint')->where('id', '=', $rid)->get();
 
 
             //如果有登出

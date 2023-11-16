@@ -5,7 +5,7 @@ namespace App;
 use App\OSmenu;
 use App\TAmenu;
 use App\SHmenu;
-use Exception;
+use App\Localmenu;
 
 class Factorise
 {
@@ -24,6 +24,9 @@ class Factorise
             })(),
             '3' => (function () {
                 return new SHmenu();
+            })(),
+            '4' => (function () {
+                return new Localmenu();
             })(),
         };
     }
