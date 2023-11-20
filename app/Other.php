@@ -16,7 +16,7 @@ class Other implements RestaurantInterface
     {
         try {
             $menu = Local_menu::select('rid', 'id', 'info', 'name', 'price', 'img')->limit($limit)->offset($offset)->get();
-            return '87';
+            return '0';
         } catch (\GuzzleHttp\Exception\BadResponseException $e) {
         }
     }
@@ -26,12 +26,12 @@ class Other implements RestaurantInterface
         foreach ($order as $v) {
             $menu += Tasty_menu::where('id', '=', $v['id'])->where('enable', '=', 0)->count();
         }
-        return '87';
+        return '0';
     }
     public function Restrauntenable($rid)
     {
         $renable = Restaurant::where('id', '=', $rid)->where('enable', '=', 0)->count();
-        return '87';
+        return '0';
     }
     public function Hasmenu($order)
     {
@@ -41,7 +41,7 @@ class Other implements RestaurantInterface
             $ordermenu += 1;
             $realmenu += Tasty_menu::where('id', '=', $v['id'])->count();
         }
-        return '87';
+        return '0';
     }
 
 
@@ -74,7 +74,7 @@ class Other implements RestaurantInterface
 
             $targetData['order']['list'][] = $list;
         }
-        return '87';
+        return '0';
     }
 
     public function Sendapi($order)
@@ -83,14 +83,14 @@ class Other implements RestaurantInterface
         $res = $client->request('POST', 'http://neil.xincity.xyz:9998/tasty/api/order', ['json' => $order]);
         $goodres = $res->getBody();
         $s = json_decode($goodres);
-        return '87';
+        return '0';
     }
 
     public function HasRestraunt($rid)
     {
         $hasRestraunt = Restaurant::where('id', '=', $rid)->count();
         if ($hasRestraunt != 1) {
-            return '87';
+            return '0';
         }
     }
     public function Menucorrect($order)
@@ -105,25 +105,25 @@ class Other implements RestaurantInterface
                 $realid = $menu[0]['id'];
                 $realprice = $menu[0]['price'];
                 if ($ordername != $realname) {
-                    return '87';
+                    return '0';
                 }
                 if ($orderprice != $realprice) {
-                    return '87';
+                    return '0';
                 }
                 if ($orderid != $realid) {
-                    return '87';
+                    return '0';
                 }
             }
-            return '87';
+            return '0';
         } catch (Throwable $e) {
-            return '87';
+            return '0';
         }
     }
     public function Geterr($callbcak)
     {
         if ($callbcak->error_code == 0) {
-            return '87';
+            return '0';
         }
-        return '87';
+        return '0';
     }
 }

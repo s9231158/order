@@ -10,10 +10,6 @@ use App\Other;
 
 class Factorise
 {
-    public function apple()
-    {
-        return '87';
-    }
     public static function Setmenu($rid)
     {
         return match ($rid) {

@@ -18,9 +18,9 @@ return new class extends Migration
             $table->timestamps();
             $table->integer('out')->nullable();
             $table->integer('in')->nullable();
-            $table->bigInteger('oid');
+            $table->bigInteger('oid')->nullable();
             $table->bigInteger('uid')->unsigned();
-            $table->string('status');
+            $table->integer('status');
             $table->bigInteger('pid')->unsigned()->nullable();
             $table->string('eid')->index();
             $table->foreign('uid')->references('id')->on('users');

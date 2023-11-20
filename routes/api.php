@@ -46,5 +46,7 @@ Route::get('/tt','tt');
 Route::post('/qwe','qwe');
 Route::get('order','order')->middleware('token');
 Route::get('orderinfo','orderinfo')->middleware('token');
-Route::post('money','money')->middleware('token');
+Route::post('money','money');
+Route::post('moneycallback','moneycallback')->middleware('token');
+Route::get('wallet','wallet')->middleware('token');
 });

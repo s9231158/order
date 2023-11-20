@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\ErrorCodeService;
 use App\Factorise;
 use App\Models\Ecpay;
 use App\Models\Order;
@@ -9,15 +10,17 @@ use App\Models\Order_info;
 use App\Models\Restaurant;
 use App\Models\User;
 use App\Models\Wallet_Record;
+use App\UserService;
 use Exception;
 use Illuminate\Http\Request;
-
+use App\DatabaseService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use GuzzleHttp\Client;
 use App\CheckMacValueService;
+use App\EcpayService;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Ecpay_back;
 use PhpParser\JsonDecoder;
@@ -141,7 +144,7 @@ class PayController extends Controller
             $balance =  $wallet[0]['balance'];
             //錢包餘額是否大於totoprice
             if ($request->payment == 'local') {
-                if ($balance < $realtotalprice) {
+                if ($balance <= $realtotalprice) {
                     return response()->json(['err' => $this->err['18']]);
                 }
             }
@@ -444,7 +447,7 @@ class PayController extends Controller
                 return response()->json(['err' => $validator->errors()->first()]);
             }
             $oid = $request->oid;
-            $orderinfno = Order_info::select('id', 'name', 'quanlity', 'price', 'description')->where('oid', '=', $oid)->get();
+            $orderinfno = Order_info::select('name', 'quanlity', 'price', 'description')->where('oid', '=', $oid)->get();
             $count = Order_info::select('id', 'name', 'quanlity', 'price', 'description')->where('oid', '=', $oid)->count();
             if ($count ===   0) {
                 return response()->json(['err' => $this->err['19']]);
@@ -458,21 +461,102 @@ class PayController extends Controller
 
     public function money(Request $request)
     {
-        $key = '0dd22e31042fbbdd';
-        $iv = 'e62f6e3bbd7c2e9d';
-        $userinfo = JWTAuth::parseToken()->authenticate();
-        $user = User::find($userinfo->id);
-$data = ['money'=>$request->moeny];
-
-        //將資訊傳至第三方付款資訊
-        $CheckMacValueService = new CheckMacValueService($key, $iv);
-        $CheckMacValue = $CheckMacValueService->generate($data);
-        $data['check_mac_value'] = $CheckMacValue;
-        $client  =  new  Client();
-        $res = $client->request('POST', 'http://neil.xincity.xyz:9997/api/Cashier/AioCheckOut', ['json' => $data]);
-        $goodres = $res->getBody();
-        $s = json_decode($goodres);
-        return $s;
-        return '21343121432';
+        try {
+            $err = new ErrorCodeService;
+            $errr = $err->err;
+            $token = $request->header('Authorization');
+            //取得UserId
+            $UserService = new UserService($token);
+            $UserInfo = $UserService->UserInfo();
+            $UserId = $UserInfo['id'];
+            //送api至Ecpay
+            $EcpayService = new EcpayService();
+            $Uuid = $EcpayService->GetUuid();
+            $Date = $EcpayService->GetDate();
+            $Money = $request['money'];
+            $Data = [
+                "merchant_id" => 11,
+                "merchant_trade_no" => $Uuid,
+                "merchant_trade_date" => $Date,
+                "payment_type" => "aio",
+                "amount" => $Money,
+                "trade_desc" => $UserId . '加值',
+                "item_name" => '加值',
+                "return_url" => "http://192.168.83.26:9999/api/moneycallback",
+                "choose_payment" => "Credit",
+                "encrypt_type" => 1,
+                "lang" => "en"
+            ];
+            $CheckMacValue = $EcpayService->GetCheckMacValue($Data);
+            $Data['check_mac_value'] = $CheckMacValue;
+            //將Ecpay資料存入Ecpays
+            $DatabaseService = new DatabaseService();
+            $DatabaseService->SaveEcpay($Data);
+            $WalletRecord = [
+                'in' => $Money,
+                'uid' => $UserId,
+                'eid' => $Uuid,
+                'status' => '交易中',
+                'pid' => 1,
+            ];
+            //將資料存入WalletRecord
+            $DatabaseService->SaveRecord($WalletRecord);
+            //將資料傳至Ecapy
+            $Response = $EcpayService->SendApi($Data);
+            return $Response;
+        } catch (Throwable $e) {
+            return response()->json(['err' => array_search('系統錯誤', $errr), 'message' => $errr['26']]);
+        }
+    }
+    public function moneycallback(Request $request)
+    {
+        try {
+            $err = new ErrorCodeService;
+            $errr = $err->err;
+            //取得交易編號
+            $merchant_trade_no = $request->merchant_trade_no;
+            //Convert the time format in the request
+            $TradeDate = Carbon::createFromFormat('d/M/y H:m:s', $request->trade_date);
+            $PaymentDate = Carbon::createFromFormat('d/M/y H:m:s', $request->payment_date);
+            //取的該交易編號Ecpay Collection
+            $DatabaseService = new DatabaseService();
+            $Ecpay = $DatabaseService->GetEcpayCollection($merchant_trade_no);
+            //將EcapyCallBack存至Ecpay關聯資料庫
+            $Ecpayback = new Ecpay_back([
+                'merchant_id'  => $request->merchant_id,
+                'trade_date' => $TradeDate,
+                'check_mac_value' => $request->check_mac_value,
+                'rtn_code' => $request->rtn_code,
+                'rtn_msg' => $request->rtn_msg,
+                'amount' => $request->amount,
+                'payment_date' => $PaymentDate,
+            ]);
+            $DatabaseService->SaveEcpayCallBack($Ecpay, $Ecpayback);
+            //如果EcpayCallBack回傳的rtn_code為1
+            if ($request->rtn_code == 1) {
+                //取得此Ecpay關聯的WalletRecord
+                $Record = $DatabaseService->GetRecordCollenction($Ecpay);
+                //將關聯walletRecord status改成0
+                $Record[0]->status = '0';
+                //將更新後WalletRecord儲存
+                $DatabaseService->SaveEcpayRecord($Ecpay, $Record);
+            } else {
+                $Record = $DatabaseService->GetRecordCollenction($Ecpay);
+                $Record[0]->status = '1';
+                $DatabaseService->SaveEcpayRecord($Ecpay, $Record);
+            }
+        } catch (Exception $e) {
+            return $e;
+        } catch (Throwable $e) {
+            return response()->json([$e, 'err' => '1', 'message' => $errr['1']]);
+        }
+    }
+    public function wallet(Request $request)
+    {
+        $token = $request->header('Authorization');
+        //取得UserId
+        $UserService = new UserService($token);
+        $UserInfo = $UserService->GetUserWallet($request);
+        return $UserInfo;
     }
 }
