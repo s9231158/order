@@ -10,6 +10,7 @@ use App\Models\Order_info;
 use App\Models\Restaurant;
 use App\Models\User;
 use App\Models\Wallet_Record;
+use App\TotalService;
 use App\UserService;
 use Exception;
 use Illuminate\Http\Request;
@@ -83,16 +84,31 @@ class PayController extends Controller
         ];
         //什麼錯誤報什麼錯誤訊息
         $rulsMessage = [
-            'name.required' => $this->err['2'], 'name.max' => $this->err['1'], 'name.min' => $this->err['1'],
-            'address.required' => $this->err['2'], 'address.min' => $this->err['1'], 'address.max' => $this->err['1'],
-            'phone.required' => $this->err['2'], 'phone.string' => $this->err['1'], 'phone.size' => $this->err['1'], 'phone.regex' => $this->err['1'],
-            'totalprice.required' => $this->err['2'], 'totalprice.regex' => $this->err['1'],
-            'taketime.required' => $this->err['2'], 'taketime.date' => $this->err['1'],
-            'orders.required' => $this->err['1'], 'orders.array' => $this->err['1'],
-            'orders.*.rid.required' => $this->err['1'], 'orders.*.rid.regex' => $this->err['2'],
-            'orders.*.id.required' => $this->err['2'], 'orders.*.id.regex' => $this->err['2'],
-            'orders.*.name.required' => $this->err['1'], 'orders.*.name.max' => $this->err['1'], 'orders.*.name.min' => $this->err['1'],
-            'orders.*.price.required' => $this->err['1'], 'orders.*.price.regex' => $this->err['1'],
+            'name.required' => $this->err['2'],
+            'name.max' => $this->err['1'],
+            'name.min' => $this->err['1'],
+            'address.required' => $this->err['2'],
+            'address.min' => $this->err['1'],
+            'address.max' => $this->err['1'],
+            'phone.required' => $this->err['2'],
+            'phone.string' => $this->err['1'],
+            'phone.size' => $this->err['1'],
+            'phone.regex' => $this->err['1'],
+            'totalprice.required' => $this->err['2'],
+            'totalprice.regex' => $this->err['1'],
+            'taketime.required' => $this->err['2'],
+            'taketime.date' => $this->err['1'],
+            'orders.required' => $this->err['1'],
+            'orders.array' => $this->err['1'],
+            'orders.*.rid.required' => $this->err['1'],
+            'orders.*.rid.regex' => $this->err['2'],
+            'orders.*.id.required' => $this->err['2'],
+            'orders.*.id.regex' => $this->err['2'],
+            'orders.*.name.required' => $this->err['1'],
+            'orders.*.name.max' => $this->err['1'],
+            'orders.*.name.min' => $this->err['1'],
+            'orders.*.price.required' => $this->err['1'],
+            'orders.*.price.regex' => $this->err['1'],
         ];
         $validator = Validator::make($request->all(), $ruls, $rulsMessage);
         //如果有錯回報錯誤訊息
@@ -141,7 +157,7 @@ class PayController extends Controller
             $userid = $usertoken->id;
             $user = User::find($userid);
             $wallet = $user->wallet()->get();
-            $balance =  $wallet[0]['balance'];
+            $balance = $wallet[0]['balance'];
             //錢包餘額是否大於totoprice
             if ($request->payment == 'local') {
                 if ($balance <= $realtotalprice) {
@@ -202,7 +218,7 @@ class PayController extends Controller
             //存入order資料庫
             $orderr = new Order([
                 'ordertime' => $now,
-                'taketime'  => $taketime,
+                'taketime' => $taketime,
                 'total' => $totalprice,
                 'phone' => $phone,
                 'address' => $address,
@@ -245,7 +261,7 @@ class PayController extends Controller
                 return '一樣的餐點';
             }
 
-            $uid = (string)Str::uuid();
+            $uid = (string) Str::uuid();
 
             $uuid20Char = substr($uid, 0, 20);
             if ($request->payment == 'local') {
@@ -319,7 +335,7 @@ class PayController extends Controller
             $CheckMacValueService = new CheckMacValueService($key, $iv);
             $CheckMacValue = $CheckMacValueService->generate($data);
             $data['check_mac_value'] = $CheckMacValue;
-            $client  =  new  Client();
+            $client = new Client();
             $res = $client->request('POST', 'http://neil.xincity.xyz:9997/api/Cashier/AioCheckOut', ['json' => $data]);
             $goodres = $res->getBody();
             $s = json_decode($goodres);
@@ -343,7 +359,7 @@ class PayController extends Controller
             $ecpay1 = Ecpay::find($requestData['merchant_trade_no']);
 
             $ecpayback = new Ecpay_back([
-                'merchant_id'  => $request->merchant_id,
+                'merchant_id' => $request->merchant_id,
                 'trade_date' => $trade_date,
                 'check_mac_value' => $request->check_mac_value,
                 'rtn_code' => $request->rtn_code,
@@ -389,7 +405,8 @@ class PayController extends Controller
         $rulsMessage = [
             'limit.regex' => $this->err['23'],
             'offset.regex' => $this->err['23'],
-            'rid.regex' => $this->err['23'], 'rid.required' => $this->err['2'],
+            'rid.regex' => $this->err['23'],
+            'rid.required' => $this->err['2'],
         ];
 
         try {
@@ -449,7 +466,7 @@ class PayController extends Controller
             $oid = $request->oid;
             $orderinfno = Order_info::select('name', 'quanlity', 'price', 'description')->where('oid', '=', $oid)->get();
             $count = Order_info::select('id', 'name', 'quanlity', 'price', 'description')->where('oid', '=', $oid)->count();
-            if ($count ===   0) {
+            if ($count === 0) {
                 return response()->json(['err' => $this->err['19']]);
             }
             return response()->json(['err' => $this->err['0'], 'ordersinfo' => $orderinfno]);
@@ -523,7 +540,7 @@ class PayController extends Controller
             $Ecpay = $DatabaseService->GetEcpayCollection($merchant_trade_no);
             //將EcapyCallBack存至Ecpay關聯資料庫
             $Ecpayback = new Ecpay_back([
-                'merchant_id'  => $request->merchant_id,
+                'merchant_id' => $request->merchant_id,
                 'trade_date' => $TradeDate,
                 'check_mac_value' => $request->check_mac_value,
                 'rtn_code' => $request->rtn_code,
@@ -553,10 +570,37 @@ class PayController extends Controller
     }
     public function wallet(Request $request)
     {
-        $token = $request->header('Authorization');
-        //取得UserId
-        $UserService = new UserService($token);
-        $UserInfo = $UserService->GetUserWallet($request);
-        return $UserInfo;
+        //取的總ErrCode
+        $err = new ErrorCodeService;
+        $errr = $err->err;
+        //規則
+        $ruls = [
+            'limit' => ['regex:/^[0-9]+$/'],
+            'offset' => ['regex:/^[0-9]+$/'],
+        ];
+        //什麼錯誤報什麼錯誤訊息
+        $rulsMessage = [
+            'limit.regex' => array_search('無效的範圍', $errr),
+            'offset.regex' => array_search('無效的範圍', $errr),
+            // 'offset.regex' => [array_search('無效的範圍', $errr), 'message' => $errr['23']],
+        ];
+        try {
+            //驗證參輸入數
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            if ($validator->fails()) {
+                return response()->json(['err' => $validator->errors()->first(), 'message' => $errr[$validator->errors()->first()]]);
+            }
+            //取的抓取範圍&類型
+            $Range = ['type' => $request->type, 'offset' => $request->offset, 'limit' => $request->limit];
+            //取得該使用者Service
+            $token = $request->header('Authorization');
+            $UserService = new UserService($token);
+            //取得該使用者WalletRecord
+            $WalletRecord = $UserService->GetUserWallet($Range);
+            return response()->json(['err' => array_search('成功', $errr), 'message' => $errr['0'], 'count' => $WalletRecord['count'], 'data' => $WalletRecord['wallet']]);
+        } catch (Exception $e) {
+            return response()->json(['err' => array_search('系統錯誤', $errr), 'message' => $errr['26']]);
+        }
+
     }
 }
