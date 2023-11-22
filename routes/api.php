@@ -49,4 +49,5 @@ Route::get('orderinfo','orderinfo')->middleware('token');
 Route::post('money','money');
 Route::post('moneycallback','moneycallback')->middleware('token');
 Route::get('wallet','wallet')->middleware('token');
+Route::get('apple','apple');
 });

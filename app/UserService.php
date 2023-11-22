@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Validator;
 use Throwable;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\TokenInvalidException;
+use App\Models\User;
 
 class UserService
 {
@@ -77,7 +78,9 @@ class UserService
             $Count += $WalletRecord['out']->count();
             return array('count' => $Count, 'wallet' => $WalletRecord);
         } catch (Throwable $e) {
-            return array($e,'count' => $Count, 'wallet' => $WalletRecord);
+            return array($e, 'count' => $Count, 'wallet' => $WalletRecord);
         }
     }
+
+
 }

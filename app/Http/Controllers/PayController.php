@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\ErrorCodeService;
 use App\Factorise;
+use App\Jobs\ProcessPodcast;
 use App\Models\Ecpay;
+use App\Models\Login_Total;
 use App\Models\Order;
 use App\Models\Order_info;
 use App\Models\Restaurant;
 use App\Models\User;
+use App\Models\User_recode;
 use App\Models\Wallet_Record;
 use App\TotalService;
 use App\UserService;
@@ -582,7 +585,6 @@ class PayController extends Controller
         $rulsMessage = [
             'limit.regex' => array_search('無效的範圍', $errr),
             'offset.regex' => array_search('無效的範圍', $errr),
-            // 'offset.regex' => [array_search('無效的範圍', $errr), 'message' => $errr['23']],
         ];
         try {
             //驗證參輸入數
@@ -597,10 +599,26 @@ class PayController extends Controller
             $UserService = new UserService($token);
             //取得該使用者WalletRecord
             $WalletRecord = $UserService->GetUserWallet($Range);
-            return response()->json(['err' => array_search('成功', $errr), 'message' => $errr['0'], 'count' => $WalletRecord['count'], 'data' => $WalletRecord['wallet']]);
+            return response()->json(['err' => array_search('成功', $errr), 'message' => $errr[0], 'count' => $WalletRecord['count'], 'data' => $WalletRecord['wallet']]);
         } catch (Exception $e) {
-            return response()->json(['err' => array_search('系統錯誤', $errr), 'message' => $errr['26']]);
+            return response()->json(['err' => array_search('系統錯誤', $errr), 'message' => $errr[26]]);
         }
+
+    }
+
+    public function apple()
+    {
+        //取出昨天00:00
+        $start = Carbon::yesterday();
+        //取出昨天01:00
+        $end = Carbon::today();
+        $count = User_recode::whereBetween('login', [$start, $end])->get();
+        $Login_Total = new Login_Total();
+        $Login_Total->count = $count;
+        $Login_Total->starttime = $start;
+        $Login_Total->endtime = $end;
+        // $Login_Total->save();
+        return $count;
 
     }
 }

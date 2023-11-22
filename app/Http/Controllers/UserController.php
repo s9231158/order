@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\CustomerService;
+use App\ErrorCodeService;
+use App\TotalService;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Models\User;
 use App\Models\User_recode;
@@ -17,29 +20,19 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Throwable;
 use PDOException;
+use App\UserService;
 use App\Models\Restaurant;
-
 
 class UserController extends Controller
 {
     //錯誤訊息統整
-    private $err = [
-        '0' => 0, //成功
-        '1' => 1, //資料填寫與規格不符
-        '2' => 2, //必填資料未填
-        '3' => 3, //email已註冊
-        '4' => 4, //電話已註冊
-        '5' => 5, //系統錯誤,請重新登入
-        '6' => 6, //已登入
-        '7' => 7, //短時間內登入次數過多
-        '8' => 8, //帳號或密碼錯誤
-        '9' => 9, //token錯誤
-        '15' => 15, //重複新增我的最愛
-        '16' => 16, //查無此餐廳
-        '23' => 23, //無效的範圍
-        '26' => 26, //系統錯誤
-    ];
-
+    public $err = [];
+    public $keys = [];
+    public function __construct(ErrorCodeService $ErrorCodeService)
+    {
+        $this->err = $ErrorCodeService->err;
+        $this->keys = $ErrorCodeService->keys;
+    }
     public function create(Request $request)
     {
         //規則
@@ -53,40 +46,65 @@ class UserController extends Controller
         ];
         //什麼錯誤報什麼錯誤訊息
         $rulsMessage = [
-            'name.required' => $this->err['2'], 'name.max' => $this->err['1'], 'name.min' => $this->err['1'],
-            'email.required' => $this->err['2'], 'email.unique' => $this->err['3'], 'email.min' => $this->err['1'], 'email.max' => $this->err['1'], 'email.regex' => $this->err['1'],
-            'password.required' => $this->err['2'], 'password.min' => $this->err['1'], 'password.max' => $this->err['1'], 'password.regex' => $this->err['1'],
-            'phone.required' => $this->err['2'], 'phone.string' => $this->err['1'], 'phone.size' => $this->err['1'], 'phone.regex' => $this->err['1'], 'phone.unique' => $this->err['4'],
-            'address.required' => $this->err['2'], 'address.min' => $this->err['1'], 'address.max' => $this->err['1'],
-            'age.required' => $this->err['2'], 'age.before' => $this->err['1'], 'age.date' => $this->err['1'],
+            'name.required' => $this->keys[1],
+            'name.max' => $this->keys[1],
+            'name.min' => $this->keys[1],
+            'email.required' => $this->keys[2],
+            'email.unique' => $this->keys[3],
+            'email.min' => $this->keys[1],
+            'email.max' => $this->keys[1],
+            'email.regex' => $this->keys[1],
+            'password.required' => $this->keys[2],
+            'password.min' => $this->keys[1],
+            'password.max' => $this->keys[1],
+            'password.regex' => $this->keys[1],
+            'phone.required' => $this->keys[2],
+            'phone.string' => $this->keys[1],
+            'phone.size' => $this->keys[1],
+            'phone.regex' => $this->keys[1],
+            'phone.unique' => $this->keys[4],
+            'address.required' => $this->keys[2],
+            'address.min' => $this->keys[1],
+            'address.max' => $this->keys[1],
+            'age.required' => $this->keys[2],
+            'age.before' => $this->keys[1],
+            'age.date' => $this->keys[1],
         ];
         try {
             //驗證輸入數值
             $validator = Validator::make($request->all(), $ruls, $rulsMessage);
             //如果有錯回報錯誤訊息
             if ($validator->fails()) {
-                return response()->json(['err' => $validator->errors()->first()]);
+                return response()->json(['err' => $validator->errors()->first(), 'message' => $this->err[$validator->errors()->first()]]);
             }
             //沒錯的話存入資料庫
             else {
                 //使用hash將使用者密碼加密
                 $password = Hash::make($request->input('password'));
-                $user = User::create([
-                    'email' => $request->input('email'),
-                    'name' => $request->input('name'),
-                    'password' => $password,
-                    'phone' => $request->input('phone'),
-                    'address' => $request->input('address'),
-                    'age' => $request->input('age'),
-                ]);
+                $UserInfo = [
+                    'password1' => $password,
+                    'email' => $request->email,
+                    'name' => $request->name,
+                    'phone' => $request->phone,
+                    'address' => $request->address,
+                    'age' => $request->age
+                ];
+                //將使用者資料存入資料庫
+                $UserService = new CustomerService();
+                if ($UserService->CreateUser($UserInfo) === false) {
+                    return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
+                }
                 //將使用者關聯錢包初始化
-                $wallet = new User_wallets();
-                $wallet->balance = 0;
-                $user->wallet()->save($wallet);
-                return response()->json(['err' => $this->err['0']]);
+                if ($UserService->CreatrWallet($UserInfo['email']) === false) {
+                    return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
+
+                }
+                return response()->json(['err' => $this->keys[0], 'message' => $this->err[0]]);
             }
-        } catch (Throwable) {
-            return response()->json(['err' => $this->err['26']]);
+        } catch (Exception $e) {
+            return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
+        } catch (Throwable $e) {
+            return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
         }
     }
 
@@ -101,24 +119,40 @@ class UserController extends Controller
         ];
         //什麼錯誤報什麼錯誤訊息
         $rulsMessage = [
-            'email.required' => $this->err['2'], 'email.min' => $this->err['1'], 'email.max' => $this->err['1'], 'email.regex' => $this->err['1'],
-            'password.required' => $this->err['2'], 'password.min' => $this->err['1'], 'password.max' => $this->err['1'], 'password.regex' => $this->err['1']
+            'email.required' => $this->keys[2],
+            'email.min' => $this->keys[1],
+            'email.max' => $this->keys[1],
+            'email.regex' => $this->keys[1],
+            'password.required' => $this->keys[2],
+            'password.min' => $this->keys[1],
+            'password.max' => $this->keys[1],
+            'password.regex' => $this->keys[1]
         ];
         try {
             $ip = $request->ip();
             $email = $request->email;
+
+
             //驗證輸入數值
             $validator = Validator::make($request->all(), $ruls, $rulsMessage);
             //驗證失敗回傳錯誤訊息
             if ($validator->fails()) {
-                return response()->json(['err' => $validator->errors()->first()]);
+                return response()->json(['err' => $validator->errors()->first(), 'message' => $this->err[$validator->errors()->first()]]);
             }
+
+
             //從redis檢查key是否超過次數
             if (RateLimiter::tooManyAttempts($this->makekey($email, $ip), 5)) {
-                return response()->json(['err' => $this->err['7']]);
+                return response()->json(['err' => $this->keys[7], 'message' => $this->err[7]]);
             }
             //檢查是否有該使用者且密碼符合
             if (Auth::attempt($request->only('email', 'password'))) {
+                //檢查是否有重複登入
+                $TotalService = new TotalService;
+                $Token = $request->header('Authorization');
+                $TotalService->TokenCheck($Token);
+
+
                 $token = $request->header('Authorization');
                 $redietoken = 'Bearer ' . Cache::get($email);
                 if (Cache::has($email) && $token === $redietoken) {

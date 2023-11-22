@@ -21,7 +21,10 @@ class TotalService
         if ($request['limit'] != null) {
             $limit = $request['limit'];
         }
-        return array('offset'=>$offset, 'limit'=>$limit);
+        return array('offset' => $offset, 'limit' => $limit);
     }
-    
+    public function TokenCheck($Token)
+    {
+
+    }
 }
