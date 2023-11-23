@@ -8,9 +8,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use App\Models\User;
 
-class ProcessPodcast implements ShouldQueue
+class RestaruantMoneyTotal implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -21,7 +20,7 @@ class ProcessPodcast implements ShouldQueue
      */
     public function __construct()
     {
-
+        //
     }
 
     /**
@@ -31,10 +30,6 @@ class ProcessPodcast implements ShouldQueue
      */
     public function handle()
     {
-        sleep(50);
-        $user = User::find(1);
-        $user->email = $user->email . '2';
-        $user->save();
-
+        //
     }
 }

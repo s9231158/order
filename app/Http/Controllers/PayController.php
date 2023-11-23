@@ -9,6 +9,7 @@ use App\Models\Ecpay;
 use App\Models\Login_Total;
 use App\Models\Order;
 use App\Models\Order_info;
+use App\Models\Restaruant_Total_Money;
 use App\Models\Restaurant;
 use App\Models\User;
 use App\Models\User_recode;
@@ -609,16 +610,60 @@ class PayController extends Controller
     public function apple()
     {
         //取出昨天00:00
-        $start = Carbon::yesterday();
+        $Start = Carbon::yesterday();
+        //取出今天00:00
+        $End = Carbon::today();
+        //取出昨天至今天所有訂單資料
+        $RestaruantTotalOrder = Order::select('total', 'rid', 'created_at', 'status')->whereBetween('created_at', [$Start, $End])->get();
+        //取出交易成功訂單資料
+        $OnlyGoodRestaruantTotalOrder = $RestaruantTotalOrder->where('status', '=', '成功');
+        //取出昨天00:00
+        $Go = Carbon::yesterday();
         //取出昨天01:00
-        $end = Carbon::today();
-        $count = User_recode::whereBetween('login', [$start, $end])->get();
-        $Login_Total = new Login_Total();
-        $Login_Total->count = $count;
-        $Login_Total->starttime = $start;
-        $Login_Total->endtime = $end;
-        // $Login_Total->save();
-        return $count;
+        $To = Carbon::yesterday()->addHour();
+        $I = 0;
+        $totalprice = [];
+        // $apple = [];
 
+
+
+        // foreach ($OnlyGoodRestaruantTotalOrder as $key => $value) {
+        //     $mony = $value['total'];
+        //     $rid = $value['rid'];
+        //     $s = ['total' => $mony, 'rid' => $rid];
+        //     $apple[] = $s;
+        // }
+        // return $apple;
+
+
+
+        
+        for ($I = 0; $I < 24; $I++) {
+            //計算每小時有幾筆訂單
+            $EveryHourOnlyGoodRestaruantOrderCount = $OnlyGoodRestaruantTotalOrder->whereBetween('created_at', [$Go, $To])->count();
+            //取得每小時的所有訂單
+            $EveryHourOnlyGoodRestaruantOrder = $OnlyGoodRestaruantTotalOrder->whereBetween('created_at', [$Go, $To]);
+            //計算每小時內所有訂單各間餐廳收入總額
+            if ($EveryHourOnlyGoodRestaruantOrderCount != 0) {
+                // return $EveryHourOnlyGoodRestaruantOrder->toarray();
+                // $bbb = ['rid' => 1, 'starttime' => $Go, 'endtime' => $To, 'money' => 1111];
+                // Restaruant_Total_Money::create($bbb);
+                $totalprice[] = $EveryHourOnlyGoodRestaruantOrder;
+            }
+
+
+            //儲存資料
+            // $Login_Total = new Login_Total();
+            // $Login_Total->count = $Count;
+            // $Login_Total->starttime = $Go;
+            // $Login_Total->endtime = $To;
+            // $Login_Total->save();
+            //取出昨天00:00
+            $Go = $Go->addHour();
+            //取出昨天01:00
+            $To = $To->addHour();
+        }
+
+        return $totalprice;
     }
 }

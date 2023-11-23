@@ -2,7 +2,7 @@
 
 namespace App\Console;
 
-use App\Jobs\ProcessPodcast;
+use App\Jobs\UserRecordCount;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -18,7 +18,7 @@ class Kernel extends ConsoleKernel
     {
 
         $schedule->call(function () {
-            ProcessPodcast::dispatch();
+            UserRecordCount::dispatch();
         })->everyMinute();
     }
 
