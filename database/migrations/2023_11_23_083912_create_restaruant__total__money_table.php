@@ -19,7 +19,7 @@ return new class extends Migration
             $table->dateTime('starttime');
             $table->dateTime('endtime');
             $table->timestamps();
-            $table->bigInteger('rid')->unsigned();
+            $table->bigInteger('rid')->unsigned()->nullable();
             $table->foreign('rid')->references('id')->on('restaurants');
         });
     }

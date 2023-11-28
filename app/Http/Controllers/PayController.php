@@ -478,9 +478,7 @@ class PayController extends Controller
             return response()->json([$e, 'err' => $this->err['26']]);
         }
     }
-
-
-    public function money(Request $request)
+    public function AddWalletMoney(Request $request)
     {
         try {
             $err = new ErrorCodeService;
@@ -536,12 +534,22 @@ class PayController extends Controller
             $errr = $err->err;
             //取得交易編號
             $merchant_trade_no = $request->merchant_trade_no;
-            //Convert the time format in the request
             $TradeDate = Carbon::createFromFormat('d/M/y H:m:s', $request->trade_date);
             $PaymentDate = Carbon::createFromFormat('d/M/y H:m:s', $request->payment_date);
             //取的該交易編號Ecpay Collection
             $DatabaseService = new DatabaseService();
             $Ecpay = $DatabaseService->GetEcpayCollection($merchant_trade_no);
+            $ecpay1 = Ecpay::find($request['merchant_trade_no']);
+            $ecpayback = new Ecpay_back([
+                'merchant_id' => $request->merchant_id,
+                'trade_date' => $TradeDate,
+                'check_mac_value' => $request->check_mac_value,
+                'rtn_code' => $request->rtn_code,
+                'rtn_msg' => $request->rtn_msg,
+                'amount' => $request->amount,
+                'payment_date' => $PaymentDate,
+            ]);
+            $ecpay1->ecpayback()->save($ecpayback);
             //將EcapyCallBack存至Ecpay關聯資料庫
             $Ecpayback = new Ecpay_back([
                 'merchant_id' => $request->merchant_id,
@@ -569,12 +577,12 @@ class PayController extends Controller
         } catch (Exception $e) {
             return $e;
         } catch (Throwable $e) {
-            return response()->json([$e, 'err' => '1', 'message' => $errr['1']]);
+            return response()->json([$e, 'err' => '26', 'message' => $errr['26']]);
         }
     }
     public function wallet(Request $request)
     {
-        //取的總ErrCode
+        //取得總ErrCode
         $err = new ErrorCodeService;
         $errr = $err->err;
         //規則
@@ -617,53 +625,57 @@ class PayController extends Controller
         $RestaruantTotalOrder = Order::select('total', 'rid', 'created_at', 'status')->whereBetween('created_at', [$Start, $End])->get();
         //取出交易成功訂單資料
         $OnlyGoodRestaruantTotalOrder = $RestaruantTotalOrder->where('status', '=', '成功');
-        //取出昨天00:00
-        $Go = Carbon::yesterday();
-        //取出昨天01:00
-        $To = Carbon::yesterday()->addHour();
-        $I = 0;
-        $totalprice = [];
-        // $apple = [];
-
-
-
-        // foreach ($OnlyGoodRestaruantTotalOrder as $key => $value) {
-        //     $mony = $value['total'];
-        //     $rid = $value['rid'];
-        //     $s = ['total' => $mony, 'rid' => $rid];
-        //     $apple[] = $s;
-        // }
-        // return $apple;
-
-
-
-        
+        $Date = [];
+        $TotalOrder = [];
+        $Yesterday = Carbon::yesterday();
+        $YesterdayAddHour = Carbon::yesterday()->addHour();
         for ($I = 0; $I < 24; $I++) {
-            //計算每小時有幾筆訂單
-            $EveryHourOnlyGoodRestaruantOrderCount = $OnlyGoodRestaruantTotalOrder->whereBetween('created_at', [$Go, $To])->count();
-            //取得每小時的所有訂單
-            $EveryHourOnlyGoodRestaruantOrder = $OnlyGoodRestaruantTotalOrder->whereBetween('created_at', [$Go, $To]);
+            // //取得每小時的所有訂單
+            $EveryHourOnlyGoodRestaruantOrder = $OnlyGoodRestaruantTotalOrder->whereBetween('created_at', [$Yesterday, $YesterdayAddHour]);
             //計算每小時內所有訂單各間餐廳收入總額
-            if ($EveryHourOnlyGoodRestaruantOrderCount != 0) {
-                // return $EveryHourOnlyGoodRestaruantOrder->toarray();
-                // $bbb = ['rid' => 1, 'starttime' => $Go, 'endtime' => $To, 'money' => 1111];
-                // Restaruant_Total_Money::create($bbb);
-                $totalprice[] = $EveryHourOnlyGoodRestaruantOrder;
-            }
-
-
-            //儲存資料
-            // $Login_Total = new Login_Total();
-            // $Login_Total->count = $Count;
-            // $Login_Total->starttime = $Go;
-            // $Login_Total->endtime = $To;
-            // $Login_Total->save();
             //取出昨天00:00
-            $Go = $Go->addHour();
+            $Date[$I]['starttime'] = $Yesterday->copy();
             //取出昨天01:00
-            $To = $To->addHour();
-        }
+            $Date[$I]['endtime'] = $YesterdayAddHour->copy();
 
-        return $totalprice;
+            foreach ($EveryHourOnlyGoodRestaruantOrder as $key => $value) {
+                $TotalOrder[] = ['rid' => $value['rid'], 'money' => $value['total'], 'starttime' => $Date[$I]['starttime'], 'endtime' => $Date[$I]['endtime']];
+            }
+            //對起始時間加一小
+            $Yesterday = $Yesterday->addHour();
+            //對終止時間加一小
+            $YesterdayAddHour = $YesterdayAddHour->addHour();
+
+        }
+        //將相同時間與相同餐廳金額加總
+        $sums = [];
+        foreach ($TotalOrder as $item) {
+            $key = $item['starttime'] . $item['rid'];
+            if (array_key_exists($key, $sums)) {
+                $sums[$key]['money'] += $item['money'];
+            } else {
+                $sums[$key] = [
+                    'rid' => $item['rid'],
+                    'money' => $item['money'],
+                    'starttime' => $item['starttime'],
+                    'endtime' => $item['endtime']
+                ];
+            }
+        }
+        //將結果整理後存進資料庫
+        $result = [];
+        foreach ($sums as $item) {
+            $result[] = [
+                'rid' => $item['rid'],
+                'money' => $item['money'],
+                'starttime' => $item['starttime'],
+                'endtime' => $item['endtime'],
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ];
+        }
+        //存入資料庫
+        Restaruant_Total_Money::insert($result);
     }
+
 }

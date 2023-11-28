@@ -11,6 +11,7 @@ class TotalService
      * @param [object] $request
      * @return array
      */
+    //名稱有問題
     public function SetOffset($request)
     {
         $offset = 0;

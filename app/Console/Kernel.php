@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Jobs\RestaruantMoneyTotal;
 use App\Jobs\UserRecordCount;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -19,6 +20,9 @@ class Kernel extends ConsoleKernel
 
         $schedule->call(function () {
             UserRecordCount::dispatch();
+        })->everyMinute();
+        $schedule->call(function () {
+            RestaruantMoneyTotal::dispatch();
         })->everyMinute();
     }
 

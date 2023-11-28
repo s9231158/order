@@ -22,16 +22,21 @@ use Throwable;
 use PDOException;
 use App\UserService;
 use App\Models\Restaurant;
+use App\UserService\CreateService;
+use App\UserRepository\CreateRepository;
 
 class UserController extends Controller
 {
     //錯誤訊息統整
-    public $err = [];
-    public $keys = [];
-    public function __construct(ErrorCodeService $ErrorCodeService)
+    private $err = [];
+    private $keys = [];
+
+    private $CreatrService = [];
+    public function __construct(ErrorCodeService $ErrorCodeService, CreateService $CreatrService)
     {
-        $this->err = $ErrorCodeService->err;
-        $this->keys = $ErrorCodeService->keys;
+        $this->keys = $ErrorCodeService->GetErrKey();
+        $this->err = $ErrorCodeService->GetErrCode();
+        $this->CreatrService = $CreatrService;
     }
     public function create(Request $request)
     {
@@ -82,23 +87,31 @@ class UserController extends Controller
                 //使用hash將使用者密碼加密
                 $password = Hash::make($request->input('password'));
                 $UserInfo = [
-                    'password1' => $password,
+                    'password' => $password,
                     'email' => $request->email,
                     'name' => $request->name,
                     'phone' => $request->phone,
                     'address' => $request->address,
                     'age' => $request->age
                 ];
-                //將使用者資料存入資料庫
-                $UserService = new CustomerService();
-                if ($UserService->CreateUser($UserInfo) === false) {
-                    return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
-                }
-                //將使用者關聯錢包初始化
-                if ($UserService->CreatrWallet($UserInfo['email']) === false) {
-                    return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
 
+                // if ($this->CreatrService->CreateUser($UserInfo) === null) {
+                //     return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
+                // }
+                if ($this->CreatrService->CreatrWallet($UserInfo['email']) === null) {
+                    return response()->json(['err' => $this->keys[22], 'message' => $this->err[26]]);
                 }
+
+
+                // //將使用者資料存入資料庫
+                // $CreateRepository = new CreateRepository;
+                // if ($CreateRepository->CreateUser($UserInfo)) {
+                //     return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
+                // }
+                // //將使用者關聯錢包初始化
+                // if ($CreateRepository->CreatrWallet($UserInfo['email']) === false) {
+                //     return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
+                // }
                 return response()->json(['err' => $this->keys[0], 'message' => $this->err[0]]);
             }
         } catch (Exception $e) {

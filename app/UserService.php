@@ -38,6 +38,7 @@ class UserService
             return $userInfo;
         } catch (Throwable $e) {
             return false;
+            //null
         }
     }
 

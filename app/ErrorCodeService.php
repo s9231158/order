@@ -4,7 +4,7 @@ namespace App;
 
 class ErrorCodeService
 {
-    public $err = [
+    private $err = [
         0 => '成功',
         1 => '資料填寫與規格不符',
         2 => '必填資料未填',
@@ -37,9 +37,15 @@ class ErrorCodeService
         29 => '請重新登入',
         30 => '菜單資訊有誤'
     ];
-    public $keys = [];
+    private $keys = [];
     public function __construct()
     {
         $this->keys = array_keys($this->err);
     }
+   public function GetErrCode(){
+    return $this->err;
+   }
+   public function GetErrKey(){
+    return $this->keys;
+   }
 }
