@@ -54,7 +54,7 @@ class UserService
         try {
             //預設offser&limit
             $TotalService = new TotalService;
-            $result = $TotalService->SetOffset($request);
+            $result = $TotalService->GetOffsetLimit($request);
             $offset = $result['offset'];
             $limit = $result['limit'];
 

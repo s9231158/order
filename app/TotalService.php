@@ -8,11 +8,10 @@ class TotalService
     /**
      * 設定offsey&limit預設值,直接把客戶端requset丟進來
      *
-     * @param [object] $request
      * @return array
      */
     //名稱有問題
-    public function SetOffset($request)
+    public function GetOffsetLimit($request)
     {
         $offset = 0;
         $limit = 20;

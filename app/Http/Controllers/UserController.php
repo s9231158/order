@@ -24,6 +24,7 @@ use App\UserService;
 use App\Models\Restaurant;
 use App\UserService\CreateService;
 use App\UserRepository\CreateRepository;
+use App\UserInterface\CreateInrerface;
 
 class UserController extends Controller
 {
@@ -32,7 +33,7 @@ class UserController extends Controller
     private $keys = [];
 
     private $CreatrService = [];
-    public function __construct(ErrorCodeService $ErrorCodeService, CreateService $CreatrService)
+    public function __construct(ErrorCodeService $ErrorCodeService, CreateInrerface $CreatrService)
     {
         $this->keys = $ErrorCodeService->GetErrKey();
         $this->err = $ErrorCodeService->GetErrCode();
@@ -40,84 +41,78 @@ class UserController extends Controller
     }
     public function create(Request $request)
     {
-        //規則
-        $ruls = [
-            'name' => ['required', 'max:25', 'min:3'],
-            'email' => ['required', 'unique:users,email', 'min:15', 'max:50', 'regex:/^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,})$/i'],
-            'password' => ['required', 'min:10', 'max:25', 'regex:/^[A-Za-z0-9]+$/'],
-            'phone' => ['required', 'string', 'size:9', 'regex:/^[0-9]+$/', 'unique:users,phone'],
-            'address' => ['required', 'min:10', 'max:25'],
-            'age' => ['required', 'before:2023-08-08', 'date'],
-        ];
-        //什麼錯誤報什麼錯誤訊息
-        $rulsMessage = [
-            'name.required' => $this->keys[1],
-            'name.max' => $this->keys[1],
-            'name.min' => $this->keys[1],
-            'email.required' => $this->keys[2],
-            'email.unique' => $this->keys[3],
-            'email.min' => $this->keys[1],
-            'email.max' => $this->keys[1],
-            'email.regex' => $this->keys[1],
-            'password.required' => $this->keys[2],
-            'password.min' => $this->keys[1],
-            'password.max' => $this->keys[1],
-            'password.regex' => $this->keys[1],
-            'phone.required' => $this->keys[2],
-            'phone.string' => $this->keys[1],
-            'phone.size' => $this->keys[1],
-            'phone.regex' => $this->keys[1],
-            'phone.unique' => $this->keys[4],
-            'address.required' => $this->keys[2],
-            'address.min' => $this->keys[1],
-            'address.max' => $this->keys[1],
-            'age.required' => $this->keys[2],
-            'age.before' => $this->keys[1],
-            'age.date' => $this->keys[1],
-        ];
+        // // 規則
+        // $ruls = [
+        //     'name' => ['required', 'max:25', 'min:3'],
+        //     'email' => ['required', 'unique:users,email', 'min:15', 'max:50', 'regex:/^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,})$/i'],
+        //     'password' => ['required', 'min:10', 'max:25', 'regex:/^[A-Za-z0-9]+$/'],
+        //     'phone' => ['required', 'string', 'size:9', 'regex:/^[0-9]+$/', 'unique:users,phone'],
+        //     'address' => ['required', 'min:10', 'max:25'],
+        //     'age' => ['required', 'before:2023-08-08', 'date'],
+        // ];
+        // // 什麼錯誤報什麼錯誤訊息
+        // $rulsMessage = [
+        //     'name.required' => $this->keys[1],
+        //     'name.max' => $this->keys[1],
+        //     'name.min' => $this->keys[1],
+        //     'email.required' => $this->keys[2],
+        //     'email.unique' => $this->keys[3],
+        //     'email.min' => $this->keys[1],
+        //     'email.max' => $this->keys[1],
+        //     'email.regex' => $this->keys[1],
+        //     'password.required' => $this->keys[2],
+        //     'password.min' => $this->keys[1],
+        //     'password.max' => $this->keys[1],
+        //     'password.regex' => $this->keys[1],
+        //     'phone.required' => $this->keys[2],
+        //     'phone.string' => $this->keys[1],
+        //     'phone.size' => $this->keys[1],
+        //     'phone.regex' => $this->keys[1],
+        //     'phone.unique' => $this->keys[4],
+        //     'address.required' => $this->keys[2],
+        //     'address.min' => $this->keys[1],
+        //     'address.max' => $this->keys[1],
+        //     'age.required' => $this->keys[2],
+        //     'age.before' => $this->keys[1],
+        //     'age.date' => $this->keys[1],
+        // ];
         try {
-            //驗證輸入數值
-            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
-            //如果有錯回報錯誤訊息
-            if ($validator->fails()) {
-                return response()->json(['err' => $validator->errors()->first(), 'message' => $this->err[$validator->errors()->first()]]);
+            // //驗證輸入數值
+            // $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            // //如果有錯回報錯誤訊息
+            // if ($validator->fails()) {
+            //     return response()->json(['err' => $validator->errors()->first(), 'message' => $this->err[$validator->errors()->first()]]);
+            // }
+            //驗證
+            $validator2 = $this->CreatrService->Validatorr($request);
+            if ($validator2 != null) {
+                return $validator2;
             }
             //沒錯的話存入資料庫
             else {
-                //使用hash將使用者密碼加密
-                $password = Hash::make($request->input('password'));
+                //Request將資料取出
                 $UserInfo = [
-                    'password' => $password,
+                    'password' => $request->password,
                     'email' => $request->email,
                     'name' => $request->name,
                     'phone' => $request->phone,
                     'address' => $request->address,
                     'age' => $request->age
                 ];
-
-                // if ($this->CreatrService->CreateUser($UserInfo) === null) {
-                //     return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
-                // }
-                if ($this->CreatrService->CreatrWallet($UserInfo['email']) === null) {
-                    return response()->json(['err' => $this->keys[22], 'message' => $this->err[26]]);
+                // 將使用者資訊存入Users
+                if ($this->CreatrService->CreateUser($UserInfo) === null) {
+                    return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
                 }
-
-
-                // //將使用者資料存入資料庫
-                // $CreateRepository = new CreateRepository;
-                // if ($CreateRepository->CreateUser($UserInfo)) {
-                //     return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
-                // }
-                // //將使用者關聯錢包初始化
-                // if ($CreateRepository->CreatrWallet($UserInfo['email']) === false) {
-                //     return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
-                // }
+                // 將使用者資訊存入UserWallet
+                if ($this->CreatrService->CreatrWallet($UserInfo['email']) === null) {
+                    return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
+                }
                 return response()->json(['err' => $this->keys[0], 'message' => $this->err[0]]);
             }
         } catch (Exception $e) {
             return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
         } catch (Throwable $e) {
-            return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
+            return response()->json([$e, 'err' => $this->keys[26], 'message' => $this->err[26]]);
         }
     }
 
