@@ -14,6 +14,7 @@ use App\Models\PaymentCount;
 use App\Models\Restaruant_Total_Money;
 use App\Models\Restaurant;
 use App\Models\User;
+use App\Models\User_favorite;
 use App\Models\User_recode;
 use App\Models\Wallet_Record;
 use App\TotalService;
@@ -624,31 +625,71 @@ class PayController extends Controller
         //取出今天00:00
         $End = Carbon::today();
         //取出昨天至今天所有訂單資料
-        $WalletRecord = Wallet_Record::select('pid', 'created_at', 'out')->whereBetween('created_at', [$Start, $End])->get();
+        $RestaruantFavorite = User_favorite::select('rid', 'created_at')->whereBetween('created_at', [$Start, $End])->get();
         $Yesterday = Carbon::yesterday();
         $YesterdayAddHour = Carbon::yesterday()->addHour();
-        $Paymentlist = [];
+        $RestaruantFavoriteList = [];
+        $list = [];
         for ($I = 0; $I < 24; $I++) {
             // //取得每小時的ecpay支付方式
-            $EveryHourEcpayCount = $WalletRecord->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])->wherenotnull('out')->where('pid', '=', 1)->count();
-            // //取得每小時的本地支付方式
-            $EveryHourLocalPayCount = $WalletRecord->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])->wherenotnull('out')->where('pid', '=', 2)->count();
+            $EveryHourFavoriteCount = $RestaruantFavorite->whereBetween('created_at', [$Yesterday, $YesterdayAddHour]);
             //將開始時間放入Paymentlist
-            $Paymentlist[$I]['starttime'] = $Yesterday->copy();
+            $RestaruantFavoriteList[$I]['starttime'] = $Yesterday->copy();
             //將失敗時間放入Paymentlist
-            $Paymentlist[$I]['endtime'] = $YesterdayAddHour->copy();
+            $RestaruantFavoriteList[$I]['endtime'] = $YesterdayAddHour->copy();
+            $RestaruantFavoriteList[$I]['list'] = [];
+            foreach ($EveryHourFavoriteCount as $i) {
+                $list[] = ['rid' => $i['rid'], 'starttime' => $RestaruantFavoriteList[$I]['starttime'], 'endtime' => $RestaruantFavoriteList[$I]['endtime']];
+                $RestaruantFavoriteList[$I]['list'] = ['rid' => $i['rid']];
+            }
+
             //將各個交易次數放入Paymentlist
-            $Paymentlist[$I]['ecpay'] = $EveryHourEcpayCount;
-            $Paymentlist[$I]['local'] = $EveryHourLocalPayCount;
-            $Paymentlist[$I]['created_at'] = Carbon::now();
-            $Paymentlist[$I]['updated_at'] = Carbon::now();
+            // $RestaruantFavoriteList[$I]['Count'] = $EveryHourFavoriteCount;
+            // $RestaruantFavoriteList[$I]['created_at'] = Carbon::now();
+            // $RestaruantFavoriteList[$I]['updated_at'] = Carbon::now();
+            // $RestaruantFavoriteList[$I]['updated_at1'] = $a;
             //對起始時間加一小
             $Yesterday = $Yesterday->addHour();
             //對終止時間加一小
             $YesterdayAddHour = $YesterdayAddHour->addHour();
         }
+
+        //將相同時間與相同餐廳金額加總
+        $sums = [];
+        foreach ($list as $item) {
+            $key = $item['starttime'] . $item['rid'];
+            if (array_key_exists($key, $sums)) {
+                $sums[$key]['Count'] += 1;
+            } else {
+                $sums[$key] = [
+                    'rid' => $item['rid'],
+                    'Count' => 1,
+                    'starttime' => $item['starttime'],
+                    'endtime' => $item['endtime'],
+                ];
+            }
+        }
+
+        //將結果整理後存進資料庫
+        $result = [];
+        foreach ($sums as $item) {
+            $result[] = [
+                'rid' => $item['rid'],
+                'count' => $item['Count'],
+                'starttime' => $item['starttime'],
+                'endtime' => $item['endtime'],
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ];
+        }
+        return $result;
+
+
+
+
+        return $RestaruantFavoriteList;
         //存入資料庫
-        PaymentCount::insert($Paymentlist);
+        // PaymentCount::insert($Paymentlist);
     }
 
 }

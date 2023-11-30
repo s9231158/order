@@ -18,6 +18,7 @@ class User_recode extends Model
         'ip',
         'device',
         'login',
+        'uid',
 
     ];
     public function user():BelongsTo{

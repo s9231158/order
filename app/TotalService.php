@@ -2,6 +2,8 @@
 
 namespace App;
 
+use Illuminate\Support\Facades\Cache;
+
 class TotalService
 {
 
@@ -23,8 +25,20 @@ class TotalService
         }
         return array('offset' => $offset, 'limit' => $limit);
     }
-    public function TokenCheck($Token)
+    public static function CheckHasLogin($TokenEmail)
     {
+        try {
+            $Token = $TokenEmail['Token'];
+            $Redistoken = 'Bearer ' . Cache::get($TokenEmail['Email']);
+            if (Cache::has($TokenEmail['Email']) && $Token === $Redistoken) {
+                Cache::forget($TokenEmail['Email']);
+                return 5;
+            }
+            return true;
+        } catch (\Throwable $e) {
+            return null;
+        }
+
 
     }
 }

@@ -19,9 +19,7 @@ class CreateService implements CreateInrerface
     private $keys = [];
 
     private $ruls = [];
-    private $rulsMessage = [
-
-    ];
+    private $rulsMessage = [];
     public function __construct(CreateRepository $CreateRepository, ErrorCodeService $ErrorCodeService)
     {
         $this->CreateRepository = $CreateRepository;
@@ -72,11 +70,15 @@ class CreateService implements CreateInrerface
         }
 
     }
-    public function CreatrWallet($Email)
+    public function CreateWallet($Email)
     {
-        return $this->CreateRepository->CreatrWallet($Email);
+        try {
+            return $this->CreateRepository->CreatrWallet($Email);
+        } catch (Throwable $e) {
+            return null;
+        }
     }
-    public function Validatorr($request)
+    public function CreateValidator($request)
     {
         $validator = Validator::make($request->all(), $this->ruls, $this->rulsMessage);
         if ($validator->fails()) {
