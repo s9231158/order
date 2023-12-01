@@ -5,6 +5,7 @@ namespace App\Console;
 use App\Jobs\FailOrderCount;
 use App\Jobs\PaymentCount;
 use App\Jobs\RestaruantMoneyTotal;
+use App\Jobs\RestaurantFavoritrCount;
 use App\Jobs\UserRecordCount;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -31,6 +32,9 @@ class Kernel extends ConsoleKernel
         })->everyMinute();
         $schedule->call(function () {
             PaymentCount::dispatch();
+        })->everyMinute();
+        $schedule->call(function () {
+            RestaurantFavoritrCount::dispatch();
         })->everyMinute();
     }
 

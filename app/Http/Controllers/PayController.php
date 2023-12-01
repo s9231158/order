@@ -13,6 +13,7 @@ use App\Models\Order_info;
 use App\Models\PaymentCount;
 use App\Models\Restaruant_Total_Money;
 use App\Models\Restaurant;
+use App\Models\ServerMaintenance;
 use App\Models\User;
 use App\Models\User_favorite;
 use App\Models\User_recode;
@@ -642,12 +643,6 @@ class PayController extends Controller
                 $list[] = ['rid' => $i['rid'], 'starttime' => $RestaruantFavoriteList[$I]['starttime'], 'endtime' => $RestaruantFavoriteList[$I]['endtime']];
                 $RestaruantFavoriteList[$I]['list'] = ['rid' => $i['rid']];
             }
-
-            //將各個交易次數放入Paymentlist
-            // $RestaruantFavoriteList[$I]['Count'] = $EveryHourFavoriteCount;
-            // $RestaruantFavoriteList[$I]['created_at'] = Carbon::now();
-            // $RestaruantFavoriteList[$I]['updated_at'] = Carbon::now();
-            // $RestaruantFavoriteList[$I]['updated_at1'] = $a;
             //對起始時間加一小
             $Yesterday = $Yesterday->addHour();
             //對終止時間加一小
@@ -682,10 +677,6 @@ class PayController extends Controller
                 'updated_at' => Carbon::now(),
             ];
         }
-        return $result;
-
-
-
 
         return $RestaruantFavoriteList;
         //存入資料庫

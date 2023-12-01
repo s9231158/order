@@ -2,7 +2,9 @@
 
 namespace App;
 
+use App\Models\Restaurant;
 use Illuminate\Support\Facades\Cache;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class TotalService
 {
@@ -13,7 +15,7 @@ class TotalService
      * @return array
      */
     //名稱有問題
-    public function GetOffsetLimit($request)
+    public static function GetOffsetLimit($request)
     {
         $offset = 0;
         $limit = 20;
@@ -30,15 +32,35 @@ class TotalService
         try {
             $Token = $TokenEmail['Token'];
             $Redistoken = 'Bearer ' . Cache::get($TokenEmail['Email']);
-            if (Cache::has($TokenEmail['Email']) && $Token === $Redistoken) {
+            //有emial 有token 但token錯誤 系統錯誤
+            if (Cache::has($TokenEmail['Email']) && $Token !== null && $Token !== $Redistoken) {
                 Cache::forget($TokenEmail['Email']);
                 return 5;
             }
+            //有email 沒token 重別的裝置登入
+            if (Cache::has($TokenEmail['Email']) && $Token === null) {
+                Cache::forget($TokenEmail['Email']);
+                return 31;
+            }
             return true;
         } catch (\Throwable $e) {
-            return null;
+            return 'err';
         }
 
+    }
+    public static function GetUserInfo()
+    {
+        try {
+            $User = JWTAuth::parseToken()->authenticate();
+            return $User;
+        } catch (\Throwable $e) {
+            return 'err';
 
+        }
+    }
+
+    public static function CheckRestaurantInDatabase($rid)
+    {
+        return Restaurant::where('id', '=', $rid)->count();
     }
 }

@@ -72,6 +72,28 @@ class LoginService implements LoginInterface
             return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
         }
     }
+    public function CheckHasLogin($TokenEmail)
+    {
+        try {
+            $result = TotalService::CheckHasLogin($TokenEmail);
+            if ($result === true) {
+                return $result;
+            }
+            if ($result === 31) {
+                return response()->json(['err' => $this->keys[31], 'message' => $this->err[31]]);
+            }
+            if ($result === 32) {
+                return response()->json(['err' => $this->keys[32], 'message' => $this->err[32]]);
+            }
+            if ($result === 5) {
+                return response()->json(['err' => $this->keys[5], 'message' => $this->err[5]]);
+            } else {
+                return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
+            }
+        } catch (Throwable $e) {
+            return response()->json([$e, 'err' => $this->keys[26], 'message' => $this->err[26]]);
+        }
+    }
     public function LoginCheckAccountPassword($Account)
     {
         try {
@@ -86,22 +108,7 @@ class LoginService implements LoginInterface
         }
     }
 
-    public function CheckHasLogin($TokenEmail)
-    {
-        try {
-            $result = TotalService::CheckHasLogin($TokenEmail);
-            if ($result === true) {
-                return $result;
-            }
-            if ($result === 5) {
-                return response()->json(['err' => $this->keys[5], 'message' => $this->err[5]]);
-            } else {
-                return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
-            }
-        } catch (Throwable $e) {
-            return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
-        }
-    }
+
 
     public function CreatrLoginRecord($RocordInfo)
     {
@@ -112,6 +119,8 @@ class LoginService implements LoginInterface
             if ($LoginRepository === true) {
                 return $LoginRepository;
             }
+            return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
+
         } catch (Throwable $e) {
             return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
         }
@@ -121,9 +130,6 @@ class LoginService implements LoginInterface
     public function CreateToken()
     {
         try {
-
-
-
             $user = User::find(Auth::id());
             $id = $user->id;
             $name = $user->name;
@@ -139,7 +145,8 @@ class LoginService implements LoginInterface
 
             $token = JWTAuth::claims($userClaims)->fromUser($user);
             Cache::put($email, $token, 60 * 60 * 24);
-            return true;
+            return response()->json(['err' => $this->keys[0], 'message' => $this->err[0], 'token' => $token]);
+
         } catch (Throwable $e) {
             return response()->json([$e, 'err' => $this->keys[26], 'message' => $this->err[26]]);
 

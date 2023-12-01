@@ -5,6 +5,7 @@ use App\Http\Controllers\RestaurantController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -20,7 +21,6 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-
 Route::controller(UserController::class)->group(function () {
     Route::post('/login', 'login');
     Route::get('/logout', 'logout');
@@ -30,24 +30,25 @@ Route::controller(UserController::class)->group(function () {
     Route::post('/user/favorite', 'favorite')->middleware('token');
     Route::get('/user/favorite', 'getfavorite')->middleware('token');
     Route::delete('/user/favorite', 'deletefavorite')->middleware('token');
-    Route::get('/user/history','history')->middleware('token');
-});
+    Route::get('/user/history', 'history')->middleware('token');
+})->middleware('Maintenance');
+
 Route::controller(RestaurantController::class)->group(function () {
     Route::get('/restaurant', 'restaurant');
-    Route::post('/restaurant/comment','comment')->middleware('token');
-    Route::get('/restaurant/comment','getcomment');
+    Route::post('/restaurant/comment', 'comment')->middleware('token');
+    Route::get('/restaurant/comment', 'getcomment');
     Route::get('/menu', 'menu');
-    Route::get('test','test');
-});
+    Route::get('test', 'test');
+})->middleware('Maintenance');
 
-Route::controller(PayController::class)->group(function(){
-Route::post('/otherpay','otherpay')->middleware('token');
-Route::get('/tt','tt');
-Route::post('/qwe','qwe');
-Route::get('order','order')->middleware('token');
-Route::get('orderinfo','orderinfo')->middleware('token');
-Route::post('money','AddWalletMoney');
-Route::post('/moneycallback','moneycallback');
-Route::get('wallet','wallet')->middleware('token');
-Route::get('apple','apple');
-});
+Route::controller(PayController::class)->group(function () {
+    Route::post('/otherpay', 'otherpay')->middleware('token');
+    Route::get('/tt', 'tt');
+    Route::post('/qwe', 'qwe');
+    Route::get('order', 'order')->middleware('token');
+    Route::get('orderinfo', 'orderinfo')->middleware('token');
+    Route::post('money', 'AddWalletMoney');
+    Route::post('/moneycallback', 'moneycallback');
+    Route::get('wallet', 'wallet')->middleware('token');
+    Route::get('apple', 'apple')->middleware('Maintenance');
+})->middleware('Maintenance');

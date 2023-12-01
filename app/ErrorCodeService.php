@@ -35,17 +35,21 @@ class ErrorCodeService
         27 => '訂單總金額錯誤',
         28 => '超過最大我的最愛筆數',
         29 => '請重新登入',
-        30 => '菜單資訊有誤'
+        30 => '菜單資訊有誤',
+        31 => '就裝置以登出,請重新登入',
+        32 => '登入時間過久,請重新登入',
     ];
     private $keys = [];
     public function __construct()
     {
         $this->keys = array_keys($this->err);
     }
-   public function GetErrCode(){
-    return $this->err;
-   }
-   public function GetErrKey(){
-    return $this->keys;
-   }
+    public function GetErrCode()
+    {
+        return $this->err;
+    }
+    public function GetErrKey()
+    {
+        return $this->keys;
+    }
 }
