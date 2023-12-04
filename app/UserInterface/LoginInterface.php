@@ -7,9 +7,11 @@ interface LoginInterface
     public function MakeKey($Email, $Ip);
     public function LoginCheckTooManyAttempts($MakeKeyInfo);
     public function LoginCheckAccountPassword($Account);
-    public function CreateToken();
+    public function CreateToken($email);
     public function CheckHasLogin($TokenEmail);
     public function CreatrLoginRecord($RocordInfo);
+
+
 }
 
 

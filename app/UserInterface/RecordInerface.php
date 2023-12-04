@@ -5,6 +5,8 @@ interface RecordInerface
 {
     public function Validator($Request);
     public function GetRecord($offset, $limit);
+    public function GetOffsetLimit($OffsetLimit);
+
 }
 
 

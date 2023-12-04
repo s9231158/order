@@ -41,15 +41,17 @@ class UserController extends Controller
     private $err = [];
     private $keys = [];
 
-    private $CreatrService = [];
-    private $LoginService = [];
-    private $LogoutService = [];
-    private $RecordService = [];
-    private $FavoriteService = [];
-    public function __construct(ErrorCodeService $ErrorCodeService, LoginInterface $LoginService, CreateInrerface $CreatrService, LogoutInterface $LogoutService, RecordInerface $RecordService, FavoriteInterface $FavoriteService)
+    private $CreatrService;
+    private $LoginService;
+    private $LogoutService;
+    private $RecordService;
+    private $FavoriteService;
+    private $TotalService;
+    public function __construct(ErrorCodeService $ErrorCodeService, LoginInterface $LoginService, CreateInrerface $CreatrService, LogoutInterface $LogoutService, RecordInerface $RecordService, FavoriteInterface $FavoriteService, TotalService $TotalService)
     {
         $this->keys = $ErrorCodeService->GetErrKey();
         $this->err = $ErrorCodeService->GetErrCode();
+        $this->TotalService = $TotalService;
         $this->CreatrService = $CreatrService;
         $this->LoginService = $LoginService;
         $this->LogoutService = $LogoutService;
@@ -59,7 +61,7 @@ class UserController extends Controller
     public function create(Request $request)
     {
         try {
-            //驗證
+            //驗證輸入格式
             $validator = $this->CreatrService->CreateValidator($request);
             if ($validator != null) {
                 return $validator;
@@ -134,15 +136,16 @@ class UserController extends Controller
             $RocordInfo = [
                 'login' => $login,
                 'ip' => $ip,
-                'device' => $device
+                'device' => $device,
+                'email' => $email,
             ];
             $CreatrLoginRecord = $this->LoginService->CreatrLoginRecord($RocordInfo);
             if ($CreatrLoginRecord !== true) {
                 return $CreatrLoginRecord;
             }
 
-            //製作token
-            $CreateToken = $this->LoginService->CreateToken();
+            //製作token 
+            $CreateToken = $this->LoginService->CreateToken($email);
             if ($CreateToken == !true) {
                 $CreateToken;
             }
@@ -172,7 +175,7 @@ class UserController extends Controller
     public function profile()
     {
         try {
-            $user = TotalService::GetUserInfo();
+            $user = $this->TotalService->GetUserInfo();
             $email = $user->email;
             $name = $user->name;
             $address = $user->address;
@@ -196,7 +199,7 @@ class UserController extends Controller
             }
             //設定limit與offset預設
             $OffsetLimit = ['offset' => $request->offset, 'limit' => $request->limit];
-            $OffsetLimit = TotalService::GetOffsetLimit($OffsetLimit);
+            $OffsetLimit = $this->RecordService->GetOffsetLimit($OffsetLimit);
             $offset = $OffsetLimit['offset'];
             $limit = $OffsetLimit['limit'];
             //取得登入紀錄
@@ -238,67 +241,42 @@ class UserController extends Controller
             }
             return response()->json(['err' => $this->keys[0], 'message' => $this->err[0]]);
         } catch (Exception $e) {
-            return response()->json(['err' => $this->err['26']]);
+            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
         } catch (Throwable) {
-            return response()->json(['err' => $this->err['26']]);
+            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
         }
     }
 
     public function getfavorite(Request $request)
     {
-        //規則
-        $ruls = [
-            'limit' => ['regex:/^[0-9]+$/'],
-            'offset' => ['regex:/^[0-9]+$/'],
-        ];
-        //什麼錯誤報什麼錯誤訊息
-        $rulsMessage = [
-            'limit.regex' => $this->err['23'],
-            'offset.regex' => $this->err['23']
-        ];
         try {
 
-            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
-            //驗證失敗回傳錯誤訊息
-            if ($validator->fails()) {
-                return response()->json(['err' => $validator->errors()->first()]);
+            //驗證輸入數值
+            $Validator = $this->FavoriteService->LimitOffsetValidator($request);
+            if ($Validator !== true) {
+                return $Validator;
             }
-            if ($request->limit === null) {
-                $limit = 20;
-            } else {
-                $limit = $request->limit;
-            }
-            if ($request->offset === null) {
-                $offset = 0;
-            } else {
-                $offset = $request->offset;
-            }
-            $user = User::find(Auth::id());
-            $count = $user->favorite()->count();
-            $result = $user->favorite()->select('rid', 'totalpoint', 'countpoint', 'title', 'img')->limit($limit)->offset($offset)->orderBy('user_favorites.created_at', 'desc')->get()->map(function ($item) {
-                unset($item->pivot);
-                return $item;
-            });
-            return response()->json(['err' => $this->err['0'], 'count' => $count, 'data' => $result]);
+
+            //設定limit與offset預設
+            $OffsetLimit = ['offset' => $request->offset, 'limit' => $request->limit];
+            $OffsetLimit = $this->FavoriteService->GetOffsetLimit($OffsetLimit);
+
+            //取的我的最愛
+            $UserFavorite = $this->FavoriteService->GetUserFavorite($OffsetLimit);
+            return response()->json(['err' => $this->keys['0'], 'message' => $this->err[0], 'count' => $UserFavorite->original['count'], 'data' => $UserFavorite->original['data']]);
         } catch (Exception $e) {
-            return response()->json([$e, 'err' => $this->err['26']]);
-        } catch (Throwable) {
-            return response()->json(['err' => $this->err['26']]);
+            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
+        } catch (Throwable $e) {
+            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
         }
     }
 
     public function deletefavorite(Request $request)
     {
         try {
-            $rid = $request->rid;
-            $user = User::find(Auth::id());
-            $myfavorite = $user->favorite()->where('rid', '=', $rid)->count();
-            if ($myfavorite) {
-                $user->favorite()->detach($rid);
-                return response()->json(['err' => $this->err['0']]);
-            } else {
-                return response()->json(['err' => $this->err['16']]);
-            }
+            $Rid = $request->rid;
+            $Deletefavorite = $this->FavoriteService->DeleteFavorite($Rid);
+            return $Deletefavorite;
         } catch (PDOException) {
             return response()->json(['err' => $this->err['1']]);
         } catch (Exception) {

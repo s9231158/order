@@ -4,29 +4,71 @@ namespace App;
 
 use App\Models\Restaurant;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use App\ErrorCodeService;
 
 class TotalService
 {
 
-    /**
-     * 設定offsey&limit預設值,直接把客戶端requset丟進來
-     *
-     * @return array
-     */
-    //名稱有問題
-    public static function GetOffsetLimit($request)
+    private $ErrorCodeService;
+    private $err = [];
+    private $keys = [];
+    public function __construct(ErrorCodeService $ErrorCodeService)
+    {
+        $this->ErrorCodeService = $ErrorCodeService;
+        $this->err = $this->ErrorCodeService->GetErrCode();
+        $this->keys = $this->ErrorCodeService->GetErrKey();
+    }
+
+    public function LimitOffsetValidator($Request)
+    {
+        try { //規則
+            $ruls = [
+                'limit' => ['regex:/^[0-9]+$/'],
+                'offset' => ['regex:/^[0-9]+$/'],
+            ];
+            //什麼錯誤報什麼錯誤訊息
+            $rulsMessage = [
+                'limit.regex' => $this->keys['23'],
+                'offset.regex' => $this->keys['23']
+            ];
+            $validator = Validator::make($Request->all(), $ruls, $rulsMessage);
+            //驗證失敗回傳錯誤訊息
+            if ($validator->fails()) {
+                return response()->json(['err' => $validator->errors()->first(), 'message' => $this->err[$validator->errors()->first()]]);
+            }
+            return true;
+        } catch (\Throwable $e) {
+            return $e;
+        }
+    }
+
+    public function GetOffsetLimit($OffsetLimit)
     {
         $offset = 0;
         $limit = 20;
-        if ($request['offset'] != null) {
-            $offset = $request['offset'];
+        if ($OffsetLimit['offset'] != null) {
+            $offset = $OffsetLimit['offset'];
         }
-        if ($request['limit'] != null) {
-            $limit = $request['limit'];
+        if ($OffsetLimit['limit'] != null) {
+            $limit = $OffsetLimit['limit'];
         }
         return array('offset' => $offset, 'limit' => $limit);
     }
+
+    public function GetUserInfo()
+    {
+        try {
+            $User = JWTAuth::parseToken()->authenticate();
+            return $User;
+        } catch (\Throwable $e) {
+            return $e;
+        }
+
+    }
+
+
     public static function CheckHasLogin($TokenEmail)
     {
         try {
@@ -48,16 +90,16 @@ class TotalService
         }
 
     }
-    public static function GetUserInfo()
-    {
-        try {
-            $User = JWTAuth::parseToken()->authenticate();
-            return $User;
-        } catch (\Throwable $e) {
-            return 'err';
+    // public static function GetUserInfo()
+    // {
+    //     try {
+    //         $User = JWTAuth::parseToken()->authenticate();
+    //         return $User;
+    //     } catch (\Throwable $e) {
+    //         return 'err';
 
-        }
-    }
+    //     }
+    // }
 
     public static function CheckRestaurantInDatabase($rid)
     {

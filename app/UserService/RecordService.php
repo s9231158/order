@@ -5,6 +5,7 @@ use App\ErrorCodeService;
 use App\UserInterface\RecordInerface;
 use App\UserRepository\RecordRepository;
 use Illuminate\Support\Facades\Validator;
+use App\TotalService;
 
 class RecordService implements RecordInerface
 {
@@ -13,12 +14,14 @@ class RecordService implements RecordInerface
     private $err = [];
     private $keys = [];
     private $RecordRepository;
-    public function __construct(ErrorCodeService $ErrorCodeService, RecordRepository $RecordRepository)
+    private $TotalService;
+    public function __construct(ErrorCodeService $ErrorCodeService, RecordRepository $RecordRepository, TotalService $TotalService)
     {
         $this->ErrorCodeService = $ErrorCodeService;
         $this->err = $this->ErrorCodeService->GetErrCode();
         $this->keys = $this->ErrorCodeService->GetErrKey();
         $this->RecordRepository = $RecordRepository;
+        $this->TotalService = $TotalService;
 
     }
     public function Validator($Request)
@@ -51,7 +54,15 @@ class RecordService implements RecordInerface
 
     }
 
-
+    public function GetOffsetLimit($OffsetLimit)
+    {
+        try {
+            $GetOffsetLimit = $this->TotalService->GetOffsetLimit($OffsetLimit);
+            return $GetOffsetLimit;
+        } catch (\Throwable $e) {
+            return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
+        }
+    }
 
 
 

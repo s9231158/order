@@ -26,10 +26,12 @@ class LoginService implements LoginInterface
     private $key = '';
     private $ruls = [];
     private $rulsMessage = [];
-    public function __construct(LoginRepository $LoginRepository, ErrorCodeService $ErrorCodeService)
+    private $TotalService;
+    public function __construct(LoginRepository $LoginRepository, ErrorCodeService $ErrorCodeService, TotalService $TotalService)
     {
         $this->LoginRepository = $LoginRepository;
         $this->ErrorCodeService = $ErrorCodeService;
+        $this->TotalService = $TotalService;
         $this->err = $this->ErrorCodeService->GetErrCode();
         $this->keys = $this->ErrorCodeService->GetErrKey();
         $this->ruls = [
@@ -60,6 +62,11 @@ class LoginService implements LoginInterface
         }
     }
 
+
+    public function MakeKey($Email, $Ip)
+    {
+        return Str::lower($Email) . '|' . $Ip;
+    }
     public function LoginCheckTooManyAttempts($MakeKeyInfo)
     {
         try {
@@ -113,8 +120,6 @@ class LoginService implements LoginInterface
     public function CreatrLoginRecord($RocordInfo)
     {
         try {
-            $UserId = Auth::id();
-            $RocordInfo['uid'] = $UserId;
             $LoginRepository = $this->LoginRepository->CreatrLoginRecord($RocordInfo);
             if ($LoginRepository === true) {
                 return $LoginRepository;
@@ -122,15 +127,15 @@ class LoginService implements LoginInterface
             return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
 
         } catch (Throwable $e) {
-            return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
+            return response()->json([$e, 'err' => $this->keys[26], 'message' => $this->err[26]]);
         }
 
     }
 
-    public function CreateToken()
+    public function CreateToken($email)
     {
         try {
-            $user = User::find(Auth::id());
+            $user = $this->LoginRepository->GetUserInfo($email);
             $id = $user->id;
             $name = $user->name;
             $email = $user->email;
@@ -149,14 +154,10 @@ class LoginService implements LoginInterface
 
         } catch (Throwable $e) {
             return response()->json([$e, 'err' => $this->keys[26], 'message' => $this->err[26]]);
-
         }
 
     }
-    public function MakeKey($Email, $Ip)
-    {
-        return Str::lower($Email) . '|' . $Ip;
-    }
+
 }
 
 
