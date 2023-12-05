@@ -15,7 +15,8 @@ return new class extends Migration
     {
         Schema::create('fail_order_counts', function (Blueprint $table) {
             $table->id();
-            $table->integer('count');
+            $table->integer('failcount');
+            $table->integer('totalcount');
             $table->dateTime('starttime');
             $table->dateTime('endtime');
             $table->timestamps();

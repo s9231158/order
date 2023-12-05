@@ -13,12 +13,13 @@ use App\Models\User;
 
 class UserService
 {
-    private $token;
-    private $userinfo;
-    public function __construct($token)
+
+    // private $userinfo;
+    private $TotalService;
+    public function __construct(TotalService $TotalService)
     {
-        $this->token = $token;
-        $this->userinfo = JWTAuth::parseToken()->authenticate();
+        $this->TotalService = $TotalService;
+        // $this->userinfo = JWTAuth::parseToken()->authenticate();
     }
 
     public function UserCheck()
@@ -49,23 +50,22 @@ class UserService
      * @param array $request
      * @return array
      */
-    public function GetUserWallet($request)
+    public function GetUserWallet($request, $Type)
     {
         try {
+            $this->UserInfo = $this->UserInfo();
             //預設offser&limit
-            $TotalService = new TotalService;
-            $result = $TotalService->GetOffsetLimit($request);
+            $result = $this->TotalService->GetOffsetLimit($request);
             $offset = $result['offset'];
             $limit = $result['limit'];
-
             //取出充值紀錄資料
-            if ($request['type'] === 'in') {
+            if ($Type === 'in') {
                 $WalletRecord = Wallet_Record::select('type', 'in', 'wallet__records.created_at')->join('payments', 'wallet__records.pid', '=', 'payments.id')->where("uid", '=', $this->userinfo->id)->where('in', '!=', 'NULL')->offset($offset)->limit($limit)->orderBy('wallet__records.created_at', 'desc')->get();
                 $Count = $WalletRecord->count();
                 return array('count' => $Count, 'wallet' => $WalletRecord);
             }
             //取出支紀錄資料
-            if ($request['type'] === 'out') {
+            if ($Type === 'out') {
                 $WalletRecord = Wallet_Record::select('type', 'out', 'oid', 'wallet__records.created_at')->join('payments', 'wallet__records.pid', '=', 'payments.id')->where("uid", '=', $this->userinfo->id)->where('out', '!=', 'NULL')->offset($offset)->limit($limit)->orderBy('wallet__records.created_at', 'desc')->get();
                 $Count = $WalletRecord->count();
                 return array('count' => $Count, 'wallet' => $WalletRecord);

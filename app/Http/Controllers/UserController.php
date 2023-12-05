@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\CustomerService;
 use App\ErrorCodeService;
+use App\Service\RestaurantHistoryService;
+use App\Service\RestaurantService;
 use App\TotalService;
 use App\UserInterface\FavoriteInterface;
 use App\UserInterface\LoginInterface;
@@ -47,7 +49,10 @@ class UserController extends Controller
     private $RecordService;
     private $FavoriteService;
     private $TotalService;
-    public function __construct(ErrorCodeService $ErrorCodeService, LoginInterface $LoginService, CreateInrerface $CreatrService, LogoutInterface $LogoutService, RecordInerface $RecordService, FavoriteInterface $FavoriteService, TotalService $TotalService)
+    private $RestaurantService;
+
+    private $RecordHistoryService;
+    public function __construct(ErrorCodeService $ErrorCodeService, LoginInterface $LoginService, CreateInrerface $CreatrService, LogoutInterface $LogoutService, RecordInerface $RecordService, FavoriteInterface $FavoriteService, TotalService $TotalService, RestaurantHistoryService $RecordHistoryService, RestaurantService $RestaurantService)
     {
         $this->keys = $ErrorCodeService->GetErrKey();
         $this->err = $ErrorCodeService->GetErrCode();
@@ -57,6 +62,8 @@ class UserController extends Controller
         $this->LogoutService = $LogoutService;
         $this->RecordService = $RecordService;
         $this->FavoriteService = $FavoriteService;
+        $this->RecordHistoryService = $RecordHistoryService;
+        $this->RestaurantService = $RestaurantService;
     }
     public function create(Request $request)
     {
@@ -288,45 +295,44 @@ class UserController extends Controller
 
     public function history(Request $request)
     {
-        //規則
-        $ruls = [
-            'limit' => ['regex:/^[0-9]+$/'],
-            'offset' => ['regex:/^[0-9]+$/'],
-        ];
-        //什麼錯誤報什麼錯誤訊息
-        $rulsMessage = [
-            'limit.regex' => $this->err['23'],
-            'offset.regex' => $this->err['23']
-        ];
         try {
+            //Validator
+            $Validator = $this->TotalService->LimitOffsetValidator($request);
+            if ($Validator !== true) {
+                return $Validator;
+            }
 
-            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
-            //驗證失敗回傳錯誤訊息
-            if ($validator->fails()) {
-                return response()->json(['err' => $validator->errors()->first()]);
-            }
-            if ($request->limit === null) {
-                $limit = 20;
-            } else {
-                $limit = $request->limit;
-            }
-            if ($request->offset === null) {
-                $offset = 0;
-            } else {
-                $offset = $request->offset;
-            }
-            $user = User::find(Auth::id());
-            $count = $user->history()->count();
-            $result = $user->history()->select('rid', 'totalpoint', 'countpoint', 'title', 'img')->limit($limit)->offset($offset)->orderBy('restaurant_histories.updated_at', 'desc')->get()->map(function ($item) {
-                unset($item->pivot);
-                return $item;
-            });
+            //取得OffsetLimit
+            $OffsetLimit = ['offset' => $request->offset, 'limit' => $request->limit];
+            $OffsetLimit = $this->TotalService->GetOffsetLimit($OffsetLimit);
 
-            return response()->json(['err' => $this->err['0'], 'count' => $count, 'data' => $result]);
+            //從token取出個人資料
+            $UserInfo = $this->TotalService->GetUserInfo();
+            $UserId[] = $UserInfo['id'];
+
+            //取出歷史紀錄餐廳id
+            $RestaurantHistoryId = $this->RecordHistoryService->GetRestaurantHistory($UserId, $OffsetLimit)->toArray();
+
+            //將歷史紀錄餐廳id轉換為Array
+            $ArrayRestaurantHistoryId = array_map(function ($item) {
+                return $item['rid'];
+            }, $RestaurantHistoryId);
+
+            //取出歷史紀錄餐廳的資訊
+            $RestaurantInfo = $this->RestaurantService->GetRestaurantInfo($ArrayRestaurantHistoryId);
+
+            //取出回傳筆數
+            $RestaurantInfoCount = $RestaurantInfo->count();
+
+            //取出回傳需要資料
+            $NeedRestaurantInfo = $RestaurantInfo->map->only(['id', 'totalpoint', 'countpoint', 'title', 'img']);
+
+            //回傳
+            return response()->json(['message' => $this->keys[0], 'err' => $this->err['0'], 'count' => $RestaurantInfoCount, 'data' => $NeedRestaurantInfo]);
         } catch (Exception $e) {
-            return $e;
+            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
         } catch (Throwable $e) {
-            return response()->json([$e, 'err' => $this->err['26']]);
+            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
         }
     }
 

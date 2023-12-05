@@ -9,6 +9,6 @@ class Fail_Order_Count extends Model
 {
     protected $table = 'fail_order_counts';
 
-    protected $fillable = ['count', 'starttime', 'endtime'];
+    protected $fillable = ['failcount', 'starttime', 'endtime', 'totalcount'];
     use HasFactory;
 }

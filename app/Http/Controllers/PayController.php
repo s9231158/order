@@ -13,11 +13,14 @@ use App\Models\Order_info;
 use App\Models\PaymentCount;
 use App\Models\Restaruant_Total_Money;
 use App\Models\Restaurant;
+use App\Models\Restaurant_history;
 use App\Models\ServerMaintenance;
 use App\Models\User;
 use App\Models\User_favorite;
 use App\Models\User_recode;
 use App\Models\Wallet_Record;
+use App\Service\OrderService;
+use App\Service\UserWallerService;
 use App\TotalService;
 use App\UserService;
 use Exception;
@@ -37,35 +40,71 @@ use Throwable;
 
 class PayController extends Controller
 {
+
+    private $err = [
+        0 => '成功',
+        1 => '資料填寫與規格不符',
+        2 => '必填資料未填',
+        3 => 'email已註冊',
+        4 => '電話已註冊',
+        5 => '系統錯誤,請重新登入',
+        6 => '重複登入,另一裝置請重複登入',
+        7 => '短時間內登入次數過多',
+        8 => '帳號或密碼錯誤',
+        9 => 'token錯誤',
+        10 => '未登入',
+        11 => '餐廳已停用',
+        12 => '請在訂餐後24內評論',
+        13 => '未訂餐請勿評論',
+        14 => '已評論過',
+        15 => '重複新增我的最愛',
+        16 => '查無此餐廳',
+        17 => '餐廳未營業',
+        18 => '錢包餘額不足',
+        19 => '查無此訂單',
+        20 => '金額錯誤',
+        21 => '請勿混單',
+        22 => '同張訂單內請選擇同餐廳餐點',
+        23 => '無效的範圍',
+        24 => '查無此餐點',
+        25 => '餐點已停用',
+        26 => '系統錯誤',
+        27 => '訂單總金額錯誤',
+        28 => '超過最大我的最愛筆數',
+        29 => '請重新登入',
+        30 => '菜單資訊有誤',
+        31 => '就裝置以登出,請重新登入',
+        32 => '登入時間過久,請重新登入',
+    ];
     private $payment = [
         'ecpay' => 2,
         'local' => 1,
     ];
-    private $err = [
-        '0' => 0, //成功
-        '1' => 1, //資料填寫與規格不符
-        '2' => 2, //必填資料未填
-        '3' => 3, //email已註冊
-        '4' => 4, //電話已註冊
-        '5' => 5, //系統錯誤,請重新登入
-        '6' => 6, //已登入
-        '7' => 7, //短時間內登入次數過多
-        '8' => 8, //帳號或密碼錯誤
-        '9' => 9, //token錯誤
-        '11' => 11, //餐廳已停用
-        '15' => 15, //重複新增我的最愛
-        '16' => 16, //查無此餐廳
-        '17' => 17, //餐廳未營業
-        '18' => 18, //錢包餘額不足
-        '19' => 19, //查無此訂單
-        '20' => 20, //金額錯誤
-        '22' => 22, //同張訂單內請選擇同餐廳餐點
-        '23' => 23, //無效的範圍
-        '24' => 24, //查無此餐點
-        '25' => 25, //餐點已停用
-        '26' => 26, //系統錯誤
-        '30' => 30 //菜單資訊有誤
-    ];
+    // private $err = [
+    //     '0' => 0, //成功
+    //     '1' => 1, //資料填寫與規格不符
+    //     '2' => 2, //必填資料未填
+    //     '3' => 3, //email已註冊
+    //     '4' => 4, //電話已註冊
+    //     '5' => 5, //系統錯誤,請重新登入
+    //     '6' => 6, //已登入
+    //     '7' => 7, //短時間內登入次數過多
+    //     '8' => 8, //帳號或密碼錯誤
+    //     '9' => 9, //token錯誤
+    //     '11' => 11, //餐廳已停用
+    //     '15' => 15, //重複新增我的最愛
+    //     '16' => 16, //查無此餐廳
+    //     '17' => 17, //餐廳未營業
+    //     '18' => 18, //錢包餘額不足
+    //     '19' => 19, //查無此訂單
+    //     '20' => 20, //金額錯誤
+    //     '22' => 22, //同張訂單內請選擇同餐廳餐點
+    //     '23' => 23, //無效的範圍
+    //     '24' => 24, //查無此餐點
+    //     '25' => 25, //餐點已停用
+    //     '26' => 26, //系統錯誤
+    //     '30' => 30 //菜單資訊有誤
+    // ];
     private $traslate = [
         'Monday' => 1,
         'Tuesday' => 2,
@@ -75,6 +114,17 @@ class PayController extends Controller
         'Saturday' => 6,
         'Sunday' => 7
     ];
+    private $OrderService;
+    private $UserService;
+    private $TotalService;
+    private $UserWallerService;
+    public function __construct(OrderService $OrderService, UserService $UserService, TotalService $TotalService, UserWallerService $UserWallerService)
+    {
+        $this->UserService = $UserService;
+        $this->OrderService = $OrderService;
+        $this->TotalService = $TotalService;
+        $this->UserWallerService = $UserWallerService;
+    }
     public function otherpay(Request $request)
     {
         //規則
@@ -486,11 +536,10 @@ class PayController extends Controller
     {
         try {
             $err = new ErrorCodeService;
-            $errr = $err->err;
+            $errr = $this->err;
             $token = $request->header('Authorization');
             //取得UserId
-            $UserService = new UserService($token);
-            $UserInfo = $UserService->UserInfo();
+            $UserInfo = $this->TotalService->GetUserInfo();
             $UserId = $UserInfo['id'];
             //送api至Ecpay
             $EcpayService = new EcpayService();
@@ -535,7 +584,7 @@ class PayController extends Controller
     {
         try {
             $err = new ErrorCodeService;
-            $errr = $err->err;
+            $errr = $this->err;
             //取得交易編號
             $merchant_trade_no = $request->merchant_trade_no;
             $TradeDate = Carbon::createFromFormat('d/M/y H:m:s', $request->trade_date);
@@ -543,17 +592,7 @@ class PayController extends Controller
             //取的該交易編號Ecpay Collection
             $DatabaseService = new DatabaseService();
             $Ecpay = $DatabaseService->GetEcpayCollection($merchant_trade_no);
-            $ecpay1 = Ecpay::find($request['merchant_trade_no']);
-            $ecpayback = new Ecpay_back([
-                'merchant_id' => $request->merchant_id,
-                'trade_date' => $TradeDate,
-                'check_mac_value' => $request->check_mac_value,
-                'rtn_code' => $request->rtn_code,
-                'rtn_msg' => $request->rtn_msg,
-                'amount' => $request->amount,
-                'payment_date' => $PaymentDate,
-            ]);
-            $ecpay1->ecpayback()->save($ecpayback);
+
             //將EcapyCallBack存至Ecpay關聯資料庫
             $Ecpayback = new Ecpay_back([
                 'merchant_id' => $request->merchant_id,
@@ -570,25 +609,29 @@ class PayController extends Controller
                 //取得此Ecpay關聯的WalletRecord
                 $Record = $DatabaseService->GetRecordCollenction($Ecpay);
                 //將關聯walletRecord status改成0
-                $Record[0]->status = '0';
+                $Record[0]->status = '成功';
                 //將更新後WalletRecord儲存
                 $DatabaseService->SaveEcpayRecord($Ecpay, $Record);
+                $UserInfo = $this->TotalService->GetUserInfo();
+                $UserId = $UserInfo['id'];
+                $Money = $request->amount;
+                $AddWallet = $this->UserWallerService->AddWallet($Money, $UserId);
             } else {
                 $Record = $DatabaseService->GetRecordCollenction($Ecpay);
-                $Record[0]->status = '1';
+                $Record[0]->status = '失敗';
                 $DatabaseService->SaveEcpayRecord($Ecpay, $Record);
             }
         } catch (Exception $e) {
             return $e;
         } catch (Throwable $e) {
-            return response()->json([$e, 'err' => '26', 'message' => $errr['26']]);
+            return response()->json(['err' => array_search('系統錯誤', $errr), 'message' => $errr['26']]);
         }
     }
     public function wallet(Request $request)
     {
         //取得總ErrCode
         $err = new ErrorCodeService;
-        $errr = $err->err;
+        $errr = $this->err;
         //規則
         $ruls = [
             'limit' => ['regex:/^[0-9]+$/'],
@@ -605,82 +648,59 @@ class PayController extends Controller
             if ($validator->fails()) {
                 return response()->json(['err' => $validator->errors()->first(), 'message' => $errr[$validator->errors()->first()]]);
             }
+
             //取的抓取範圍&類型
-            $Range = ['type' => $request->type, 'offset' => $request->offset, 'limit' => $request->limit];
+            $Range = ['offset' => $request->offset, 'limit' => $request->limit];
+            $Type = $request->type;
             //取得該使用者Service
             $token = $request->header('Authorization');
-            $UserService = new UserService($token);
             //取得該使用者WalletRecord
-            $WalletRecord = $UserService->GetUserWallet($Range);
+            $WalletRecord = $this->UserService->GetUserWallet($Range, $Type);
             return response()->json(['err' => array_search('成功', $errr), 'message' => $errr[0], 'count' => $WalletRecord['count'], 'data' => $WalletRecord['wallet']]);
         } catch (Exception $e) {
-            return response()->json(['err' => array_search('系統錯誤', $errr), 'message' => $errr[26]]);
+            return response()->json([$e, 'err' => array_search('系統錯誤', $errr), 'message' => $errr[26]]);
         }
 
     }
 
     public function apple()
     {
+
         //取出昨天00:00
         $Start = Carbon::yesterday();
         //取出今天00:00
         $End = Carbon::today();
         //取出昨天至今天所有訂單資料
-        $RestaruantFavorite = User_favorite::select('rid', 'created_at')->whereBetween('created_at', [$Start, $End])->get();
+        $Order = $this->OrderService->GetSomeTimeOrder($Start, $End);
         $Yesterday = Carbon::yesterday();
         $YesterdayAddHour = Carbon::yesterday()->addHour();
-        $RestaruantFavoriteList = [];
-        $list = [];
+        $Orderlist = [];
         for ($I = 0; $I < 24; $I++) {
-            // //取得每小時的ecpay支付方式
-            $EveryHourFavoriteCount = $RestaruantFavorite->whereBetween('created_at', [$Yesterday, $YesterdayAddHour]);
-            //將開始時間放入Paymentlist
-            $RestaruantFavoriteList[$I]['starttime'] = $Yesterday->copy();
-            //將失敗時間放入Paymentlist
-            $RestaruantFavoriteList[$I]['endtime'] = $YesterdayAddHour->copy();
-            $RestaruantFavoriteList[$I]['list'] = [];
-            foreach ($EveryHourFavoriteCount as $i) {
-                $list[] = ['rid' => $i['rid'], 'starttime' => $RestaruantFavoriteList[$I]['starttime'], 'endtime' => $RestaruantFavoriteList[$I]['endtime']];
-                $RestaruantFavoriteList[$I]['list'] = ['rid' => $i['rid']];
-            }
+            // //取得每小時失敗的所有訂單
+            $EveryHourFailOrder = $Order->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])->where('status', '=', '失敗');
+            // //取得每小時的所有訂單
+            $EveryHourOrder = $Order->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])->where('status', '=', '失敗');
+            //取得每小時失敗訂單次數
+            $EveryHourFailOrderCount = $EveryHourFailOrder->count();
+            //取得每小時訂單次數
+            $EveryHourOrderCount = $EveryHourOrder->count();
+            //將開始時間放入Orderlist
+            $Orderlist[$I]['starttime'] = $Yesterday->copy();
+            //將結束時間放入Orderlist
+            $Orderlist[$I]['endtime'] = $YesterdayAddHour->copy();
+            //將失敗訂單次數放入Orderlist
+            $Orderlist[$I]['failcount'] = $EveryHourFailOrderCount;
+            $Orderlist[$I]['totalcount'] = $EveryHourOrderCount;
+            $Orderlist[$I]['created_at'] = Carbon::now();
+            $Orderlist[$I]['updated_at'] = Carbon::now();
             //對起始時間加一小
             $Yesterday = $Yesterday->addHour();
             //對終止時間加一小
             $YesterdayAddHour = $YesterdayAddHour->addHour();
         }
-
-        //將相同時間與相同餐廳金額加總
-        $sums = [];
-        foreach ($list as $item) {
-            $key = $item['starttime'] . $item['rid'];
-            if (array_key_exists($key, $sums)) {
-                $sums[$key]['Count'] += 1;
-            } else {
-                $sums[$key] = [
-                    'rid' => $item['rid'],
-                    'Count' => 1,
-                    'starttime' => $item['starttime'],
-                    'endtime' => $item['endtime'],
-                ];
-            }
-        }
-
-        //將結果整理後存進資料庫
-        $result = [];
-        foreach ($sums as $item) {
-            $result[] = [
-                'rid' => $item['rid'],
-                'count' => $item['Count'],
-                'starttime' => $item['starttime'],
-                'endtime' => $item['endtime'],
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),
-            ];
-        }
-
-        return $RestaruantFavoriteList;
         //存入資料庫
-        // PaymentCount::insert($Paymentlist);
+        Fail_Order_Count::insert($Orderlist);
+
     }
 
 }
