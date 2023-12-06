@@ -11,6 +11,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
 use App\Models\Order;
 use App\Models\Restaruant_Total_Money;
+
 class RestaruantMoneyTotal implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -42,6 +43,7 @@ class RestaruantMoneyTotal implements ShouldQueue
         $OnlyGoodRestaruantTotalOrder = $RestaruantTotalOrder->where('status', '=', '成功');
         $Date = [];
         $TotalOrder = [];
+        $Timelist = [];
         $Yesterday = Carbon::yesterday();
         $YesterdayAddHour = Carbon::yesterday()->addHour();
         for ($I = 0; $I < 24; $I++) {
@@ -52,6 +54,12 @@ class RestaruantMoneyTotal implements ShouldQueue
             $Date[$I]['starttime'] = $Yesterday->copy();
             //取出昨天01:00
             $Date[$I]['endtime'] = $YesterdayAddHour->copy();
+            $Timelist[] = [
+                'starttime' => $Date[$I]['starttime'],
+                'endtime' => $Date[$I]['endtime'],
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ];
 
             foreach ($EveryHourOnlyGoodRestaruantOrder as $key => $value) {
                 $TotalOrder[] = ['rid' => $value['rid'], 'money' => $value['total'], 'starttime' => $Date[$I]['starttime'], 'endtime' => $Date[$I]['endtime']];
@@ -62,6 +70,7 @@ class RestaruantMoneyTotal implements ShouldQueue
             $YesterdayAddHour = $YesterdayAddHour->addHour();
 
         }
+
         //將相同時間與相同餐廳金額加總
         $sums = [];
         foreach ($TotalOrder as $item) {
@@ -89,7 +98,20 @@ class RestaruantMoneyTotal implements ShouldQueue
                 'updated_at' => Carbon::now(),
             ];
         }
+        $ResultTimelist = [];
+        foreach ($Timelist as $elementA) {
+            $exists = false;
+            foreach ($result as $elementB) {
+                if ($elementA['starttime'] === $elementB['starttime'] && $elementA['endtime'] === $elementB['endtime']) {
+                    $exists = true;
+                }
+            }
+            if (!$exists) {
+                $ResultTimelist[] = $elementA;
+            }
+        }
         //存入資料庫
         Restaruant_Total_Money::insert($result);
+        Restaruant_Total_Money::insert($ResultTimelist);
     }
 }

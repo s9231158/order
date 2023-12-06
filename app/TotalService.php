@@ -69,7 +69,7 @@ class TotalService
     }
 
 
-    public static function CheckHasLogin($TokenEmail)
+    public function CheckHasLogin($TokenEmail)
     {
         try {
             $Token = $TokenEmail['Token'];
@@ -104,5 +104,15 @@ class TotalService
     public static function CheckRestaurantInDatabase($rid)
     {
         return Restaurant::where('id', '=', $rid)->count();
+    }
+
+    public function CheckToken($Token)
+    {
+        try {
+            JWTAuth::parseToken()->authenticate();
+            return true;
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 }

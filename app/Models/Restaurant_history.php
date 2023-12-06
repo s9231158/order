@@ -11,6 +11,7 @@ class Restaurant_history extends Model
     protected $fillable = [
         'uid',
         'rid',
-        
+        'created_at',
+        'updated_at'
     ];
 }

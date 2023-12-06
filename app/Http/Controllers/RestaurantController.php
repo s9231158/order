@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\ErrorCodeService;
 use App\Models\Restaurant;
 use App\Models\Restaurant_comment;
+use App\Models\Restaurant_history;
+use App\Service\OrderService;
+use App\Service\RestaurantHistoryService;
 use App\Service\RestaurantService;
 use App\TotalService;
 use Illuminate\Http\Request;
@@ -74,8 +77,12 @@ class RestaurantController extends Controller
     private $RestaurantService;
     private $err = [];
     private $keys = [];
-    public function __construct(TotalService $TotalService, ErrorCodeService $ErrorCodeService, RestaurantService $RestaurantService)
+    private $RestaurantHistoryService;
+    private $OrderService;
+    public function __construct(OrderService $OrderService, RestaurantHistoryService $RestaurantHistoryService, TotalService $TotalService, ErrorCodeService $ErrorCodeService, RestaurantService $RestaurantService)
     {
+        $this->OrderService = $OrderService;
+        $this->RestaurantHistoryService = $RestaurantHistoryService;
         $this->RestaurantService = $RestaurantService;
         $this->TotalService = $TotalService;
         $this->ErrorCodeService = $ErrorCodeService;
@@ -104,50 +111,11 @@ class RestaurantController extends Controller
 
             //今天星期幾
             $Today = date('l');
+
             //取得餐廳info並打亂順序
             $RestaurantInfo = $this->RestaurantService->GetRestaurantInfoOffsetLimit($OffsetLimit, $Today)->shuffle();
             $RestaurantInfoCount = $RestaurantInfo->count();
             return response()->json(['message' => $this->keys[0], 'err' => $this->err['0'], 'count' => $RestaurantInfoCount, 'data' => $RestaurantInfo]);
-
-
-            //old
-            // //規則
-            // $ruls = [
-            //     'limit' => ['regex:/^[0-9]+$/'],
-            //     'offset' => ['regex:/^[0-9]+$/'],
-            // ];
-            // //什麼錯誤報什麼錯誤訊息
-            // $rulsMessage = [
-            //     'limit.regex' => $this->err['23'],
-            //     'offset.regex' => $this->err['23']
-            // ];
-            // try {
-            //     //設定limit與offset預設
-            //     if ($request->limit === null) {
-            //         $limit = 20;
-            //     } else {
-            //         $limit = $request->limit;
-            //     }
-            //     if ($request->offset === null) {
-            //         $offset = 0;
-            //     } else {
-            //         $offset = $request->offset;
-            //     }
-            //     $validator = Validator::make($request->all(), $ruls, $rulsMessage);
-            //     //驗證失敗回傳錯誤訊息
-            //     if ($validator->fails()) {
-            //         return response()->json(['err' => $validator->errors()->first()]);
-            //     }
-            //     //取得今天星期幾
-            //     $day = Carbon::now()->format('l');
-            //     //把英文星期幾轉換成星期幾阿拉伯數字
-            //     $daynumber = $this->traslate[$day];
-            //     $Restaurant = Restaurant::select('id', 'title', 'img', 'totalpoint', 'countpoint')->where('openday', 'like', '%' . $daynumber . '%')->offset($offset)->limit($limit)->get();
-            //     $count = Restaurant::where('openday', 'like', '%' . $daynumber . '%')->get()->count();
-            //     return response()->json(['err' => 0, 'count' => $count, 'data' => $Restaurant]);
-
-
-
 
         } catch (Exception) {
             return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
@@ -175,69 +143,60 @@ class RestaurantController extends Controller
             'rid.required' => $this->err['2'],
         ];
         try {
-            //預設limit&offset
-            if ($request->limit == null) {
-                $limit = '20';
-            } else {
-                $limit = $request->limit;
-            }
-            if ($request->offset === null) {
-                $offset = '0';
-            } else {
-                $offset = $request->offset;
-            }
+
+            //new
             //驗證參輸入數
             $validator = Validator::make($request->all(), $ruls, $rulsMessage);
             if ($validator->fails()) {
                 return response()->json(['err' => $validator->errors()->first()]);
             }
-            $rid = $request->rid;
+
+            //取得OffsetLimit
+            $OffsetLimit = ['limit' => $request['limit'], 'offset' => $request['offset']];
+            $OffsetLimit = $this->TotalService->GetOffsetLimit($OffsetLimit);
+            $Offset = $OffsetLimit['offset'];
+            $Limit = $OffsetLimit['limit'];
+
+            $Rid = $request->rid;
+            $ArrayRid[] = $request->rid;
 
             //是否有該餐廳
-            $hasRestraunt = Restaurant::where('id', '=', $rid)->count();
-            if ($hasRestraunt != 1) {
-                return response()->json(['err' => $this->err['16']]);
+            $HasRestraunt = $this->RestaurantService->CheckRestaurantInDatabase($Rid);
+            if ($HasRestraunt != 1) {
+                return response()->json(['err' => $this->keys['16'], 'message' => $this->err[16]]);
             }
 
-            //取得餐廳資訊&菜單
-            $menufactors = Factorise::Setmenu($rid);
-            $menu = $menufactors->getmenu($offset, $limit);
-            $Restaurantinfo = Restaurant::select('title', 'info', 'openday', 'opentime', 'closetime', 'img', 'address', 'totalpoint', 'countpoint')->where('id', '=', $rid)->get();
+            //取得該餐廳的實例
+            $Restaurant = Factorise::Setmenu($Rid);
 
+            //使用該餐廳實例取的菜單
+            $Menu = $Restaurant->getmenu($Offset, $Limit);
+            $Restaurantinfo = $this->RestaurantService->GetRestaurantinfo($ArrayRid);
+            $Restaurantinfo = $Restaurantinfo->map->only(['title', 'info', 'openday', 'opentime', 'closetime', 'img', 'address', 'totalpoint', 'countpoint']);
 
-            //如果有登出
-            $clienttoken = $request->header('Authorization');
-            if ($clienttoken) {
-                $usertoken = JWTAuth::parseToken()->authenticate();
-                $email = $usertoken->email;
-                $redietoken = 'Bearer ' . Cache::get($email);
-                //檢查session
-                if (Cache::has($email) && $clienttoken !== $redietoken) {
-                    Cache::forget($email);
-                    return response()->json(['1', 'err' => $this->err['28']]);
-                }
-                if (!Cache::has($email)) {
-                    return response()->json(['err' => $this->err['28']]);
-                }
-                //取得token使用者資料
-                $usertoken = JWTAuth::parseToken()->authenticate();
-                $userid = $usertoken->id;
-                $user = User::find($userid);
-                $now = Carbon::now();
-                //存入使用者瀏覽餐廳歷史紀錄
-                $already = $user->history()->where('rid', '=', $rid)->count();
-                //如果沒瀏覽過就新增,否則更新創建時間
-                if ($already === 0) {
-                    $user->history()->attach($rid);
-                } else {
-                    $user->history()->select('restaurant_histories.created_at')->where('rid', '=', $rid)->update(['restaurant_histories.created_at' => $now]);
-                }
+            //檢查是否有登入
+            $Token = $request->header('Authorization');
+            if ($Token) {
+                $TokenCheck = $this->TotalService->CheckToken($Token);
             }
-            return response()->json(['err' => $this->err['0'], 'data' => $Restaurantinfo[0], 'menu' => $menu]);
+
+            //檢查是否Token正確
+            if ($TokenCheck === false) {
+                return response()->json(['err' => $this->keys['5'], 'message' => $this->err[5]]);
+            }
+
+            //取得使用者資料
+            $UserInfo = $this->TotalService->GetUserInfo();
+            $UserId = $UserInfo->id;
+
+            //是否已存在資料庫,有的話更新時間,沒有則建立紀錄
+            $this->RestaurantHistoryService->UpdateOrCreateHistory($UserId, $Rid);
+
+            return response()->json(['err' => $this->keys['0'], 'message' => $this->err[0], 'data' => $Restaurantinfo[0], 'menu' => $Menu]);
         } catch (TokenInvalidException $e) {
-            return response()->json(['err' => $this->err['26']]);
+            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
         } catch (Throwable $e) {
-            return response()->json(['err' => $this->err['26']]);
+            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
         }
     }
     public function comment(Request $request)
@@ -263,6 +222,33 @@ class RestaurantController extends Controller
             if ($validator->fails()) {
                 return response()->json(['err' => $validator->errors()->first()]);
             }
+
+            //是否有該餐廳
+            $Rid = $request->rid;
+            $HasRestaurant = $this->RestaurantService->CheckRestaurantInDatabase($Rid);
+            if ($HasRestaurant != 1) {
+                return response()->json(['err' => $this->keys['16'], 'message' => $this->err[16]]);
+            }
+
+            //評論者是否在此訂餐廳訂過餐且訂單狀態是成功且記錄在24小時內
+            $UserInfo = $this->TotalService->GetUserInfo();
+            $UserId = $UserInfo['id'];
+            $Yesterday = Carbon::yesterday();
+            $Order = $this->OrderService->GetOrder($UserId);
+            $Has24HOrder = $Order->where('rid', '=', $Rid)->where('ordertime', '>', $Yesterday)->where('status', '=', '成功')->count();
+            if ($Has24HOrder < 1) {
+                return response()->json(['err' => $this->keys['12'], 'message' => $this->err[12]]);
+            }
+
+            //評論者是否第一次對該餐廳評論
+$
+            return 12;
+
+
+
+
+
+
             $rid = $request->rid;
             $comment = $request->comment;
             $point = $request->point;

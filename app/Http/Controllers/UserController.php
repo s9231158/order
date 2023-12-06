@@ -285,11 +285,11 @@ class UserController extends Controller
             $Deletefavorite = $this->FavoriteService->DeleteFavorite($Rid);
             return $Deletefavorite;
         } catch (PDOException) {
-            return response()->json(['err' => $this->err['1']]);
+            return response()->json(['err' => $this->keys['1'], 'message' => $this->err[1]]);
         } catch (Exception) {
-            return response()->json(['err' => $this->err['26']]);
+            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
         } catch (Throwable) {
-            return response()->json(['err' => $this->err['26']]);
+            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
         }
     }
 
@@ -311,7 +311,7 @@ class UserController extends Controller
             $UserId[] = $UserInfo['id'];
 
             //取出歷史紀錄餐廳id
-            $RestaurantHistoryId = $this->RecordHistoryService->GetRestaurantHistory($UserId, $OffsetLimit)->toArray();
+            $RestaurantHistoryId = $this->RecordHistoryService->GetRestaurantHistoryOption($UserId, $OffsetLimit)->toArray();
 
             //將歷史紀錄餐廳id轉換為Array
             $ArrayRestaurantHistoryId = array_map(function ($item) {

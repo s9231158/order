@@ -51,6 +51,12 @@ class RestaurantFavoritrCount implements ShouldQueue
             //將失敗時間放入Paymentlist
             $RestaruantFavoriteList[$I]['endtime'] = $YesterdayAddHour->copy();
             $RestaruantFavoriteList[$I]['list'] = [];
+            $Timelist[] = [
+                'starttime' => $RestaruantFavoriteList[$I]['starttime'],
+                'endtime' => $RestaruantFavoriteList[$I]['endtime'],
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ];
             foreach ($EveryHourFavoriteCount as $i) {
                 $list[] = ['rid' => $i['rid'], 'starttime' => $RestaruantFavoriteList[$I]['starttime'], 'endtime' => $RestaruantFavoriteList[$I]['endtime']];
                 $RestaruantFavoriteList[$I]['list'] = ['rid' => $i['rid']];
@@ -60,7 +66,6 @@ class RestaurantFavoritrCount implements ShouldQueue
             //對終止時間加一小
             $YesterdayAddHour = $YesterdayAddHour->addHour();
         }
-
         //將相同時間與相同餐廳次數加總
         $sums = [];
         foreach ($list as $item) {
@@ -76,7 +81,6 @@ class RestaurantFavoritrCount implements ShouldQueue
                 ];
             }
         }
-
         //將結果整理後存進資料庫
         $result = [];
         foreach ($sums as $item) {
@@ -89,9 +93,21 @@ class RestaurantFavoritrCount implements ShouldQueue
                 'updated_at' => Carbon::now(),
             ];
         }
-
+        $ResultTimelist = [];
+        foreach ($Timelist as $elementA) {
+            $exists = false;
+            foreach ($result as $elementB) {
+                if ($elementA['starttime'] === $elementB['starttime'] && $elementA['endtime'] === $elementB['endtime']) {
+                    $exists = true;
+                }
+            }
+            if (!$exists) {
+                $ResultTimelist[] = $elementA;
+            }
+        }
         //存入資料庫
         RestaruantFavoritCount::insert($result);
+        RestaruantFavoritCount::insert($ResultTimelist);
     }
 }
 

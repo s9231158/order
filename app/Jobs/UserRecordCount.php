@@ -45,18 +45,23 @@ class UserRecordCount implements ShouldQueue
         //取出昨天01:00
         $To = Carbon::yesterday()->addHour();
         $I = 0;
+        $list = [];
         for ($I = 0; $I < 24; $I++) {
             $Count = $UserRecodeInfo->whereBetween('created_at', [$Go, $To])->count();
-            //儲存資料
-            $Login_Total = new Login_Total();
-            $Login_Total->count = $Count;
-            $Login_Total->starttime = $Go;
-            $Login_Total->endtime = $To;
-            $Login_Total->save();
+            //取出資料
+            $list[] = [
+                'count' => $Count,
+                'starttime' => $Go->copy(),
+                'endtime' => $To->copy(),
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now()
+            ];
             //取出昨天00:00
             $Go = $Go->addHour();
             //取出昨天01:00
             $To = $To->addHour();
         }
+        //存至資料庫
+        Login_Total::insert($list);
     }
 }

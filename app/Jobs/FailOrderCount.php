@@ -50,9 +50,9 @@ class FailOrderCount implements ShouldQueue
         $YesterdayAddHour = Carbon::yesterday()->addHour();
         $Orderlist = [];
         for ($I = 0; $I < 24; $I++) {
-            // //取得每小時失敗的所有訂單
+            //取得每小時失敗的所有訂單
             $EveryHourFailOrder = $Order->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])->where('status', '=', '失敗');
-            // //取得每小時的所有訂單
+            //取得每小時的所有訂單
             $EveryHourOrder = $Order->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])->where('status', '=', '失敗');
             //取得每小時失敗訂單次數
             $EveryHourFailOrderCount = $EveryHourFailOrder->count();

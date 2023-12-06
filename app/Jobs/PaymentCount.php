@@ -43,9 +43,9 @@ class PaymentCount implements ShouldQueue
         $YesterdayAddHour = Carbon::yesterday()->addHour();
         $Paymentlist = [];
         for ($I = 0; $I < 24; $I++) {
-            // //取得每小時的ecpay支付方式
+            //取得每小時的ecpay支付方式
             $EveryHourEcpayCount = $WalletRecord->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])->wherenotnull('out')->where('pid', '=', 1)->count();
-            // //取得每小時的本地支付方式
+            //取得每小時的本地支付方式
             $EveryHourLocalPayCount = $WalletRecord->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])->wherenotnull('out')->where('pid', '=', 2)->count();
             //將開始時間放入Paymentlist
             $Paymentlist[$I]['starttime'] = $Yesterday->copy();

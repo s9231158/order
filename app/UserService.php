@@ -53,28 +53,28 @@ class UserService
     public function GetUserWallet($request, $Type)
     {
         try {
-            $this->UserInfo = $this->UserInfo();
+            $UserInfo = $this->UserInfo();
             //預設offser&limit
             $result = $this->TotalService->GetOffsetLimit($request);
             $offset = $result['offset'];
             $limit = $result['limit'];
             //取出充值紀錄資料
             if ($Type === 'in') {
-                $WalletRecord = Wallet_Record::select('type', 'in', 'wallet__records.created_at')->join('payments', 'wallet__records.pid', '=', 'payments.id')->where("uid", '=', $this->userinfo->id)->where('in', '!=', 'NULL')->offset($offset)->limit($limit)->orderBy('wallet__records.created_at', 'desc')->get();
+                $WalletRecord = Wallet_Record::select('type', 'in', 'wallet__records.created_at')->join('payments', 'wallet__records.pid', '=', 'payments.id')->where("uid", '=', $UserInfo->id)->where('in', '!=', 'NULL')->offset($offset)->limit($limit)->orderBy('wallet__records.created_at', 'desc')->get();
                 $Count = $WalletRecord->count();
                 return array('count' => $Count, 'wallet' => $WalletRecord);
             }
             //取出支紀錄資料
             if ($Type === 'out') {
-                $WalletRecord = Wallet_Record::select('type', 'out', 'oid', 'wallet__records.created_at')->join('payments', 'wallet__records.pid', '=', 'payments.id')->where("uid", '=', $this->userinfo->id)->where('out', '!=', 'NULL')->offset($offset)->limit($limit)->orderBy('wallet__records.created_at', 'desc')->get();
+                $WalletRecord = Wallet_Record::select('type', 'out', 'oid', 'wallet__records.created_at')->join('payments', 'wallet__records.pid', '=', 'payments.id')->where("uid", '=', $UserInfo->id)->where('out', '!=', 'NULL')->offset($offset)->limit($limit)->orderBy('wallet__records.created_at', 'desc')->get();
                 $Count = $WalletRecord->count();
                 return array('count' => $Count, 'wallet' => $WalletRecord);
             }
             //取出充值與支付紀錄
             $WalletRecord = [];
             $Count = 0;
-            $WalletRecord['in'] = Wallet_Record::select('type', 'in', 'wallet__records.created_at')->join('payments', 'wallet__records.pid', '=', 'payments.id')->where("uid", '=', $this->userinfo->id)->where('in', '!=', 'NULL')->offset($offset)->limit($limit)->orderBy('wallet__records.created_at', 'desc')->get();
-            $WalletRecord['out'] = Wallet_Record::select('type', 'out', 'wallet__records.created_at')->join('payments', 'wallet__records.pid', '=', 'payments.id')->where("uid", '=', $this->userinfo->id)->where('out', '!=', 'NULL')->offset($offset)->limit($limit)->orderBy('wallet__records.created_at', 'desc')->get();
+            $WalletRecord['in'] = Wallet_Record::select('type', 'in', 'wallet__records.created_at')->join('payments', 'wallet__records.pid', '=', 'payments.id')->where("uid", '=', $UserInfo->id)->where('in', '!=', 'NULL')->offset($offset)->limit($limit)->orderBy('wallet__records.created_at', 'desc')->get();
+            $WalletRecord['out'] = Wallet_Record::select('type', 'out', 'wallet__records.created_at')->join('payments', 'wallet__records.pid', '=', 'payments.id')->where("uid", '=', $UserInfo->id)->where('out', '!=', 'NULL')->offset($offset)->limit($limit)->orderBy('wallet__records.created_at', 'desc')->get();
             $Count += $WalletRecord['in']->count();
             $Count += $WalletRecord['out']->count();
             return array('count' => $Count, 'wallet' => $WalletRecord);

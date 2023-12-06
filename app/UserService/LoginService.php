@@ -82,7 +82,7 @@ class LoginService implements LoginInterface
     public function CheckHasLogin($TokenEmail)
     {
         try {
-            $result = TotalService::CheckHasLogin($TokenEmail);
+            $result = $this->TotalService->CheckHasLogin($TokenEmail);
             if ($result === true) {
                 return $result;
             }
