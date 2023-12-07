@@ -22,11 +22,13 @@ class Localmenu implements RestaurantInterface
     }
     public function Menuenable($order) //修改改為傳入id陣列
     {
-        $menu  = 0;
-        foreach ($order as $v) {
-            $menu += Tasty_menu::where('id', '=', $v['id'])->where('enable', '=', 0)->count();
+        $Menu = Local_menu::wherein('id', $order)->get();
+        $OrderCount = count($order);
+        $NotEnableCount = $Menu->where('enable', '=', 1)->count();
+        if ($OrderCount !== $NotEnableCount) {
+            return false;
         }
-        return $menu;
+        return true;
     }
     public function Restrauntenable($rid)
     {
@@ -47,7 +49,7 @@ class Localmenu implements RestaurantInterface
 
     public function Change($order, $order2)
     {
-        $uid2 = (string)Str::uuid();
+        $uid2 = (string) Str::uuid();
 
         $targetData = [
             'order_id' => $uid2,
@@ -79,7 +81,7 @@ class Localmenu implements RestaurantInterface
 
     public function Sendapi($order)
     {
-        $client  =  new  Client();
+        $client = new Client();
         $res = $client->request('POST', 'http://neil.xincity.xyz:9998/tasty/api/order', ['json' => $order]);
         $goodres = $res->getBody();
         $s = json_decode($goodres);

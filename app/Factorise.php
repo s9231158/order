@@ -14,20 +14,31 @@ class Factorise
     {
         return match ($rid) {
             '1' => (function () {
-                return new OSmenu();
-            })(),
+                    return new OSmenu();
+                })(),
             '2' => (function () {
-                return new TAmenu();
-            })(),
+                    return new TAmenu();
+                })(),
             '3' => (function () {
-                return new SHmenu();
-            })(),
+                    return new SHmenu();
+                })(),
             '4' => (function () {
-                return new Localmenu();
-            })(),
+                    return new Localmenu();
+                })(),
             default => (function () {
-                return new Other();
-            })(),
+                    return new Other();
+                })(), 1 => (function () {
+                    return new OSmenu();
+                })(),
+            2 => (function () {
+                    return new TAmenu();
+                })(),
+            3 => (function () {
+                    return new SHmenu();
+                })(),
+            4 => (function () {
+                    return new Localmenu();
+                })(),
         };
     }
 }

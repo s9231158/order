@@ -4,23 +4,16 @@ namespace App\Http\Controllers;
 
 use App\ErrorCodeService;
 use App\Factorise;
-use App\Jobs\ProcessPodcast;
 use App\Models\Ecpay;
-use App\Models\Fail_Order_Count;
-use App\Models\Login_Total;
 use App\Models\Order;
 use App\Models\Order_info;
-use App\Models\PaymentCount;
-use App\Models\Restaruant_Total_Money;
 use App\Models\RestaruantFavoritCount;
 use App\Models\Restaurant;
-use App\Models\Restaurant_history;
-use App\Models\ServerMaintenance;
 use App\Models\User;
 use App\Models\User_favorite;
-use App\Models\User_recode;
 use App\Models\Wallet_Record;
 use App\Service\OrderService;
+use App\Service\RestaurantService;
 use App\Service\UserWallerService;
 use App\Service\WalletRecordService;
 use App\TotalService;
@@ -37,76 +30,49 @@ use App\CheckMacValueService;
 use App\EcpayService;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Ecpay_back;
-use PhpParser\JsonDecoder;
 use Throwable;
 
 class PayController extends Controller
 {
-
-    private $err = [
-        0 => '成功',
-        1 => '資料填寫與規格不符',
-        2 => '必填資料未填',
-        3 => 'email已註冊',
-        4 => '電話已註冊',
-        5 => '系統錯誤,請重新登入',
-        6 => '重複登入,另一裝置請重複登入',
-        7 => '短時間內登入次數過多',
-        8 => '帳號或密碼錯誤',
-        9 => 'token錯誤',
-        10 => '未登入',
-        11 => '餐廳已停用',
-        12 => '請在訂餐後24內評論',
-        13 => '未訂餐請勿評論',
-        14 => '已評論過',
-        15 => '重複新增我的最愛',
-        16 => '查無此餐廳',
-        17 => '餐廳未營業',
-        18 => '錢包餘額不足',
-        19 => '查無此訂單',
-        20 => '金額錯誤',
-        21 => '請勿混單',
-        22 => '同張訂單內請選擇同餐廳餐點',
-        23 => '無效的範圍',
-        24 => '查無此餐點',
-        25 => '餐點已停用',
-        26 => '系統錯誤',
-        27 => '訂單總金額錯誤',
-        28 => '超過最大我的最愛筆數',
-        29 => '請重新登入',
-        30 => '菜單資訊有誤',
-        31 => '就裝置以登出,請重新登入',
-        32 => '登入時間過久,請重新登入',
-    ];
+    // private $err = [
+    //     0 => '成功',
+    //     1 => '資料填寫與規格不符',
+    //     2 => '必填資料未填',
+    //     3 => 'email已註冊',
+    //     4 => '電話已註冊',
+    //     5 => '系統錯誤,請重新登入',
+    //     6 => '重複登入,另一裝置請重複登入',
+    //     7 => '短時間內登入次數過多',
+    //     8 => '帳號或密碼錯誤',
+    //     9 => 'token錯誤',
+    //     10 => '未登入',
+    //     11 => '餐廳已停用',
+    //     12 => '請在訂餐後24內評論',
+    //     13 => '未訂餐請勿評論',
+    //     14 => '已評論過',
+    //     15 => '重複新增我的最愛',
+    //     16 => '查無此餐廳',
+    //     17 => '餐廳未營業',
+    //     18 => '錢包餘額不足',
+    //     19 => '查無此訂單',
+    //     20 => '金額錯誤',
+    //     21 => '請勿混單',
+    //     22 => '同張訂單內請選擇同餐廳餐點',
+    //     23 => '無效的範圍',
+    //     24 => '查無此餐點',
+    //     25 => '餐點已停用',
+    //     26 => '系統錯誤',
+    //     27 => '訂單總金額錯誤',
+    //     28 => '超過最大我的最愛筆數',
+    //     29 => '請重新登入',
+    //     30 => '菜單資訊有誤',
+    //     31 => '就裝置以登出,請重新登入',
+    //     32 => '登入時間過久,請重新登入',
+    // ];
     private $payment = [
         'ecpay' => 2,
         'local' => 1,
     ];
-    // private $err = [
-    //     '0' => 0, //成功
-    //     '1' => 1, //資料填寫與規格不符
-    //     '2' => 2, //必填資料未填
-    //     '3' => 3, //email已註冊
-    //     '4' => 4, //電話已註冊
-    //     '5' => 5, //系統錯誤,請重新登入
-    //     '6' => 6, //已登入
-    //     '7' => 7, //短時間內登入次數過多
-    //     '8' => 8, //帳號或密碼錯誤
-    //     '9' => 9, //token錯誤
-    //     '11' => 11, //餐廳已停用
-    //     '15' => 15, //重複新增我的最愛
-    //     '16' => 16, //查無此餐廳
-    //     '17' => 17, //餐廳未營業
-    //     '18' => 18, //錢包餘額不足
-    //     '19' => 19, //查無此訂單
-    //     '20' => 20, //金額錯誤
-    //     '22' => 22, //同張訂單內請選擇同餐廳餐點
-    //     '23' => 23, //無效的範圍
-    //     '24' => 24, //查無此餐點
-    //     '25' => 25, //餐點已停用
-    //     '26' => 26, //系統錯誤
-    //     '30' => 30 //菜單資訊有誤
-    // ];
     private $traslate = [
         'Monday' => 1,
         'Tuesday' => 2,
@@ -121,19 +87,31 @@ class PayController extends Controller
     private $TotalService;
     private $UserWallerService;
     private $WalletRecordService;
+    private $ErrorCodeService;
 
-    public function __construct(WalletRecordService $WalletRecordService, OrderService $OrderService, UserService $UserService, TotalService $TotalService, UserWallerService $UserWallerService)
+
+
+    //new
+    private $err;
+    private $keys;
+    private $RestaurantService;
+    public function __construct(RestaurantService $RestaurantService, ErrorCodeService $ErrorCodeService, WalletRecordService $WalletRecordService, OrderService $OrderService, UserService $UserService, TotalService $TotalService, UserWallerService $UserWallerService)
     {
+        $this->RestaurantService = $RestaurantService;
+        $this->ErrorCodeService = $ErrorCodeService;
         $this->UserService = $UserService;
         $this->OrderService = $OrderService;
         $this->TotalService = $TotalService;
         $this->UserWallerService = $UserWallerService;
         $this->WalletRecordService = $WalletRecordService;
+        $this->err = $ErrorCodeService->GetErrCode();
+        $this->keys = $ErrorCodeService->GetErrKey();
     }
     public function otherpay(Request $request)
     {
         //規則
         $ruls = [
+            'payment' => ['required', 'in:ecpay,local'],
             'name' => ['required', 'max:25', 'min:3'],
             'address' => ['required', 'min:10', 'max:25'],
             'phone' => ['required', 'string', 'size:9', 'regex:/^[0-9]+$/'],
@@ -147,6 +125,8 @@ class PayController extends Controller
         ];
         //什麼錯誤報什麼錯誤訊息
         $rulsMessage = [
+            'payment' => $this->err['2'],
+            'payment.in' => $this->err['33'],
             'name.required' => $this->err['2'],
             'name.max' => $this->err['1'],
             'name.min' => $this->err['1'],
@@ -173,122 +153,163 @@ class PayController extends Controller
             'orders.*.price.required' => $this->err['1'],
             'orders.*.price.regex' => $this->err['1'],
         ];
-        $validator = Validator::make($request->all(), $ruls, $rulsMessage);
-        //如果有錯回報錯誤訊息
-        if ($validator->fails()) {
-            return response()->json(['err' => $validator->errors()->first()]);
-        }
-        $address = $request->address;
-        $phone = $request->phone;
-        $totalprice = $request->totalprice;
-        $orders1 = $request->orders;
-        $rid = $orders1[0]['rid'];
-        $ridString = strval($rid);
+        // $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+        // //如果有錯回報錯誤訊息
+        // if ($validator->fails()) {
+        //     return response()->json(['err' => $validator->errors()->first()]);
+        // }
+        // $address = $request->address;
+        // $phone = $request->phone;
+        // $totalprice = $request->totalprice;
+        // $orders1 = $request->orders;
+        // $rid = $orders1[0]['rid'];
+        // $ridString = strval($rid);
 
         try {
-            //是否有該餐廳
-            foreach ($orders1 as $order) {
-                $hasRestraunt = Restaurant::where('id', '=', $order['rid'])->count();
-                if ($hasRestraunt != 1) {
-                    return response()->json(['err' => $this->err['16']]);
-                }
+            //new            
+            //如果有錯回報錯誤訊息
+            $Validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            if ($Validator->fails()) {
+                return response()->json(['err' => $Validator->errors()->first()]);
             }
-            //檢查菜單金額名稱id是否與店家一致
-            $Factorise = Factorise::Setmenu($ridString);
-            $Menucorrect = $Factorise->Menucorrect($orders1);
-            if ($Menucorrect === false) {
-                return response()->json(['err' => $this->err['30']]);
+
+            //取出Order內所有rid           
+            $Order = $request->orders;
+            $AllOrderRid = array_column($Order, 'rid');
+
+            //訂單內餐廳是否都一致
+            $OrderRid[] = $Order[0]['rid'];
+            $OrderSameCount = array_diff($AllOrderRid, $OrderRid);
+            if ($OrderSameCount !== []) {
+                return response()->json(['err' => $this->keys[22], 'message' => $this->err[22]]);
             }
+
+            //餐廳是否存在且啟用
+            $Rid = $Order[0]['rid'];
+            $HasRestaurant = $this->RestaurantService->CheckRestaurantInDatabase($Rid);
+            if (!$HasRestaurant) {
+                return response()->json(['err' => $this->keys[16], 'message' => $this->err[16]]);
+            }
+
             //訂單總金額是否正確
-            $realtotalprice = 0;
-            foreach ($orders1 as $a) {
-                $realtotalprice += $a['price'] * $a['quanlity'];
-                //是否有該餐廳
-                $hasrestaurant = Restaurant::where('id', '=', $rid)->count();
-                if ($hasrestaurant === 0) {
-                    return response()->json(['err' => $this->err['16']]);
-                }
-                //訂單是否都來自同一間餐廳
-                if ($a['rid'] != $rid) {
-                    return response()->json(['err' => $this->err['22']]);
-                }
-            }
-            if ($realtotalprice != $totalprice) {
-                return response()->json(['err' => $this->err['20']]);
-            }
-            $usertoken = JWTAuth::parseToken()->authenticate();
-            $userid = $usertoken->id;
-            $user = User::find($userid);
-            $wallet = $user->wallet()->get();
-            $balance = $wallet[0]['balance'];
-            //錢包餘額是否大於totoprice
-            if ($request->payment == 'local') {
-                if ($balance <= $realtotalprice) {
-                    return response()->json(['err' => $this->err['18']]);
-                }
+            $TotalPrice = $request->totalprice;
+            $OrderCollection = collect($Order);
+            $RealTotalPrice = $OrderCollection->sum('price');
+            if ($TotalPrice !== $RealTotalPrice) {
+                return response()->json(['err' => $this->keys[20], 'message' => $this->err[20]]);
             }
 
-            //餐點餐廳今天是否有營業
-            $day = Carbon::now()->format('l');
-            $daynumber = $this->traslate[$day];
-            $Restaurantopen = Restaurant::where('id', '=', $rid)->where('openday', 'like', '%' . $daynumber . '%')->count();
-            if ($Restaurantopen == 0) {
-                return response()->json(['err' => $this->err['17']]);
+            //餐廳今天是否有營業
+            $Today = date('l');
+            $RestaurantOpen = $this->RestaurantService->CheckRestaurantOpen($Rid, $Today);
+            if (!$RestaurantOpen) {
+                return response()->json(['err' => $this->keys[17], 'message' => $this->err[17]]);
             }
-            $Factorise = Factorise::Setmenu($ridString);
+
+            //檢查菜單金額名稱id是否與店家一致
+            $Restaurant = Factorise::Setmenu($Rid);
+            $Menucorrect = $Restaurant->Menucorrect($Order);
+            if ($Menucorrect === false) {
+                return response()->json(['err' => $this->keys[30], 'message' => $this->err[30]]);
+            }
+
             // 餐點是否停用
-            $Menuenable = $Factorise->Menuenable($orders1);
-            if ($Menuenable != 0) {
-                return response()->json(['err' => $this->err['25']]);
-            }
-            //餐廳是否停用
-            $Restrauntenable = $Factorise->Restrauntenable($ridString);
-            if ($Restrauntenable != 0) {
-                return response()->json(['err' => $this->err['11']]);
+            $ALLMenuId = array_column($Order, 'id');
+            $Menuenable = $Restaurant->Menuenable($ALLMenuId);
+            if (!$Menuenable) {
+                return response()->json(['err' => $this->keys[25], 'message' => $this->err[25]]);
             }
 
-            //是否有該餐點
-            $Hasmenu = $Factorise->Hasmenu($orders1);
-            // return reset($Hasmenu);
-            $realmenu = $Hasmenu->original[0];
-            $ordermenu = $Hasmenu->original[1];
-            if ($realmenu != $ordermenu) {
-                return response()->json(['err' => $this->err['24']]);
+            // //如果選擇本地付款錢包餘額是否大於totoprice
+            $UserInfo = $this->TotalService->GetUserInfo();
+            $UserId = $UserInfo->id;
+            $UserWalletInfo = $this->UserWallerService->GetWallet($UserId);
+            $UserWalletBalance = $UserWalletInfo['balance'];
+            if ($request->payment == 'local' && $TotalPrice > $UserWalletBalance) {
+                return response()->json(['err' => $this->keys[18], 'message' => $this->err[18]]);
             }
 
-            $Hasapi = Restaurant::where('id', '=', $rid)->where('api', '!=', null)->where('api', '!=', '')->count();
-
-
-
-            if ($Hasapi != 0) {
+            //如果選擇Ecpay且是外面廠商
+            if ($Rid !== 4) {
                 //轉換店家要求api格式
-                $changedata = $Factorise->Change($request, $orders1);
-                if ($changedata === false) {
-                    return response()->json(['err' => $this->err['1']]);
+                $AlreadyData = $Restaurant->Change($request, $Order);
+                if (!$AlreadyData) {
+                    return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
                 }
-
-                //寄送api
-                $Sendapi = $Factorise->Sendapi($changedata);
-                $usertoken = JWTAuth::parseToken()->authenticate();
-                $user = User::find($userid);
-                $userid = $user->id;
-                $now = Carbon::now();
-                $taketime = $request->taketime;
+                //傳送訂單至餐廳Api
+                $Sendapi = $Restaurant->Sendapi($AlreadyData);
             }
-            $now = Carbon::now();
-            $taketime = $request->taketime;
 
-            //存入order資料庫
-            $orderr = new Order([
-                'ordertime' => $now,
-                'taketime' => $taketime,
-                'total' => $totalprice,
-                'phone' => $phone,
-                'address' => $address,
+            //將訂單存入資料庫
+            $Now = now();
+            $Taketime = $request->taketime;
+            $Address = $request->address;
+            $Phone = $request->phone;
+            $Orderinfo = [
+                'ordertime' => $Now,
+                'taketime' => $Taketime,
+                'total' => $TotalPrice,
+                'phone' => $Phone,
+                'address' => $Address,
                 'status' => '付款中',
-                'rid' => $rid,
-            ]);
-            $user->order()->save($orderr);
+                'rid' => $Rid,
+                'uid' => $UserId
+            ];
+            $Oid = $this->OrderService->AddOrder($Orderinfo);
+
+
+            $ItemName = collect($Order)->pluck('name')->implode(',');
+            //將OrderInfoInfo存入資料庫
+            $OrderInfoInfo = array_map(function ($item) {
+                return $item;
+            }, $Order);
+
+
+
+
+
+
+
+
+
+
+            // //如果選擇Ecpay且是外面廠商
+            // $Hasapi = Restaurant::where('id', '=', $Rid)->where('api', '!=', null)->where('api', '!=', '')->count();
+
+            // if ($Hasapi != 0) {
+            //     //轉換店家要求api格式
+            //     $changedata = $Restaurant->Change($request, $Order);
+            //     if ($changedata === false) {
+            //         return response()->json(['err' => $this->err['1']]);
+            //     }
+            //     $Sendapi = $Restaurant->Sendapi($changedata);
+            //     $usertoken = JWTAuth::parseToken()->authenticate();
+            //     $user = User::find($UserId);
+            //     $userid = $user->id;
+            //     $now = Carbon::now();
+            //     $taketime = $request->taketime;
+            // }
+
+
+            // $user = User::find($UserId);
+            // $wallet = $user->wallet()->get();
+            // $now = Carbon::now();
+            // $taketime = $request->taketime;
+            // $address = $request->address;
+            // $phone = $request->phone;
+            //存入order資料庫
+            // $orderr = new Order([
+            //     'ordertime' => $now,
+            //     'taketime' => $taketime,
+            //     'total' => $TotalPrice,
+            //     'phone' => $phone,
+            //     'address' => $address,
+            //     'status' => '付款中',
+            //     'rid' => $Rid,
+            // ]);
+
+            // $user->order()->save($orderr);
+
             //存入orderiofo資料庫
             $orderinfo = new Order_info();
             $reqorder = $request['orders'];
@@ -327,15 +348,18 @@ class PayController extends Controller
             $uid = (string) Str::uuid();
 
             $uuid20Char = substr($uid, 0, 20);
+
             if ($request->payment == 'local') {
                 try {
                     //將user錢包扣款
-                    $wallet[0]->balance -= $totalprice;
+
+                    $wallet[0]->balance -= $TotalPrice;
                     $user->wallet()->saveMany($wallet);
+
                     // 存入wallet record
                     $wrecord = new Wallet_Record([
-                        'out' => $totalprice,
-                        'uid' => $userid,
+                        'out' => $TotalPrice,
+                        'uid' => $UserId,
                         'status' => '成功',
                         'pid' => $this->payment[$request->payment],
                     ]);
@@ -352,6 +376,7 @@ class PayController extends Controller
                     return '訂單失敗';
                 }
             }
+
             $date = Carbon::now()->format('Y/m/d H:i:s');
             $key = '0dd22e31042fbbdd';
             $iv = 'e62f6e3bbd7c2e9d';
@@ -360,7 +385,7 @@ class PayController extends Controller
                 "merchant_trade_no" => $uuid20Char,
                 "merchant_trade_date" => $date,
                 "payment_type" => "aio",
-                "amount" => $totalprice,
+                "amount" => $TotalPrice,
                 "trade_desc" => $userid . '訂餐',
                 "item_name" => $item_name,
                 "return_url" => "http://192.168.83.26:9999/api/qwe",
@@ -374,7 +399,7 @@ class PayController extends Controller
 
             // 存入wallet record
             $wrecord = new Wallet_Record([
-                'out' => $totalprice,
+                'out' => $TotalPrice,
                 'uid' => $userid,
                 'eid' => $uuid20Char,
                 'status' => '交易中',
@@ -384,7 +409,7 @@ class PayController extends Controller
 
             //是否有api  是否響應成功
             if ($Hasapi != 0) {
-                $errcode = $Factorise->Geterr($Sendapi);
+                $errcode = $Restaurant->Geterr($Sendapi);
                 if ($errcode = false) {
                     $wrecord->status = '失敗';
                     $wrecord->save();
@@ -403,10 +428,13 @@ class PayController extends Controller
             $goodres = $res->getBody();
             $s = json_decode($goodres);
             return $s;
+
+
+
         } catch (Exception $e) {
-            return response()->json(['err' => $this->err['26']]);
+            return response()->json([$e, 'err' => $this->err['26']]);
         } catch (Throwable $e) {
-            return response()->json(['err' => $this->err['26']]);
+            return response()->json([$e, 'err' => $this->err['26']]);
         }
     }
 
@@ -705,7 +733,7 @@ class PayController extends Controller
             //對終止時間加一小
             $YesterdayAddHour = $YesterdayAddHour->addHour();
         }
-            //將相同時間與相同餐廳次數加總
+        //將相同時間與相同餐廳次數加總
         $sums = [];
         foreach ($list as $item) {
             $key = $item['starttime'] . $item['rid'];

@@ -15,7 +15,7 @@ class SHmenu implements RestaurantInterface
     {
         $url = 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls' . '?LT=' . $limit . '&PG=' . $offset;
         try {
-            $client  =  new  Client();
+            $client = new Client();
             $res = $client->request('GET', $url);
             $goodres = $res->getBody();
             $s = json_decode($goodres, true);
@@ -38,11 +38,13 @@ class SHmenu implements RestaurantInterface
     }
     public function Menuenable($order) //修改改為傳入id陣列
     {
-        $menu  = 0;
-        foreach ($order as $v) {
-            $menu += Steakhome_menu::where('id', '=', $v['id'])->where('enable', '=', 0)->count();
+        $Menu = Steakhome_menu::wherein('id', $order)->get();
+        $OrderCount = count($order);
+        $NotEnableCount = $Menu->where('enable', '=', 1)->count();
+        if ($OrderCount !== $NotEnableCount) {
+            return false;
         }
-        return $menu;
+        return true;
     }
     public function Restrauntenable($rid)
     {
@@ -63,34 +65,38 @@ class SHmenu implements RestaurantInterface
 
     public function Change($order, $order2)
     {
-        $uid2 = (string)Str::uuid();
+        try {
+            $uid2 = (string) Str::uuid();
+            $targetData = [
+                'OID' => $uid2,
+                'NA' => $order->name,
+                'PH_NUM' => '0' . (string) $order->phone,
+                'TOL_PRC' => $order->totalprice,
+                'LS' => [],
+            ];
 
-        $targetData = [
-            'OID' => $uid2,
-            'NA' => $order->name,
-            'PH_NUM' => '0' . (string) $order->phone,
-            'TOL_PRC' => $order->totalprice,
-            'LS' => [],
-        ];
+            foreach ($order2 as $a) {
+                if (isset($a['description'])) {
+                    $LS = [
+                        'ID' => $a['id'],
+                        'NOTE' => $a['description'],
+                    ];
+                } else {
+                    return false;
+                }
 
-        foreach ($order2 as $a) {
-            if (isset($a['description'])) {
-                $LS = [
-                    'ID' => $a['id'],
-                    'NOTE' => $a['description'],
-                ];
-            } else {
-                return false;
+                $targetData['LS'][] = $LS;
             }
-
-            $targetData['LS'][] = $LS;
+            return $targetData;
+        } catch (\Throwable) {
+            return false;
         }
-        return $targetData;
+
     }
 
     public function Sendapi($order)
     {
-        $client  =  new  Client();
+        $client = new Client();
         $res = $client->request('POST', 'http://neil.xincity.xyz:9998/steak_home/api/mk/order', ['json' => $order]);
         $goodres = $res->getBody();
         $s = json_decode($goodres);
@@ -107,7 +113,7 @@ class SHmenu implements RestaurantInterface
     public function Menucorrect($order)
     {
         foreach ($order as $a) {
-            $client  =  new  Client();
+            $client = new Client();
             $res = $client->request('GET', 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls?ID=' . $a['id']);
             $goodres = $res->getBody();
             $s = json_decode($goodres, true);
@@ -132,7 +138,7 @@ class SHmenu implements RestaurantInterface
                 return false;
             }
         }
-        return;
+        return true;
     }
 
     public function Geterr($callbcak)

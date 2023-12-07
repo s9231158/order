@@ -16,6 +16,11 @@ class OrderService
     {
         return Order::where('uid', '=', $Uid)->get();
     }
+
+    public function AddOrder($OrderInfo)
+    {
+        return Order::create($OrderInfo)['id'];
+    }
 }
 
 
