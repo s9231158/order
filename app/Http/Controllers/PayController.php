@@ -188,13 +188,24 @@ class PayController extends Controller
                     $GoodOrder[$key]['quanlity'] += $GoodOrder[$key]['quanlity'];
 
                 } else {
-                    $GoodOrder[$key] = [
-                        "rid" => $item['rid'],
-                        "id" => $item['id'],
-                        "name" => $item['name'],
-                        "price" => $item['price'],
-                        "quanlity" => $item['quanlity']
-                    ];
+                    if (isset($item['description'])) {
+                        $GoodOrder[$key] = [
+                            "rid" => $item['rid'],
+                            "id" => $item['id'],
+                            "name" => $item['name'],
+                            "price" => $item['price'],
+                            "quanlity" => $item['quanlity'],
+                            'description' => $item['description']
+                        ];
+                    } else {
+                        $GoodOrder[$key] = [
+                            "rid" => $item['rid'],
+                            "id" => $item['id'],
+                            "name" => $item['name'],
+                            "price" => $item['price'],
+                            "quanlity" => $item['quanlity'],
+                        ];
+                    }
                 }
             }
             $GoodOrder = array_values($GoodOrder);
@@ -311,7 +322,7 @@ class PayController extends Controller
             $Hasapi = Restaurant::where('id', '=', $Rid)->where('api', '!=', null)->where('api', '!=', '')->count();
 
             if ($Hasapi != 0) {
-                //轉換店家要求api格式
+                //轉換店家要求api格式           
                 $changedata = $Restaurant->Change($request, $GoodOrder);
                 if ($changedata === false) {
                     return response()->json(['err' => $this->err['1']]);
@@ -595,7 +606,22 @@ class PayController extends Controller
     }
     public function AddWalletMoney(Request $request)
     {
+        //規則
+        $ruls = [
+            'money' => ['regex:/^[0-9]+$/', 'required'],
+        ];
+        //什麼錯誤報什麼錯誤訊息
+        $rulsMessage = [
+            'money.regex' => $this->err['23'],
+            'money.required' => $this->err['2']
+        ];
+
         try {
+            //驗證參輸入數
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            if ($validator->fails()) {
+                return response()->json(['err' => $validator->errors()->first()]);
+            }
             $err = new ErrorCodeService;
             $errr = $this->err;
             $token = $request->header('Authorization');

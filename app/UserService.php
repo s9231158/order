@@ -74,7 +74,7 @@ class UserService
             $WalletRecord = [];
             $Count = 0;
             $WalletRecord['in'] = Wallet_Record::select('type', 'in', 'wallet__records.created_at')->join('payments', 'wallet__records.pid', '=', 'payments.id')->where("uid", '=', $UserInfo->id)->where('in', '!=', 'NULL')->offset($offset)->limit($limit)->orderBy('wallet__records.created_at', 'desc')->get();
-            $WalletRecord['out'] = Wallet_Record::select('type', 'out', 'wallet__records.created_at')->join('payments', 'wallet__records.pid', '=', 'payments.id')->where("uid", '=', $UserInfo->id)->where('out', '!=', 'NULL')->offset($offset)->limit($limit)->orderBy('wallet__records.created_at', 'desc')->get();
+            $WalletRecord['out'] = Wallet_Record::select('type', 'out', 'oid','wallet__records.created_at')->join('payments', 'wallet__records.pid', '=', 'payments.id')->where("uid", '=', $UserInfo->id)->where('out', '!=', 'NULL')->offset($offset)->limit($limit)->orderBy('wallet__records.created_at', 'desc')->get();
             $Count += $WalletRecord['in']->count();
             $Count += $WalletRecord['out']->count();
             return array('count' => $Count, 'wallet' => $WalletRecord);

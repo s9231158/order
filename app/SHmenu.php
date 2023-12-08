@@ -66,6 +66,7 @@ class SHmenu implements RestaurantInterface
     public function Change($order, $order2)
     {
         try {
+           
             $uid2 = (string) Str::uuid();
             $targetData = [
                 'OID' => $uid2,
@@ -84,7 +85,6 @@ class SHmenu implements RestaurantInterface
                 } else {
                     return false;
                 }
-
                 $targetData['LS'][] = $LS;
             }
             return $targetData;

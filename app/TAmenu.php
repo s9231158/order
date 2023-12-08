@@ -73,7 +73,6 @@ class TAmenu implements RestaurantInterface
     {
         try {
             $uid2 = (string) Str::uuid();
-
             $targetData = [
                 'order_id' => $uid2,
                 'name' => $order->name,
@@ -82,7 +81,6 @@ class TAmenu implements RestaurantInterface
                 'total_price' => $order->totalprice,
                 'order' => ['list' => []],
             ];
-
             foreach ($order2 as $a) {
                 if (isset($a['description'])) {
                     $list = [
@@ -100,7 +98,7 @@ class TAmenu implements RestaurantInterface
                 $targetData['order']['list'][] = $list;
             }
             return $targetData;
-        } catch (Throwable) {
+        } catch (Throwable $e) {
             return false;
         }
 

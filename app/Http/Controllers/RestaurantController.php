@@ -56,7 +56,7 @@ class RestaurantController extends Controller
             $Today = date('l');
 
             //取得餐廳info並打亂順序
-            $RestaurantInfo = $this->RestaurantService->GetRestaurantInfoOffsetLimit($OffsetLimit, $Today)->where('enable','=','1')->shuffle()->map->only(['id','title','img','totalpoint','countpoint']);
+            $RestaurantInfo = $this->RestaurantService->GetRestaurantInfoOffsetLimit($OffsetLimit, $Today)->where('enable', '=', '1')->shuffle()->map->only(['id', 'title', 'img', 'totalpoint', 'countpoint']);
             $RestaurantInfoCount = $RestaurantInfo->count();
             return response()->json(['message' => $this->keys[0], 'err' => $this->err['0'], 'count' => $RestaurantInfoCount, 'data' => $RestaurantInfo]);
 
@@ -121,19 +121,20 @@ class RestaurantController extends Controller
             $Token = $request->header('Authorization');
             if ($Token) {
                 $TokenCheck = $this->TotalService->CheckToken($Token);
+                //檢查是否Token正確
+                if ($TokenCheck === false) {
+                    return response()->json(['err' => $this->keys['5'], 'message' => $this->err[5]]);
+                }
+                //取得使用者資料
+                $UserInfo = $this->TotalService->GetUserInfo();
+                $UserId = $UserInfo->id;
+
+                //是否已存在資料庫,有的話更新時間,沒有則建立紀錄
+                $this->RestaurantHistoryService->UpdateOrCreateHistory($UserId, $Rid);
             }
 
-            //檢查是否Token正確
-            if ($TokenCheck === false) {
-                return response()->json(['err' => $this->keys['5'], 'message' => $this->err[5]]);
-            }
 
-            //取得使用者資料
-            $UserInfo = $this->TotalService->GetUserInfo();
-            $UserId = $UserInfo->id;
 
-            //是否已存在資料庫,有的話更新時間,沒有則建立紀錄
-            $this->RestaurantHistoryService->UpdateOrCreateHistory($UserId, $Rid);
 
             return response()->json(['err' => $this->keys['0'], 'message' => $this->err[0], 'data' => $Restaurantinfo[0], 'menu' => $Menu]);
         } catch (TokenInvalidException $e) {
