@@ -38,7 +38,11 @@ class User extends Authenticatable implements JWTSubject
     }
     public function order()
     {
-        return $this->hasMany(Order::class,'uid');
+        return $this->hasMany(Order::class, 'uid');
+    }
+    public function WalletRecord()
+    {
+        return $this->hasMany(Wallet_Record::class, 'uid');
     }
 
     /**

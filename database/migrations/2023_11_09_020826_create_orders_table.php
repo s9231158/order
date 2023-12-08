@@ -11,6 +11,8 @@ return new class extends Migration
      *
      * @return void
      */
+
+     
     public function up()
     {
         Schema::create('orders', function (Blueprint $table) {
@@ -22,7 +24,7 @@ return new class extends Migration
             $table->integer('total');
             $table->string('phone');
             $table->string('address');
-            $table->string('status');
+            $table->integer('status');
             $table->bigInteger('rid')->unsigned();
             $table->foreign('rid')->references('id')->on('restaurants');
             $table->timestamps();

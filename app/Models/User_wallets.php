@@ -10,6 +10,11 @@ use PhpParser\Node\Stmt\Return_;
 
 class User_wallets extends Model
 {
+    protected $fillable = [
+        'id',
+        'balance'
+    ];
+
     use HasFactory;
     public function user():BelongsTo{
         return $this->belongsTo(User::class);
