@@ -7,7 +7,7 @@ class OrderInfoService
 {
     public function AddOrderInfo($OrferInfoInfo)
     {
-        Order_info::create($OrferInfoInfo);
+        return Order_info::insert($OrferInfoInfo);
     }
 
 

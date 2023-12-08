@@ -12,6 +12,7 @@ use App\Models\Restaurant;
 use App\Models\User;
 use App\Models\User_favorite;
 use App\Models\Wallet_Record;
+use App\Service\OrderInfoService;
 use App\Service\OrderService;
 use App\Service\RestaurantService;
 use App\Service\UserWallerService;
@@ -88,15 +89,16 @@ class PayController extends Controller
     private $UserWallerService;
     private $WalletRecordService;
     private $ErrorCodeService;
-
+    private $OrderInfoService;
 
 
     //new
     private $err;
     private $keys;
     private $RestaurantService;
-    public function __construct(RestaurantService $RestaurantService, ErrorCodeService $ErrorCodeService, WalletRecordService $WalletRecordService, OrderService $OrderService, UserService $UserService, TotalService $TotalService, UserWallerService $UserWallerService)
+    public function __construct(OrderInfoService $OrderInfoService, RestaurantService $RestaurantService, ErrorCodeService $ErrorCodeService, WalletRecordService $WalletRecordService, OrderService $OrderService, UserService $UserService, TotalService $TotalService, UserWallerService $UserWallerService)
     {
+        $this->OrderInfoService = $OrderInfoService;
         $this->RestaurantService = $RestaurantService;
         $this->ErrorCodeService = $ErrorCodeService;
         $this->UserService = $UserService;
@@ -174,18 +176,37 @@ class PayController extends Controller
             }
 
             //取出Order內所有rid           
-            $Order = $request->orders;
-            $AllOrderRid = array_column($Order, 'rid');
+            $RequestOrder = $request->orders;
+            $AllOrderRid = array_column($RequestOrder, 'rid');
 
+            //將餐點一樣id合併
+            $GoodOrder = [];
+            foreach ($RequestOrder as $item) {
+                $key = $item['id'];
+                if (array_key_exists($key, $GoodOrder)) {
+                    $GoodOrder[$key]['price'] += $GoodOrder[$key]['price'];
+                    $GoodOrder[$key]['quanlity'] += $GoodOrder[$key]['quanlity'];
+
+                } else {
+                    $GoodOrder[$key] = [
+                        "rid" => $item['rid'],
+                        "id" => $item['id'],
+                        "name" => $item['name'],
+                        "price" => $item['price'],
+                        "quanlity" => $item['quanlity']
+                    ];
+                }
+            }
+            $GoodOrder = array_values($GoodOrder);
             //訂單內餐廳是否都一致
-            $OrderRid[] = $Order[0]['rid'];
+            $OrderRid[] = $GoodOrder[0]['rid'];
             $OrderSameCount = array_diff($AllOrderRid, $OrderRid);
             if ($OrderSameCount !== []) {
                 return response()->json(['err' => $this->keys[22], 'message' => $this->err[22]]);
             }
 
             //餐廳是否存在且啟用
-            $Rid = $Order[0]['rid'];
+            $Rid = $GoodOrder[0]['rid'];
             $HasRestaurant = $this->RestaurantService->CheckRestaurantInDatabase($Rid);
             if (!$HasRestaurant) {
                 return response()->json(['err' => $this->keys[16], 'message' => $this->err[16]]);
@@ -193,7 +214,7 @@ class PayController extends Controller
 
             //訂單總金額是否正確
             $TotalPrice = $request->totalprice;
-            $OrderCollection = collect($Order);
+            $OrderCollection = collect($GoodOrder);
             $RealTotalPrice = $OrderCollection->sum('price');
             if ($TotalPrice !== $RealTotalPrice) {
                 return response()->json(['err' => $this->keys[20], 'message' => $this->err[20]]);
@@ -208,13 +229,13 @@ class PayController extends Controller
 
             //檢查菜單金額名稱id是否與店家一致
             $Restaurant = Factorise::Setmenu($Rid);
-            $Menucorrect = $Restaurant->Menucorrect($Order);
+            $Menucorrect = $Restaurant->Menucorrect($RequestOrder);
             if ($Menucorrect === false) {
                 return response()->json(['err' => $this->keys[30], 'message' => $this->err[30]]);
             }
 
             // 餐點是否停用
-            $ALLMenuId = array_column($Order, 'id');
+            $ALLMenuId = array_column($GoodOrder, 'id');
             $Menuenable = $Restaurant->Menuenable($ALLMenuId);
             if (!$Menuenable) {
                 return response()->json(['err' => $this->keys[25], 'message' => $this->err[25]]);
@@ -229,94 +250,107 @@ class PayController extends Controller
                 return response()->json(['err' => $this->keys[18], 'message' => $this->err[18]]);
             }
 
-            //如果選擇Ecpay且是外面廠商
-            if ($Rid !== 4) {
-                //轉換店家要求api格式
-                $AlreadyData = $Restaurant->Change($request, $Order);
-                if (!$AlreadyData) {
-                    return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
-                }
-                //傳送訂單至餐廳Api
-                $Sendapi = $Restaurant->Sendapi($AlreadyData);
-            }
 
-            //將訂單存入資料庫
-            $Now = now();
-            $Taketime = $request->taketime;
-            $Address = $request->address;
-            $Phone = $request->phone;
-            $Orderinfo = [
-                'ordertime' => $Now,
-                'taketime' => $Taketime,
-                'total' => $TotalPrice,
-                'phone' => $Phone,
-                'address' => $Address,
-                'status' => '付款中',
-                'rid' => $Rid,
-                'uid' => $UserId
-            ];
-            $Oid = $this->OrderService->AddOrder($Orderinfo);
-
-
-            $ItemName = collect($Order)->pluck('name')->implode(',');
-            //將OrderInfoInfo存入資料庫
-            $OrderInfoInfo = array_map(function ($item) {
-                return $item;
-            }, $Order);
-
-
-
-
-
-
-
-
-
-
+            //new
             // //如果選擇Ecpay且是外面廠商
-            // $Hasapi = Restaurant::where('id', '=', $Rid)->where('api', '!=', null)->where('api', '!=', '')->count();
-
-            // if ($Hasapi != 0) {
+            // if ($Rid !== 4) {
             //     //轉換店家要求api格式
-            //     $changedata = $Restaurant->Change($request, $Order);
-            //     if ($changedata === false) {
-            //         return response()->json(['err' => $this->err['1']]);
+            //?????????????????????????必改?????????????????????????????????????
+            //不要直接參數丟Request 在這整理好資訊再丟Change會用到資訊就好
+            //Change改名直接改SendApi
+            //     $AlreadyData = $Restaurant->Change($request, $Order);
+            //??????????????????????????必改????????????????????????????????????
+            //     if (!$AlreadyData) {
+            //         return response()->json(['err' => $this->keys[26], 'message' => $this->err[26]]);
             //     }
-            //     $Sendapi = $Restaurant->Sendapi($changedata);
-            //     $usertoken = JWTAuth::parseToken()->authenticate();
-            //     $user = User::find($UserId);
-            //     $userid = $user->id;
-            //     $now = Carbon::now();
-            //     $taketime = $request->taketime;
+            //     //傳送訂單至餐廳Api
+            //     $Sendapi = $Restaurant->Sendapi($AlreadyData);
             // }
 
-
-            // $user = User::find($UserId);
-            // $wallet = $user->wallet()->get();
-            // $now = Carbon::now();
-            // $taketime = $request->taketime;
-            // $address = $request->address;
-            // $phone = $request->phone;
-            //存入order資料庫
-            // $orderr = new Order([
-            //     'ordertime' => $now,
-            //     'taketime' => $taketime,
+            // //將訂單存入資料庫
+            // $Now = now();
+            // $Taketime = $request->taketime;
+            // $Address = $request->address;
+            // $Phone = $request->phone;
+            // $Orderinfo = [
+            //     'ordertime' => $Now,
+            //     'taketime' => $Taketime,
             //     'total' => $TotalPrice,
-            //     'phone' => $phone,
-            //     'address' => $address,
+            //     'phone' => $Phone,
+            //     'address' => $Address,
             //     'status' => '付款中',
             //     'rid' => $Rid,
-            // ]);
+            //     'uid' => $UserId
+            // ];
+            // $Oid = $this->OrderService->AddOrder($Orderinfo);
 
-            // $user->order()->save($orderr);
+            // $ItemName = collect($Order)->pluck('name')->implode(',');
 
-            //存入orderiofo資料庫
+
+
+
+
+            // //將OrderInfoInfo存入資料庫
+            // $OrderInfoInfo = array_map(function ($item) use ($Oid) {
+            //     if (isset($item['description'])) {
+            //         return ['description' => $item['description'], 'oid' => $Oid, 'name' => $item['name'], 'price' => $item['price'], 'quanlity' => $item['quanlity'], 'created_at' => now(), 'updated_at' => now()];
+            //     }
+            //     return ['description' => null, 'oid' => $Oid, 'name' => $item['name'], 'price' => $item['price'], 'quanlity' => $item['quanlity'], 'created_at' => now(), 'updated_at' => now()];
+            // }, $Order);
+            // $AddOrderInfoInfo = $this->OrderInfoService->AddOrderInfo($OrderInfoInfo);
+            // return $Order;
+//new
+
+
+
+
+
+
+
+            //如果選擇Ecpay且是外面廠商
+            $Hasapi = Restaurant::where('id', '=', $Rid)->where('api', '!=', null)->where('api', '!=', '')->count();
+
+            if ($Hasapi != 0) {
+                //轉換店家要求api格式
+                $changedata = $Restaurant->Change($request, $GoodOrder);
+                if ($changedata === false) {
+                    return response()->json(['err' => $this->err['1']]);
+                }
+                $Sendapi = $Restaurant->Sendapi($changedata);
+                $usertoken = JWTAuth::parseToken()->authenticate();
+                $user = User::find($UserId);
+                $userid = $user->id;
+                $now = Carbon::now();
+                $taketime = $request->taketime;
+            }
+
+
+            $user = User::find($UserId);
+            $wallet = $user->wallet()->get();
+            $now = Carbon::now();
+            $taketime = $request->taketime;
+            $address = $request->address;
+            $phone = $request->phone;
+            // 存入order資料庫
+            $orderr = new Order([
+                'ordertime' => $now,
+                'taketime' => $taketime,
+                'total' => $TotalPrice,
+                'phone' => $phone,
+                'address' => $address,
+                'status' => '付款中',
+                'rid' => $Rid,
+            ]);
+
+            $user->order()->save($orderr);
+
+            // 存入orderiofo資料庫
             $orderinfo = new Order_info();
             $reqorder = $request['orders'];
             $item_name = '';
 
             $sameorder = [];
-            foreach ($reqorder as $a) {
+            foreach ($GoodOrder as $a) {
                 $item_name = $a['name'] . '#' . $item_name;
                 array_push($sameorder, $a['id']);
 
@@ -337,13 +371,7 @@ class PayController extends Controller
                     $orderr->orderinfo()->save($orderinfo);
                 }
             }
-            //是否有多筆一樣餐點
-            $oldcount = count($sameorder);
-            $sameorder = array_unique($sameorder);
-            $newcount = count($sameorder);
-            if ($oldcount != $newcount) {
-                return '一樣的餐點';
-            }
+
 
             $uid = (string) Str::uuid();
 
