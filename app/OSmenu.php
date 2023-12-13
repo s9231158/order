@@ -2,20 +2,13 @@
 
 namespace App;
 
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Str;
-
 use App\Models\Oishii_menu;
-
 use App\Contract\RestaurantInterface;
 use App\Models\Restaurant;
-use Faker\Core\Uuid;
-use Symfony\Component\Uid\UuidV8;
 use GuzzleHttp\Client;
-use PhpParser\Node\Stmt\Return_;
-use Spatie\FlareClient\Http\Exceptions\NotFound;
 use Throwable;
-
-use function PHPUnit\Framework\returnSelf;
 
 class OSmenu implements RestaurantInterface
 {
@@ -47,10 +40,10 @@ class OSmenu implements RestaurantInterface
             return $e;
         }
     }
-    public function Menuenable($order) //修改改為傳入id陣列
+    public function Menuenable(array $MenuId): bool
     {
-        $Menu = Oishii_menu::wherein('id', $order)->get();
-        $OrderCount = count($order);
+        $Menu = Oishii_menu::wherein('id', $MenuId)->get();
+        $OrderCount = count($MenuId);
         $NotEnableCount = $Menu->where('enable', '=', 1)->count();
         if ($OrderCount !== $NotEnableCount) {
             return false;
@@ -74,20 +67,55 @@ class OSmenu implements RestaurantInterface
     }
 
 
-    public function Change($Request, $order2)
+    // public function Change($Request, $order2)
+    // {
+    //     try {
+    //         $uid2 = (string) Str::uuid();
+    //         $targetData = [
+    //             'id' => $uid2,
+    //             'name' => $Request->name,
+    //             'phone_number' => '0' . (string) $Request->phone,
+    //             'pickup_time' => '2016-06-01T14:41:36+08:00',
+    //             'total_price' => $Request->totalprice,
+    //             'orders' => [],
+    //         ];
+
+    //         foreach ($order2 as $a) {
+    //             if (isset($a['description'])) {
+    //                 $orders = [
+    //                     'meal_id' => $a['id'],
+    //                     'count' => $a['quanlity'],
+    //                     'memo' => $a['description'],
+    //                 ];
+    //             } else {
+    //                 $orders = [
+    //                     'meal_id' => $a['id'],
+    //                     'count' => $a['quanlity'],
+    //                 ];
+    //             }
+    //             $targetData['orders'][] = $orders;
+    //         }
+    //         return $targetData;
+    //     } catch (Throwable $e) {
+    //         return false;
+    //     }
+
+    // }
+    public function Change($OrderInfo, $Order)
     {
         try {
-            $uid2 = (string) Str::uuid();
+            $dateTime = Date::createFromFormat('Y-m-d H:i:s', $OrderInfo['taketime']);
+            $iso8601String = $dateTime->format('c');
             $targetData = [
-                'id' => $uid2,
-                'name' => $Request->name,
-                'phone_number' => '0' . (string) $Request->phone,
-                'pickup_time' => '2016-06-01T14:41:36+08:00',
-                'total_price' => $Request->totalprice,
+                'id' => $OrderInfo['uid'],
+                'name' => $OrderInfo['name'],
+                'phone_number' => '0' . $OrderInfo['phone'],
+                'pickup_time' => $iso8601String,
+                'total_price' => $OrderInfo['totalprice'],
                 'orders' => [],
             ];
-
-            foreach ($order2 as $a) {
+            //如果再Service先把description處理好 萬一某些餐廳部接收description是空值
+            foreach ($Order as $a) {
                 if (isset($a['description'])) {
                     $orders = [
                         'meal_id' => $a['id'],
@@ -102,20 +130,29 @@ class OSmenu implements RestaurantInterface
                 }
                 $targetData['orders'][] = $orders;
             }
-            return $targetData;
-        } catch (Throwable $e) {
+            //發送Api
+            $Client = new Client();
+            $Response = $Client->request('POST', 'http://neil.xincity.xyz:9998/oishii/api/notify/order', ['json' => $targetData]);
+            $GoodResponse = $Response->getBody();
+            $ArrayGoodResponse = json_decode($GoodResponse);
+            //取得結果
+            if ($ArrayGoodResponse->error_code === 0) {
+                return true;
+            }
             return false;
+        } catch (Throwable $e) {
+            return $e;
         }
 
     }
 
     public function Sendapi($order)
     {
-        $client = new Client();
-        $res = $client->request('POST', 'http://neil.xincity.xyz:9998/oishii/api/notify/order', ['json' => $order]);
-        $goodres = $res->getBody();
-        $s = json_decode($goodres);
-        return $s;
+        // $client = new Client();
+        // $res = $client->request('POST', 'http://neil.xincity.xyz:9998/oishii/api/notify/order', ['json' => $order]);
+        // $goodres = $res->getBody();
+        // $s = json_decode($goodres);
+        // return $s;
     }
 
     public function HasRestraunt($rid)
@@ -127,41 +164,49 @@ class OSmenu implements RestaurantInterface
         }
     }
 
-    public function Menucorrect($order)
+    public function Menucorrect(array $Order): bool
     {
-        foreach ($order as $a) {
-            $client = new Client();
-            $res = $client->request('GET', 'http://neil.xincity.xyz:9998/oishii/api/menu/all?meal_id=' . $a['id']);
-            $goodres = $res->getBody();
-            $s = json_decode($goodres, true);
-            if ($s['menu'] === []) {
-                return false;
+        try {
+            foreach ($Order as $Item) {
+                //取得店家菜單
+                $Client = new Client();
+                $Response = $Client->request('GET', 'http://neil.xincity.xyz:9998/oishii/api/menu/all?meal_id=' . $Item['id']);
+                $GoodResponse = $Response->getBody();
+                $ArrayResponse = json_decode($GoodResponse, true);
+                //找不到此id菜單就是錯誤
+                if ($ArrayResponse['menu'] === []) {
+                    return false;
+                }
+                //取出Order內價格.名稱,餐點Id
+                $OrderName = $Item['name'];
+                $OrderPrice = $Item['price'];
+                $OrderId = $Item['id'];
+                //取出店家回傳菜單價格.名稱,餐點Id
+                $ResponseName = $ArrayResponse['menu'][0]['meal_name'];
+                $ResponseId = $ArrayResponse['menu'][0]['meal_id'];
+                $ResponsePrice = $ArrayResponse['menu'][0]['price'];
+                //比對是否不一致
+                if ($OrderName != $ResponseName) {
+                    return false;
+                }
+                if ($OrderPrice != $ResponsePrice) {
+                    return false;
+                }
+                if ($OrderId != $ResponseId) {
+                    return false;
+                }
             }
-            $ordername = $a['name'];
-            $orderprice = $a['price'];
-            $orderid = $a['id'];
-
-            $realname = $s['menu'][0]['meal_name'];
-            $realid = $s['menu'][0]['meal_id'];
-            $realprice = $s['menu'][0]['price'];
-
-            if ($ordername != $realname) {
-                return false;
-            }
-            if ($orderprice != $realprice) {
-                return false;
-            }
-            if ($orderid != $realid) {
-                return false;
-            }
+            return true;
+        } catch (Throwable $e) {
+            return false;
         }
-        return true;
+
     }
     public function Geterr($callbcak)
     {
-        if ($callbcak->error_code == 0) {
-            return true;
-        }
-        return false;
+        // if ($callbcak->error_code == 0) {
+        //     return true;
+        // }
+        // return false;
     }
 }

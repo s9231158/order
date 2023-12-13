@@ -38,7 +38,8 @@ class ErrorCodeService
         30 => '菜單資訊有誤',
         31 => '就裝置以登出,請重新登入',
         32 => '登入時間過久,請重新登入',
-        33=> '請填入正確付款方式',
+        33 => '請填入正確付款方式',
+        34 => '訂單傳送失敗'
     ];
     private $keys = [];
     public function __construct()

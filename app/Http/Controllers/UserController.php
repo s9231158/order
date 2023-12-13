@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\CustomerService;
 use App\ErrorCodeService;
 use App\Service\RestaurantHistoryService;
 use App\Service\RestaurantService;
@@ -11,31 +10,12 @@ use App\UserInterface\FavoriteInterface;
 use App\UserInterface\LoginInterface;
 use App\UserInterface\LogoutInterface;
 use App\UserInterface\RecordInerface;
-use App\UserRepository\RecordRepository;
-use App\UserService\LogoutService;
-use Tymon\JWTAuth\Facades\JWTAuth;
-use App\Models\User;
-use App\Models\User_recode;
-use App\Models\User_wallets;
 use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Throwable;
 use PDOException;
-use App\UserService;
-use App\Models\Restaurant;
-use App\UserService\CreateService;
-use App\UserRepository\CreateRepository;
 use App\UserInterface\CreateInrerface;
-
-include_once "/var/www/html/din-ban-doan/app/TotalService.php";
-
 
 class UserController extends Controller
 {

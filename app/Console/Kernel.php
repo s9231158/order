@@ -24,19 +24,19 @@ class Kernel extends ConsoleKernel
         $orderServiceInstance = new OrderService();
         $schedule->call(function () {
             UserRecordCount::dispatch();
-        })->everyMinute();
+        })->dailyAt('6:32');
         $schedule->call(function () {
             RestaruantMoneyTotal::dispatch();
-        })->everyMinute();
+        })->dailyAt('6:32');
         $schedule->call(function () use ($orderServiceInstance) {
             FailOrderCount::dispatch($orderServiceInstance);
-        })->everyMinute();
+        })->dailyAt('6:32');
         $schedule->call(function () {
             PaymentCount::dispatch();
-        })->everyMinute();
+        })->dailyAt('6:32');
         $schedule->call(function () {
             RestaurantFavoritrCount::dispatch();
-        })->everyMinute();
+        })->dailyAt('6:32');
 
 
 
