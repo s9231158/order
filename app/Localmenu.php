@@ -47,46 +47,12 @@ class Localmenu implements RestaurantInterface
     }
 
 
-    public function Change($order, $order2)
+    public function SendApi($OrderInfo, $Order)
     {
-        $uid2 = (string) Str::uuid();
-
-        $targetData = [
-            'order_id' => $uid2,
-            'name' => $order->name,
-            'phone_number' => '0' . (string) $order->phone,
-            'pickup_time' => '2016-06-01T14:41:36+08:00',
-            'total_price' => $order->totalprice,
-            'order' => ['list' => []],
-        ];
-
-        foreach ($order2 as $a) {
-            if (isset($a['description'])) {
-                $list = [
-                    'id' => $a['id'],
-                    'count' => $a['quanlity'],
-                    'description' => $a['description'],
-                ];
-            } else {
-                $list = [
-                    'id' => $a['id'],
-                    'count' => $a['quanlity'],
-                ];
-            }
-
-            $targetData['order']['list'][] = $list;
-        }
-        return $targetData;
+    
     }
 
-    public function Sendapi($order)
-    {
-        $client = new Client();
-        $res = $client->request('POST', 'http://neil.xincity.xyz:9998/tasty/api/order', ['json' => $order]);
-        $goodres = $res->getBody();
-        $s = json_decode($goodres);
-        return $s;
-    }
+
 
     public function HasRestraunt($rid)
     {
@@ -121,13 +87,5 @@ class Localmenu implements RestaurantInterface
             return false;
         }
     }
-    public function Geterr($callbcak)
-    {
-        if ($callbcak->error_code == 0) {
-            return true;
-        }
-        return false;
-    }
-
 
 }

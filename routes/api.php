@@ -63,7 +63,7 @@ Route::group(['middleware' => 'Maintenance'], function () {
     //PayController
     Route::post('/otherpay', [PayController::class, 'otherpay'])->middleware('token');
     Route::get('/tt', [PayController::class, 'tt']);
-    Route::post('/qwe', [PayController::class, 'qwe']);
+    Route::post('/ecpayCallBack', [PayController::class, 'EcpayCallBack']);
     Route::get('order', [PayController::class, 'order'])->middleware('token');
     Route::get('orderinfo', [PayController::class, 'orderinfo'])->middleware('token');
     Route::post('money', [PayController::class, 'AddWalletMoney']);

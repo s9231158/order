@@ -3,19 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\ErrorCodeService;
-use App\Factorise;
 use App\Models\Ecpay;
 use App\Models\Order;
 use App\Models\Order_info;
-use App\Models\Restaurant;
 use App\Models\User;
-use App\Models\Wallet_Record;
+use App\RepositoryV2\UserRepositoryV2;
 use App\Service\OrderInfoService;
 use App\Service\OrderService;
 use App\Service\RestaurantService;
 use App\Service\UserWallerService;
 use App\Service\WalletRecordService;
-use App\ServiceV2\CreateOrderV2;
 use App\TotalService;
 use App\UserService;
 use Exception;
@@ -26,8 +23,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Tymon\JWTAuth\Facades\JWTAuth;
-use GuzzleHttp\Client;
-use App\CheckMacValueService;
 use App\EcpayService;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Ecpay_back;
@@ -53,7 +48,8 @@ class PayController extends Controller
     private $Keys;
     private $RestaurantService;
     private $CreateOrderServiceV2;
-    public function __construct(CreateOrderServiceV2 $CreateOrderServiceV2, OrderInfoService $OrderInfoService, RestaurantService $RestaurantService, ErrorCodeService $ErrorCodeService, WalletRecordService $WalletRecordService, OrderService $OrderService, UserService $UserService, TotalService $TotalService, UserWallerService $UserWallerService)
+    private $UserRepositoryV2;
+    public function __construct(UserRepositoryV2 $UserRepositoryV2, CreateOrderServiceV2 $CreateOrderServiceV2, OrderInfoService $OrderInfoService, RestaurantService $RestaurantService, ErrorCodeService $ErrorCodeService, WalletRecordService $WalletRecordService, OrderService $OrderService, UserService $UserService, TotalService $TotalService, UserWallerService $UserWallerService)
     {
         $this->CreateOrderServiceV2 = $CreateOrderServiceV2;
         $this->OrderInfoService = $OrderInfoService;
@@ -64,6 +60,7 @@ class PayController extends Controller
         $this->TotalService = $TotalService;
         $this->UserWallerService = $UserWallerService;
         $this->WalletRecordService = $WalletRecordService;
+        $this->UserRepositoryV2 = $UserRepositoryV2;
         $this->Err = $ErrorCodeService->GetErrCode();
         $this->Keys = $ErrorCodeService->GetErrKey();
     }
@@ -115,7 +112,6 @@ class PayController extends Controller
         ];
 
         try {
-            //new            
             //如果有錯回報錯誤訊息
             $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
             if ($Validator->fails()) {
@@ -169,292 +165,132 @@ class PayController extends Controller
                 return response()->json(['Err' => $this->Keys[25], 'Message' => $this->Err[25]]);
             }
 
-
-
-            // //如果選擇本地付款錢包餘額是否大於totoprice
-            // $UserInfo = $this->TotalService->GetUserInfo();
-            // $UserId = $UserInfo->id;
-            // $UserWalletInfo = $this->UserWallerService->GetWallet($UserId);
-            // $UserWalletBalance = $UserWalletInfo['balance'];
-            // if ($Request->payment == 'local' && $TotalPrice > $UserWalletBalance) {
-            //     return response()->json(['Err' => $this->Keys[18], 'Message' => $this->Err[18]]);
-            // }
-
-
             // new
-            //如果非本地廠商需打Api傳送訂單        
+            $Money = $Request->totalprice;
+            $Now = now();
+            $Taketime = $Request->taketime;
+            $Address = $Request->address;
+            $Phone = $Request->phone;
             if ($Rid !== 4) {
                 $OrderInfo = ['name' => $Request->name, 'phone' => $Request->phone, 'taketime' => $Request->taketime, 'totalprice' => $Request->totalprice];
-                //傳送訂單Api給餐廳
+                //如果非本地廠商需打Api傳送訂單      
                 $Response = $this->CreateOrderServiceV2->SendApi($OrderInfo, $RequestOrder);
                 if ($Response) {
-                    //if payment = ecpay
-//ecpay save
-//ecpayback save
-
-
-                    //if payment = local
-                    //userwallet save
-
-                    //else
-                    //walletrecoed save
-
-                }
-                return response()->json(['Err' => $this->Keys[34], 'Message' => $this->Err[34]]);
-            }
-            //order save
-//orderinfo save
-            return 1;
-
-
-
-
-
-
-            //轉換店家要求api格式
-            // $AlreadyData = $Restaurant->Change($Request, $Order);
-            // if (!$AlreadyData) {
-            //     return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
-            // }
-            // //     //傳送訂單至餐廳Api
-            // $Sendapi = $Restaurant->Sendapi($AlreadyData);
-
-            // //將訂單存入資料庫
-            // $Now = now();
-            // $Taketime = $Request->taketime;
-            // $Address = $Request->address;
-            // $Phone = $Request->phone;
-            // $Orderinfo = [
-            //     'ordertime' => $Now,
-            //     'taketime' => $Taketime,
-            //     'total' => $TotalPrice,
-            //     'phone' => $Phone,
-            //     'address' => $Address,
-            //     'status' => '付款中',
-            //     'rid' => $Rid,
-            //     'uid' => $UserId
-            // ];
-            // $Oid = $this->OrderService->AddOrder($Orderinfo);
-
-            // $ItemName = collect($Order)->pluck('name')->implode(',');
-
-
-
-
-
-            // //將OrderInfoInfo存入資料庫
-            // $OrderInfoInfo = array_map(function ($item) use ($Oid) {
-            //     if (isset($item['description'])) {
-            //         return ['description' => $item['description'], 'oid' => $Oid, 'name' => $item['name'], 'price' => $item['price'], 'quanlity' => $item['quanlity'], 'created_at' => now(), 'updated_at' => now()];
-            //     }
-            //     return ['description' => null, 'oid' => $Oid, 'name' => $item['name'], 'price' => $item['price'], 'quanlity' => $item['quanlity'], 'created_at' => now(), 'updated_at' => now()];
-            // }, $Order);
-            // $AddOrderInfoInfo = $this->OrderInfoService->AddOrderInfo($OrderInfoInfo);
-            // return $Order;
-//new
-
-
-
-
-
-
-
-            //如果選擇Ecpay且是外面廠商
-            $Hasapi = Restaurant::where('id', '=', $Rid)->where('api', '!=', null)->where('api', '!=', '')->count();
-
-            if ($Hasapi != 0) {
-                //轉換店家要求api格式           
-                $changedata = $Restaurant->Change($Request, $GoodOrder);
-                if ($changedata === false) {
-                    return response()->json(['Err' => $this->Err['1']]);
-                }
-                $Sendapi = $Restaurant->Sendapi($changedata);
-                $usertoken = JWTAuth::parseToken()->authenticate();
-                $user = User::find($UserId);
-                $userid = $user->id;
-                $now = Carbon::now();
-                $taketime = $Request->taketime;
-            }
-
-
-            $user = User::find($UserId);
-            $wallet = $user->wallet()->get();
-            $now = Carbon::now();
-            $taketime = $Request->taketime;
-            $address = $Request->address;
-            $phone = $Request->phone;
-            // 存入order資料庫
-            $OrderR = new Order([
-                'ordertime' => $now,
-                'taketime' => $taketime,
-                'total' => $TotalPrice,
-                'phone' => $phone,
-                'address' => $address,
-                'status' => '付款中',
-                'rid' => $Rid,
-            ]);
-
-            $user->order()->save($OrderR);
-
-            // 存入orderiofo資料庫
-            $orderinfo = new Order_info();
-            $reqorder = $Request['orders'];
-            $item_name = '';
-
-            $sameorder = [];
-            foreach ($GoodOrder as $a) {
-                $item_name = $a['name'] . '#' . $item_name;
-                array_push($sameorder, $a['id']);
-
-                if (isset($a['description'])) {
-                    $orderinfo = new Order_info([
-                        'price' => $a['price'],
-                        'name' => $a['name'],
-                        'description' => $a['description'],
-                        'quanlity' => $a['quanlity']
-                    ]);
-                    $OrderR->orderinfo()->save($orderinfo);
+                    //訂單傳送成功將訂單存至資料庫
+                    $SaveOrderInfo = [
+                        'ordertime' => $Now,
+                        'taketime' => $Taketime,
+                        'total' => $TotalPrice,
+                        'phone' => $Phone,
+                        'address' => $Address,
+                        'status' => '付款中',
+                        'rid' => $Rid,
+                    ];
+                    $Oid = $this->CreateOrderServiceV2->SaveOrder($SaveOrderInfo);
+                    //儲存訂單詳情
+                    $this->CreateOrderServiceV2->SaveOrderInfo($RequestOrder, $Oid);
                 } else {
-                    $orderinfo = new Order_info([
-                        'price' => $a['price'],
-                        'name' => $a['name'],
-                        'quanlity' => $a['quanlity'],
-                    ]);
-                    $OrderR->orderinfo()->save($orderinfo);
+                    //訂單傳送失敗 將失敗訂單存置資料庫
+                    $SaveOrderInfo = [
+                        'ordertime' => $Now,
+                        'taketime' => $Taketime,
+                        'total' => $TotalPrice,
+                        'phone' => $Phone,
+                        'address' => $Address,
+                        'status' => '0',
+                        'rid' => $Rid,
+                    ];
+                    $this->CreateOrderServiceV2->SaveOrder($SaveOrderInfo);
+                    return response()->json(['Err' => $this->Keys[34], 'Message' => $this->Err[34]]);
                 }
+
+            } else {
+                $OrderInfo = ['name' => $Request->name, 'phone' => $Request->phone, 'taketime' => $Request->taketime, 'totalprice' => $Request->totalprice];
+                $SaveOrderInfo = [
+                    'ordertime' => $Now,
+                    'taketime' => $Taketime,
+                    'total' => $TotalPrice,
+                    'phone' => $Phone,
+                    'address' => $Address,
+                    'status' => '付款中',
+                    'rid' => $Rid,
+                ];
+                $Oid = $this->CreateOrderServiceV2->SaveOrder($SaveOrderInfo);
+                //儲存訂單詳情
+                $this->CreateOrderServiceV2->SaveOrderInfo($RequestOrder, $Oid);
             }
 
-
-            $uid = (string) Str::uuid();
-
-            $uuid20Char = substr($uid, 0, 20);
-
-            if ($Request->payment == 'local') {
-                try {
-                    //將user錢包扣款
-
-                    $wallet[0]->balance -= $TotalPrice;
-                    $user->wallet()->saveMany($wallet);
-
-                    // 存入wallet record
-                    $wrecord = new Wallet_Record([
-                        'out' => $TotalPrice,
-                        'uid' => $UserId,
-                        'status' => '成功',
-                        'pid' => $this->Payment[$Request->payment],
-                    ]);
-                    $OrderR->record()->save($wrecord);
-                    $OrderR->status = '成功';
-                    $OrderR->save();
-
-                    return response()->json(['Err' => $this->Err['0'], 'oid' => $OrderR->id]);
-                } catch (Throwable $e) {
-                    $wrecord->status = '失敗';
-                    $wrecord->save();
-                    $OrderR->status = '失敗';
-                    $OrderR->save();
-                    return '訂單失敗';
+            //如果是本地付款
+            if ($Request->payment === 'local') {
+                //檢查User錢包是否足夠付款
+                $Money = $Request->totalprice;
+                $CheckWalletMoney = $this->CreateOrderServiceV2->CheckWalletMoney($Money);
+                if ($CheckWalletMoney) {
+                    return response()->json(['Err' => $this->Keys[18], 'Message' => $this->Err[18]]);
                 }
+                //將user錢包扣款
+                $this->CreateOrderServiceV2->DeductMoney($Money);
+                // 存入wallet record
+                $WalletRecordInfo = ['oid' => $Oid, 'out' => $Money, 'status' => '付款中', 'pid' => $this->Payment[$Request->payment]];
+                $this->CreateOrderServiceV2->SaveWalletRecord($WalletRecordInfo);
             }
-
-            $date = Carbon::now()->format('Y/m/d H:i:s');
-            $key = '0dd22e31042fbbdd';
-            $iv = 'e62f6e3bbd7c2e9d';
-            $data = [
-                "merchant_id" => 11,
-                "merchant_trade_no" => $uuid20Char,
-                "merchant_trade_date" => $date,
-                "payment_type" => "aio",
-                "amount" => $TotalPrice,
-                "trade_desc" => $userid . '訂餐',
-                "item_name" => $item_name,
-                "return_url" => "http://192.168.83.26:9999/api/qwe",
-                "choose_payment" => "Credit",
-                "check_mac_value" => "6CC73080A3CF1EA1A844F1EEF96A873FA4D1DD485BDA6517696A4D8EF0EAC94E",
-                "encrypt_type" => 1,
-                "lang" => "en"
-            ];
-            $ecpay = new Ecpay($data);
-            $ecpay->save();
-
-            // 存入wallet record
-            $wrecord = new Wallet_Record([
-                'out' => $TotalPrice,
-                'uid' => $userid,
-                'eid' => $uuid20Char,
-                'status' => '交易中',
-                'pid' => $this->Payment[$Request->payment],
-            ]);
-            $OrderR->record()->save($wrecord);
-
-            //是否有api  是否響應成功
-            if ($Hasapi != 0) {
-                $Errcode = $Restaurant->GetErr($Sendapi);
-                if ($Errcode = false) {
-                    $wrecord->status = '失敗';
-                    $wrecord->save();
-                    $OrderR->status = '失敗';
-                    $OrderR->save();
-                    return '訂單失敗';
-                }
+            //如果是金流付款
+            if ($Request->payment === 'ecpay') {
+                //將Ecpay資料存置資料庫
+                $Uuid = substr(Str::uuid(), 0, 20);
+                $Date = Carbon::now()->format('Y/m/d H:i:s');
+                $AllOrderMenuName = array_column($RequestOrder, 'name');
+                $ItemString = implode(",", $AllOrderMenuName);
+                $EcpayInfo = [
+                    "merchant_id" => 11,
+                    "merchant_trade_no" => $Uuid,
+                    "merchant_trade_date" => $Date,
+                    "payment_type" => "aio",
+                    "amount" => $Money,
+                    "item_name" => $ItemString,
+                    "return_url" => "http://192.168.83.26:9999/api/EcpayCallBack",
+                    "choose_payment" => "Credit",
+                    "check_mac_value" => "6CC73080A3CF1EA1A844F1EEF96A873FA4D1DD485BDA6517696A4D8EF0EAC94E",
+                    "encrypt_type" => 1,
+                    "lang" => "en"
+                ];
+                $this->CreateOrderServiceV2->SaveEcpay($EcpayInfo);
+                //發送api訂單至金流方
+                $SendEcpayApi = $this->CreateOrderServiceV2->SendEcpayApi($EcpayInfo);
+                $WalletRecordInfo = ['eid' => $Uuid, 'oid' => $Oid, 'out' => $Money, 'status' => '付款中', 'pid' => $this->Payment[$Request->payment]];
+                return $this->CreateOrderServiceV2->SaveWalletRecord($WalletRecordInfo);
             }
-
-            //將資訊傳至第三方付款資訊
-            $CheckMacValueService = new CheckMacValueService($key, $iv);
-            $CheckMacValue = $CheckMacValueService->generate($data);
-            $data['check_mac_value'] = $CheckMacValue;
-            $client = new Client();
-            $res = $client->Request('POST', 'http://neil.xincity.xyz:9997/api/Cashier/AioCheckOut', ['json' => $data]);
-            $goodres = $res->getBody();
-            $s = json_decode($goodres);
-            return $s;
-
-
 
         } catch (Exception $e) {
-            return response()->json([$e, 'Err' => $this->Err['26']]);
+            return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
         } catch (Throwable $e) {
-            return response()->json([$e, 'Err' => $this->Err['26']]);
+            return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
         }
     }
 
 
-    public function qwe(Request $Request)
+    public function EcpayCallBack(Request $Request)
     {
-
         try {
-            $RequestData = $Request->all();
-            Cache::set($Request->merchant_trade_no, $RequestData);
-            $trade_date = Carbon::createFromFormat('d/M/y H:m:s', $Request->trade_date);
-            $payment_date = Carbon::createFromFormat('d/M/y H:m:s', $Request->payment_date);
-            $ecpay1 = Ecpay::find($RequestData['merchant_trade_no']);
-
-            $ecpayback = new Ecpay_back([
-                'merchant_id' => $Request->merchant_id,
-                'trade_date' => $trade_date,
+            $Trade_date = Carbon::createFromFormat('d/M/y H:m:s', $Request->trade_date);
+            $Payment_date = Carbon::createFromFormat('d/M/y H:m:s', $Request->payment_date);
+            $EcpayBackInfo = ['merchant_id' => $Request->merchant_id,
+                'trade_date' => $Trade_date,
                 'check_mac_value' => $Request->check_mac_value,
                 'rtn_code' => $Request->rtn_code,
                 'rtn_msg' => $Request->rtn_msg,
                 'amount' => $Request->amount,
-                'payment_date' => $payment_date,
-            ]);
-            $ecpay1->ecpayback()->save($ecpayback);
-
-
-            if ($Request->rtn_code == 1) {
-                $apple = $ecpay1->Record()->get();
-                $apple[0]->status = '成功';
-                $ecpay1->Record()->saveMany($apple);
-                $recrd = Order::find($apple[0]->oid);
-                $recrd->status = '成功';
-                $recrd->save();
+                'payment_date' => $Payment_date,
+                'merchant_trade_no' => $Request->merchant_trade_no];
+            $this->CreateOrderServiceV2->SaveEcpayBack($EcpayBackInfo);
+            if ($Request->rtn_code == 0) {
+                //將WalletRecord的status改為false
+                $this->CreateOrderServiceV2->UpdateWalletRecordFail($Request->merchant_trade_no);
+                //將order的status改為false
+                $this->CreateOrderServiceV2->UpdateOrederFail($Request->merchant_trade_no);
             } else {
-                $apple = $ecpay1->Record()->get();
-                $apple[0]->status = '失敗';
-                $ecpay1->Record()->saveMany($apple);
-                $recrd = Order::find($apple[0]->oid);
-                $recrd->status = '失敗';
-                $recrd->save();
+                $this->CreateOrderServiceV2->UpdateWalletRecordsuccess($Request->merchant_trade_no);
+                $this->CreateOrderServiceV2->UpdateOredersuccess($Request->merchant_trade_no);
             }
         } catch (Exception $e) {
             return $e;

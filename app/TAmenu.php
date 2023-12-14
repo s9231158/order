@@ -6,15 +6,15 @@ use App\Contract\RestaurantInterface;
 use App\Models\Restaurant;
 use App\Models\Tasty_menu;
 use GuzzleHttp\Client;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Date;
 use Throwable;
 
 class TAmenu implements RestaurantInterface
 {
-    public function Getmenu($offset, $limit)
+    public function Getmenu($Offset, $Limit)
     //修改為從api取得
     {
-        $a = 'http://neil.xincity.xyz:9998/tasty/api/menu' . '?limit=' . $limit . '&offset=' . $offset;
+        $a = 'http://neil.xincity.xyz:9998/tasty/api/menu' . '?limit=' . $Limit . '&offset=' . $Offset;
         try {
             $client = new Client();
             $res = $client->request('GET', $a);
@@ -69,49 +69,50 @@ class TAmenu implements RestaurantInterface
     }
 
 
-    public function Change($order, $order2)
+    public function SendApi($OrderInfo, $Order)
     {
         try {
-            $uid2 = (string) Str::uuid();
-            $targetData = [
-                'order_id' => $uid2,
-                'name' => $order->name,
-                'phone_number' => '0' . (string) $order->phone,
-                'pickup_time' => '2016-06-01T14:41:36+08:00',
-                'total_price' => $order->totalprice,
+            $DateTime = Date::createFromFormat('Y-m-d H:i:s', $OrderInfo['taketime']);
+            $Iso8601String = $DateTime->format('c');
+            $TargetData = [
+                'order_id' => $OrderInfo['uid'],
+                'name' => $OrderInfo['name'],
+                'phone_number' => '0' . $OrderInfo['phone'],
+                'pickup_time' => "2016-06-01T14:41:36+08:00",
+                'total_price' => $OrderInfo['totalprice'],
                 'order' => ['list' => []],
             ];
-            foreach ($order2 as $a) {
-                if (isset($a['description'])) {
-                    $list = [
-                        'id' => $a['id'],
-                        'count' => $a['quanlity'],
-                        'description' => $a['description'],
+            foreach ($Order as $Item) {
+                if (isset($Item['description'])) {
+                    $List = [
+                        'id' => $Item['id'],
+                        'count' => $Item['quanlity'],
+                        'description' => $Item['description'],
                     ];
                 } else {
-                    $list = [
-                        'id' => $a['id'],
-                        'count' => $a['quanlity'],
+                    $List = [
+                        'id' => $Item['id'],
+                        'count' => $Item['quanlity'],
                     ];
                 }
-
-                $targetData['order']['list'][] = $list;
+                $TargetData['order']['list'][] = $List;
             }
-            return $targetData;
+            //發送Api
+            $Client = new Client();
+            $Response = $Client->request('POST', 'http://neil.xincity.xyz:9998/tasty/api/order', ['json' => $TargetData]);
+            $GoodResponse = $Response->getBody();
+            $ArrayGoodResponse = json_decode($GoodResponse);
+            //取得結果
+            if ($ArrayGoodResponse->error_code === 0) {
+                return true;
+            }
+            return false;
         } catch (Throwable $e) {
             return false;
         }
 
     }
 
-    public function Sendapi($order)
-    {
-        $client = new Client();
-        $res = $client->request('POST', 'http://neil.xincity.xyz:9998/tasty/api/order', ['json' => $order]);
-        $goodres = $res->getBody();
-        $s = json_decode($goodres);
-        return $s;
-    }
 
     public function HasRestraunt($rid)
     {
@@ -150,11 +151,5 @@ class TAmenu implements RestaurantInterface
         }
         return true;
     }
-    public function Geterr($callbcak)
-    {
-        if ($callbcak->error_code == 0) {
-            return true;
-        }
-        return false;
-    }
+
 }

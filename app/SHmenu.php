@@ -2,18 +2,18 @@
 
 namespace App;
 
+use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Date;
 use App\Contract\RestaurantInterface;
 use App\Models\Restaurant;
 use App\Models\Steakhome_menu;
-use GuzzleHttp\Client;
-use Illuminate\Support\Str;
 
 class SHmenu implements RestaurantInterface
 {
-    public function Getmenu($offset, $limit)
+    public function Getmenu($Offset, $Limit)
     //修改為從api取得
     {
-        $url = 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls' . '?LT=' . $limit . '&PG=' . $offset;
+        $url = 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls' . '?LT=' . $Limit . '&PG=' . $Offset;
         try {
             $client = new Client();
             $res = $client->request('GET', $url);
@@ -63,45 +63,44 @@ class SHmenu implements RestaurantInterface
     }
 
 
-    public function Change($order, $order2)
+    public function SendApi($OrderInfo, $Order)
     {
         try {
-           
-            $uid2 = (string) Str::uuid();
-            $targetData = [
-                'OID' => $uid2,
-                'NA' => $order->name,
-                'PH_NUM' => '0' . (string) $order->phone,
-                'TOL_PRC' => $order->totalprice,
+            $TargetData = [
+                'OID' => $OrderInfo['uid'],
+                'NA' => $OrderInfo['name'],
+                'PH_NUM' => '0' . $OrderInfo['phone'],
+                'TOL_PRC' => $OrderInfo['totalprice'],
                 'LS' => [],
             ];
 
-            foreach ($order2 as $a) {
-                if (isset($a['description'])) {
+            foreach ($Order as $Item) {
+                if (isset($Item['description'])) {
                     $LS = [
-                        'ID' => $a['id'],
-                        'NOTE' => $a['description'],
+                        'ID' => $Item['id'],
+                        'NOTE' => $Item['description'],
                     ];
                 } else {
                     return false;
                 }
-                $targetData['LS'][] = $LS;
+                $TargetData['LS'][] = $LS;
             }
-            return $targetData;
+            //發送Api
+            $Client = new Client();
+            $Response = $Client->request('POST', 'http://neil.xincity.xyz:9998/steak_home/api/mk/order', ['json' => $TargetData]);
+            $GoodResponse = $Response->getBody();
+            $ArrayGoodResponse = json_decode($GoodResponse);
+            //取得結果
+            if ($ArrayGoodResponse->ERR === 0) {
+                return true;
+            }
+            return false;
         } catch (\Throwable) {
             return false;
         }
 
     }
 
-    public function Sendapi($order)
-    {
-        $client = new Client();
-        $res = $client->request('POST', 'http://neil.xincity.xyz:9998/steak_home/api/mk/order', ['json' => $order]);
-        $goodres = $res->getBody();
-        $s = json_decode($goodres);
-        return $s;
-    }
 
     public function HasRestraunt($rid)
     {
@@ -141,11 +140,4 @@ class SHmenu implements RestaurantInterface
         return true;
     }
 
-    public function Geterr($callbcak)
-    {
-        if ($callbcak->ERR == 0) {
-            return true;
-        }
-        return false;
-    }
 }
