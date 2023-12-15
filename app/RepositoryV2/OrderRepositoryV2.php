@@ -18,4 +18,16 @@ class OrderRepositoryV2
     {
         return Order::find($Oid)->update(['status' => 1]);
     }
+    public function GetOrder($UserId, $Oid)
+    {
+        return Order::where('uid', '=', $UserId)->where('id', '=', $Oid)->get();
+    }
+    public function GetOrdersByOffsetLimit($UserId, $OffsetLimit)
+    {
+        return Order::where('uid', '=', $UserId)->offset($OffsetLimit['offset'])->limit($OffsetLimit['limit'])->get();
+    }
+    public function GetOrderInfoJoinOrder($UserId, $Oid)
+    {
+        return Order::where('orders.uid', '=', $UserId)->where('orders.id', '=', $Oid)->join('order_infos', 'orders.id', '=', 'order_infos.oid')->get();
+    }
 }

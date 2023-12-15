@@ -123,7 +123,7 @@ class CreateOrderServiceV2
     public function SaveOrder($Order)
     {
         $UserInfo = $this->UserRepositoryV2->GetUserInfo();
-        $UserId = $UserInfo['id'];
+        $UserId = $UserInfo->id;
         $Order['uid'] = $UserId;
         return $this->OrderRepositoryV2->SaveOrder($Order);
     }
@@ -142,16 +142,24 @@ class CreateOrderServiceV2
     public function DeductMoney($Money)
     {
         $UserInfo = $this->UserRepositoryV2->GetUserInfo();
-        $UserId = $UserInfo['id'];
+        $UserId = $UserInfo->id;
         $UserWallet = $this->UserWalletRepositoryV2->GetUserWallet($UserId);
         $Balance = $UserWallet->balance -= $Money;
+        $this->UserWalletRepositoryV2->UpdateUserWalletBalance($UserId, $Balance);
+    }
+    public function AddMoney($Money)
+    {
+        $UserInfo = $this->UserRepositoryV2->GetUserInfo();
+        $UserId = $UserInfo->id;
+        $UserWallet = $this->UserWalletRepositoryV2->GetUserWallet($UserId);
+        $Balance = $UserWallet->balance += $Money;
         $this->UserWalletRepositoryV2->UpdateUserWalletBalance($UserId, $Balance);
     }
 
     public function CheckWalletMoney($Money)
     {
         $UserInfo = $this->UserRepositoryV2->GetUserInfo();
-        $UserId = $UserInfo['id'];
+        $UserId = $UserInfo->id;
         $UserWallet = $this->UserWalletRepositoryV2->GetUserWallet($UserId);
         $UserBalcane = $UserWallet->balance;
         if ($Money > $UserBalcane) {
@@ -164,27 +172,32 @@ class CreateOrderServiceV2
         $UserInfo = $this->UserRepositoryV2->GetUserInfo();
         $UserId = $UserInfo['id'];
         $WalletRecord['uid'] = $UserId;
-        $SaveWalletRecord = $this->WalletRecordRepositoryV2->SaveWalletRecord($WalletRecord);
+        $this->WalletRecordRepositoryV2->SaveWalletRecord($WalletRecord);
     }
     public function SaveEcpay($Data)
     {
-        $UserInfo = $this->UserRepositoryV2->GetUserInfo();
-        $UserId = $UserInfo['id'];
-        $Data['trade_desc'] = $UserId . '訂餐';
         $this->EcpayRepositoryV2->SaveEcpay($Data);
+        return $Data;
     }
     public function SendEcpayApi($EcpayInfo)
     {
         $Key = env('Ecpay_Key');
         $Iv = env('Ecpay_Iv');
+        $UserInfo = $this->UserRepositoryV2->GetUserInfo();
+        $UserId = $UserInfo->id;
+        if ($EcpayInfo['item_name'] === '加值') {
+            $EcpayInfo['trade_desc'] = $UserId . '加值';
+        } else {
+            $EcpayInfo['trade_desc'] = $UserId . '訂餐';
+        }
         $CheckMacValueService = new CheckMacValueService($Key, $Iv);
         $CheckMacValue = $CheckMacValueService->generate($EcpayInfo);
-        $Data['check_mac_value'] = $CheckMacValue;
+        $EcpayInfo['check_mac_value'] = $CheckMacValue;
         $Client = new Client();
-        $Response = $Client->Request('POST', 'http://neil.xincity.xyz:9997/api/Cashier/AioCheckOut', ['json' => $Data]);
+        $Response = $Client->Request('POST', 'http://neil.xincity.xyz:9997/api/Cashier/AioCheckOut', ['json' => $EcpayInfo]);
         $GoodResponse = $Response->getBody();
         $ArrayGoodResponse = json_decode($GoodResponse);
-        return $ArrayGoodResponse;
+        return [$ArrayGoodResponse, $EcpayInfo];
     }
     public function SaveEcpayBack($EcpayBackInfo)
     {
@@ -209,5 +222,27 @@ class CreateOrderServiceV2
         $WalletRecord = $this->WalletRecordRepositoryV2->GetWalletRecord($Uuid);
         $Oid = $WalletRecord[0]['oid'];
         $this->OrderRepositoryV2->FindAndUpdatesuccessRecord($Oid);
+    }
+
+    public function GetOrder($Oid, $Option)
+    {
+        $UserInfo = $this->UserRepositoryV2->GetUserInfo();
+        $UserId = $UserInfo->id;
+        if ($Oid !== null) {
+            $Order = $this->OrderRepositoryV2->GetOrder($UserId, $Oid);
+            return $Order = $Order->map->only(['id', 'ordertime', 'taketime', 'total', 'status']);
+        } else {
+
+            $Order = $this->OrderRepositoryV2->GetOrdersByOffsetLimit($UserId, $Option);
+            return $Order = $Order->map->only(['id', 'ordertime', 'taketime', 'total', 'status']);
+        }
+    }
+
+    public function GetOrderInfo($Oid)
+    {
+        $UserInfo = $this->UserRepositoryV2->GetUserInfo();
+        $UserId = $UserInfo->id;
+        $OrderInfo = $this->OrderRepositoryV2->GetOrderInfoJoinOrder($UserId, $Oid);
+        return $OrderInfo = $OrderInfo->map->only(['name', 'quanlity', 'price', 'description']);
     }
 }

@@ -10,10 +10,10 @@ use Throwable;
 
 class OSmenu implements RestaurantInterface
 {
-    public function Getmenu($Offset, $Limit)
+    public function Getmenu(int $Offset, int $Limit): array
     //修改為從api取得
     {
-        $Url = 'http://neil.xincity.xyz:9998/oishii/api/menu/all' . '?limit=' . $Offset . '&offset=' . $Limit;
+        $Url = 'http://neil.xincity.xyz:9998/oishii/api/menu/all' . '?limit=' . $Limit . '&offset=' . $Offset;
         try {
             $Client = new Client();
             $Response = $Client->request('GET', $Url);
@@ -34,7 +34,7 @@ class OSmenu implements RestaurantInterface
             }
             return $TargetData;
         } catch (Throwable $e) {
-            return $e;
+            return $TargetData;
         }
     }
     public function Menuenable(array $MenuId): bool
@@ -47,23 +47,7 @@ class OSmenu implements RestaurantInterface
         }
         return true;
     }
-    public function Restrauntenable($rid)
-    {
-        // $renable = Restaurant::where('id', '=', $rid)->where('enable', '=', 0)->count();
-        // return $renable;
-    }
-    public function Hasmenu($order)
-    {
-        // $realmenu = 0;
-        // $ordermenu = 0;
-        // foreach ($order as $v) {
-        //     $ordermenu += 1;
-        //     $realmenu += Oishii_menu::where('id', '=', $v['id'])->count();
-        // }
-        // return response([$realmenu, $ordermenu]);
-    }
-
-    public function SendApi($OrderInfo, $Order)
+    public function SendApi(array $OrderInfo, array $Order): bool
     {
         try {
             $DateTime = Date::createFromFormat('Y-m-d H:i:s', $OrderInfo['taketime']);
@@ -103,20 +87,10 @@ class OSmenu implements RestaurantInterface
             }
             return false;
         } catch (Throwable $e) {
-            return $e;
+            return false;
         }
 
     }
-
-    public function HasRestraunt($rid)
-    {
-        // $hasRestraunt = Restaurant::where('id', '=', $rid)->count();
-        // return $hasRestraunt;
-        // if ($hasRestraunt != 1) {
-        //     return false;
-        // }
-    }
-
     public function Menucorrect(array $Order): bool
     {
         try {
@@ -153,6 +127,5 @@ class OSmenu implements RestaurantInterface
         } catch (Throwable $e) {
             return false;
         }
-
     }
 }

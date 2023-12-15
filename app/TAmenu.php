@@ -3,7 +3,6 @@
 namespace App;
 
 use App\Contract\RestaurantInterface;
-use App\Models\Restaurant;
 use App\Models\Tasty_menu;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Date;
@@ -11,65 +10,48 @@ use Throwable;
 
 class TAmenu implements RestaurantInterface
 {
-    public function Getmenu($Offset, $Limit)
+    public function Getmenu(int $Offset, int $Limit): array
     //修改為從api取得
     {
-        $a = 'http://neil.xincity.xyz:9998/tasty/api/menu' . '?limit=' . $Limit . '&offset=' . $Offset;
+        $Url = 'http://neil.xincity.xyz:9998/tasty/api/menu' . '?limit=' . $Limit . '&offset=' . $Offset;
         try {
-            $client = new Client();
-            $res = $client->request('GET', $a);
-            $goodres = $res->getBody();
-            $s = json_decode($goodres, true);
-
-            $ss = $s['data']['list'];
-            $targetData = [];
-            foreach ($ss as $a) {
-                if ($a['enable'] != '0') {
-                    $menu = [
+            $Client = new Client();
+            $Response = $Client->request('GET', $Url);
+            $GoodResponse = $Response->getBody();
+            $ArrayGoodResponse = json_decode($GoodResponse, true);
+            $ApiMenu = $ArrayGoodResponse['data']['list'];
+            $TargetData = [];
+            foreach ($ApiMenu as $Item) {
+                if ($Item['enable'] != '0') {
+                    $Menu = [
                         'rid' => 2,
-                        'id' => $a['id'],
+                        'id' => $Item['id'],
                         'info' => '',
-                        'name' => $a['name'],
-                        'price' => $a['price'],
+                        'name' => $Item['name'],
+                        'price' => $Item['price'],
                         'img' => ''
                     ];
-                    $targetData[] = $menu;
+                    $TargetData[] = $Menu;
                 } else {
-                    $menu = '870';
+                    return $TargetData;
                 }
             }
-            return $targetData;
-        } catch (\GuzzleHttp\Exception\BadResponseException $e) {
+            return $TargetData;
+        } catch (Throwable $e) {
+            return $TargetData;
         }
     }
-    public function Menuenable($order)
+    public function Menuenable(array $MenuId): bool
     {
-        $Menu = Tasty_menu::wherein('id', $order)->get();
-        $OrderCount = count($order);
+        $Menu = Tasty_menu::wherein('id', $MenuId)->get();
+        $OrderCount = count($MenuId);
         $NotEnableCount = $Menu->where('enable', '=', 1)->count();
         if ($OrderCount !== $NotEnableCount) {
             return false;
         }
         return true;
     }
-    public function Restrauntenable($rid)
-    {
-        $renable = Restaurant::where('id', '=', $rid)->where('enable', '=', 0)->count();
-        return $renable;
-    }
-    public function Hasmenu($order)
-    {
-        $realmenu = 0;
-        $ordermenu = 0;
-        foreach ($order as $v) {
-            $ordermenu += 1;
-            $realmenu += Tasty_menu::where('id', '=', $v['id'])->count();
-        }
-        return response([$realmenu, $ordermenu]);
-    }
-
-
-    public function SendApi($OrderInfo, $Order)
+    public function SendApi(array $OrderInfo, array $Order): bool
     {
         try {
             $DateTime = Date::createFromFormat('Y-m-d H:i:s', $OrderInfo['taketime']);
@@ -99,8 +81,9 @@ class TAmenu implements RestaurantInterface
             }
             //發送Api
             $Client = new Client();
-            $Response = $Client->request('POST', 'http://neil.xincity.xyz:9998/tasty/api/order', ['json' => $TargetData]);
+            $Response = $Client->request('POST', 'http://neil.xincity.xyz:9998/oishii/api/notify/order', ['json' => $TargetData]);
             $GoodResponse = $Response->getBody();
+            $TargetData;
             $ArrayGoodResponse = json_decode($GoodResponse);
             //取得結果
             if ($ArrayGoodResponse->error_code === 0) {
@@ -110,46 +93,40 @@ class TAmenu implements RestaurantInterface
         } catch (Throwable $e) {
             return false;
         }
-
     }
-
-
-    public function HasRestraunt($rid)
+    public function Menucorrect(array $Order): bool
     {
-        $hasRestraunt = Restaurant::where('id', '=', $rid)->count();
-        if ($hasRestraunt != 1) {
-            return false;
+        try {
+            foreach ($Order as $Item) {
+                $Client = new Client();
+                $Response = $Client->request('GET', 'http://neil.xincity.xyz:9998/tasty/api/menu?id=' . $Item['id']);
+                $GoodResponse = $Response->getBody();
+                $ArrayResponse = json_decode($GoodResponse, true);
+                if ($ArrayResponse['data']['list'] === []) {
+                    return false;
+                }
+                //取出Order內價格.名稱,餐點Id
+                $OrderName = $Item['name'];
+                $OrderPrice = $Item['price'];
+                $OrderId = $Item['id'];
+                //取出店家回傳菜單價格.名稱,餐點Id
+                $ResponseName = $Item['data']['list'][0]['name'];
+                $ResponseId = $Item['data']['list'][0]['id'];
+                $ResponsePrice = $Item['data']['list'][0]['price'];
+                //比對是否不一致
+                if ($OrderName != $ResponseName) {
+                    return false;
+                }
+                if ($OrderPrice != $ResponsePrice) {
+                    return false;
+                }
+                if ($OrderId != $ResponseId) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Throwable $e) {
+            return true;
         }
     }
-    public function Menucorrect($order)
-    {
-        foreach ($order as $a) {
-            $client = new Client();
-            $res = $client->request('GET', 'http://neil.xincity.xyz:9998/tasty/api/menu?id=' . $a['id']);
-            $goodres = $res->getBody();
-            $s = json_decode($goodres, true);
-
-            if ($s['data']['list'] === []) {
-                return false;
-            }
-            $ordername = $a['name'];
-            $orderprice = $a['price'];
-            $orderid = $a['id'];
-
-            $realname = $s['data']['list'][0]['name'];
-            $realid = $s['data']['list'][0]['id'];
-            $realprice = $s['data']['list'][0]['price'];
-            if ($ordername != $realname) {
-                return false;
-            }
-            if ($orderprice != $realprice) {
-                return false;
-            }
-            if ($orderid != $realid) {
-                return false;
-            }
-        }
-        return true;
-    }
-
 }

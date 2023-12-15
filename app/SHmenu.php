@@ -3,67 +3,50 @@
 namespace App;
 
 use GuzzleHttp\Client;
-use Illuminate\Support\Facades\Date;
 use App\Contract\RestaurantInterface;
-use App\Models\Restaurant;
 use App\Models\Steakhome_menu;
+use Throwable;
 
 class SHmenu implements RestaurantInterface
 {
-    public function Getmenu($Offset, $Limit)
+    public function Getmenu(int $Offset, int $Limit): array
     //修改為從api取得
     {
-        $url = 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls' . '?LT=' . $Limit . '&PG=' . $Offset;
+        $Url = 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls' . '?LT=' . $Limit . '&PG=' . $Offset;
         try {
-            $client = new Client();
-            $res = $client->request('GET', $url);
-            $goodres = $res->getBody();
-            $s = json_decode($goodres, true);
-            $ss = $s['LS'];
-            $targetData = [];
-            foreach ($ss as $a) {
-                $menu = [
+            $Client = new Client();
+            $Response = $Client->request('GET', $Url);
+            $GoodResponse = $Response->getBody();
+            $ArrayGoodResponse = json_decode($GoodResponse, true);
+            $ApiMenu = $ArrayGoodResponse['LS'];
+            $TargetData = [];
+            foreach ($ApiMenu as $Item) {
+                $Menu = [
                     'rid' => 3,
-                    'id' => $a['ID'],
+                    'id' => $Item['ID'],
                     'info' => '',
-                    'name' => $a['NA'],
-                    'price' => $a['PRC'],
+                    'name' => $Item['NA'],
+                    'price' => $Item['PRC'],
                     'img' => ''
                 ];
-                $targetData[] = $menu;
+                $TargetData[] = $Menu;
             }
-            return $targetData;
-        } catch (\GuzzleHttp\Exception\BadResponseException $e) {
+            return $TargetData;
+        } catch (Throwable $e) {
+            return $TargetData;
         }
     }
-    public function Menuenable($order) //修改改為傳入id陣列
+    public function Menuenable(array $MenuId): bool
     {
-        $Menu = Steakhome_menu::wherein('id', $order)->get();
-        $OrderCount = count($order);
+        $Menu = Steakhome_menu::wherein('id', $MenuId)->get();
+        $OrderCount = count($MenuId);
         $NotEnableCount = $Menu->where('enable', '=', 1)->count();
         if ($OrderCount !== $NotEnableCount) {
             return false;
         }
         return true;
     }
-    public function Restrauntenable($rid)
-    {
-        $renable = Restaurant::where('id', '=', $rid)->where('enable', '=', 0)->count();
-        return $renable;
-    }
-    public function Hasmenu($order)
-    {
-        $realmenu = 0;
-        $ordermenu = 0;
-        foreach ($order as $v) {
-            $ordermenu += 1;
-            $realmenu += Steakhome_menu::where('id', '=', $v['id'])->count();
-        }
-        return response([$realmenu, $ordermenu]);
-    }
-
-
-    public function SendApi($OrderInfo, $Order)
+    public function SendApi(array $OrderInfo, array $Order): bool
     {
         try {
             $TargetData = [
@@ -95,49 +78,44 @@ class SHmenu implements RestaurantInterface
                 return true;
             }
             return false;
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return false;
         }
 
     }
-
-
-    public function HasRestraunt($rid)
+    public function Menucorrect(array $Order): bool
     {
-        $hasRestraunt = Restaurant::where('id', '=', $rid)->count();
-        if ($hasRestraunt != 1) {
-            return false;
+        try {
+            foreach ($Order as $Item) {
+                $Client = new Client();
+                $Response = $Client->request('GET', 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls?ID=' . $Item['id']);
+                $GoodResponse = $Response->getBody();
+                $ArrayResponse = json_decode($GoodResponse, true);
+                if ($ArrayResponse['LS'] === []) {
+                    return false;
+                }
+                //取出Order內價格.名稱,餐點Id
+                $OrderName = $Item['name'];
+                $OrderPrice = $Item['price'];
+                $OrderId = $Item['id'];
+                //取出店家回傳菜單價格.名稱,餐點Id
+                $ResponseName = $Item['LS'][0]['NA'];
+                $ResponseId = $Item['LS'][0]['ID'];
+                $ResponsePrice = $Item['LS'][0]['PRC'];
+                //比對是否不一致
+                if ($OrderName != $ResponseName) {
+                    return false;
+                }
+                if ($OrderPrice != $ResponsePrice) {
+                    return false;
+                }
+                if ($OrderId != $ResponseId) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Throwable $e) {
+            return true;
         }
     }
-    public function Menucorrect($order)
-    {
-        foreach ($order as $a) {
-            $client = new Client();
-            $res = $client->request('GET', 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls?ID=' . $a['id']);
-            $goodres = $res->getBody();
-            $s = json_decode($goodres, true);
-            if ($s['LS'] === []) {
-                return false;
-            }
-            $ordername = $a['name'];
-            $orderprice = $a['price'];
-            $orderid = $a['id'];
-
-            $realname = $s['LS'][0]['NA'];
-            $realid = $s['LS'][0]['ID'];
-            $realprice = $s['LS'][0]['PRC'];
-
-            if ($ordername != $realname) {
-                return false;
-            }
-            if ($orderprice != $realprice) {
-                return false;
-            }
-            if ($orderid != $realid) {
-                return false;
-            }
-        }
-        return true;
-    }
-
 }

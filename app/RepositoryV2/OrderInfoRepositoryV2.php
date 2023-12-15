@@ -10,4 +10,5 @@ class OrderInfoRepositoryV2
     {
         return Order_info::insert($OrferInfo);
     }
+
 }

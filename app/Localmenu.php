@@ -12,73 +12,47 @@ use Throwable;
 
 class Localmenu implements RestaurantInterface
 {
-    public function Getmenu($offset, $limit)
+    public function Getmenu(int $Offset, int $Limit): array
     {
         try {
-            $menu = Local_menu::select('rid', 'id', 'info', 'name', 'price', 'img')->limit($limit)->offset($offset)->get();
+            $menu = Local_menu::select('rid', 'id', 'info', 'name', 'price', 'img')->limit($Limit)->offset($Offset)->get()->toArray();
             return $menu;
         } catch (\GuzzleHttp\Exception\BadResponseException $e) {
+            return $menu;
         }
     }
-    public function Menuenable($order) //修改改為傳入id陣列
+    public function Menuenable(array $MenuId): bool
     {
-        $Menu = Local_menu::wherein('id', $order)->get();
-        $OrderCount = count($order);
+        $Menu = Local_menu::wherein('id', $MenuId)->get();
+        $OrderCount = count($MenuId);
         $NotEnableCount = $Menu->where('enable', '=', 1)->count();
         if ($OrderCount !== $NotEnableCount) {
             return false;
         }
         return true;
     }
-    public function Restrauntenable($rid)
+    public function SendApi(array $OrderInfo, array $Order): bool
     {
-        $renable = Restaurant::where('id', '=', $rid)->where('enable', '=', 0)->count();
-        return $renable;
+        return true;
     }
-    public function Hasmenu($order)
-    {
-        $realmenu = 0;
-        $ordermenu = 0;
-        foreach ($order as $v) {
-            $ordermenu += 1;
-            $realmenu += Tasty_menu::where('id', '=', $v['id'])->count();
-        }
-        return response([$realmenu, $ordermenu]);
-    }
-
-
-    public function SendApi($OrderInfo, $Order)
-    {
-    
-    }
-
-
-
-    public function HasRestraunt($rid)
-    {
-        $hasRestraunt = Restaurant::where('id', '=', $rid)->count();
-        if ($hasRestraunt != 1) {
-            return false;
-        }
-    }
-    public function Menucorrect($order)
+    public function Menucorrect(array $Order): bool
     {
         try {
-            foreach ($order as $a) {
-                $menu = Local_menu::where('id', '=', $a['id'])->get();
-                $ordername = $a['name'];
-                $orderprice = $a['price'];
-                $orderid = $a['id'];
-                $realname = $menu[0]['name'];
-                $realid = $menu[0]['id'];
-                $realprice = $menu[0]['price'];
-                if ($ordername != $realname) {
+            foreach ($Order as $Item) {
+                $Menu = Local_menu::where('id', '=', $Item['id'])->get();
+                $OrderName = $Item['name'];
+                $OrderPrice = $Item['price'];
+                $OrderId = $Item['id'];
+                $ResponseName = $Menu[0]['name'];
+                $ResponseId = $Menu[0]['id'];
+                $ResponsePrice = $Menu[0]['price'];
+                if ($OrderName != $ResponseName) {
                     return false;
                 }
-                if ($orderprice != $realprice) {
+                if ($OrderPrice != $ResponsePrice) {
                     return false;
                 }
-                if ($orderid != $realid) {
+                if ($OrderId != $ResponseId) {
                     return false;
                 }
             }
