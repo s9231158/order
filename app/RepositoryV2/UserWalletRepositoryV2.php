@@ -3,6 +3,7 @@
 namespace App\RepositoryV2;
 
 use App\Models\User_wallets;
+use Cache;
 
 class UserWalletRepositoryV2
 {
@@ -13,6 +14,7 @@ class UserWalletRepositoryV2
     public function UpdateUserWalletBalance($UserId, $Money)
     {
         $UserWallet = $this->GetUserWallet($UserId);
-        $UserWallet->update(['balance' => $Money]);
+        $UserWallet[0]->update(['balance' => $Money]);
     }
+
 }

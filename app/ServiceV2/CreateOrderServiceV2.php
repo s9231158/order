@@ -13,6 +13,7 @@ use App\RepositoryV2\WalletRecordRepositoryV2;
 use Illuminate\Support\Str;
 use App\CheckMacValueService;
 use GuzzleHttp\Client;
+use Throwable;
 
 class CreateOrderServiceV2
 {
@@ -147,13 +148,12 @@ class CreateOrderServiceV2
         $Balance = $UserWallet->balance -= $Money;
         $this->UserWalletRepositoryV2->UpdateUserWalletBalance($UserId, $Balance);
     }
-    public function AddMoney($Money)
+    public function AddMoney($Money, $Option)
     {
-        $UserInfo = $this->UserRepositoryV2->GetUserInfo();
-        $UserId = $UserInfo->id;
-        $UserWallet = $this->UserWalletRepositoryV2->GetUserWallet($UserId);
+        $UserId = $this->WalletRecordRepositoryV2->GetUserIdFormWallerRecordOnEid($Option);
+        $UserWallet = $this->UserWalletRepositoryV2->GetUserWallet($UserId[0]['uid']);
         $Balance = $UserWallet->balance += $Money;
-        $this->UserWalletRepositoryV2->UpdateUserWalletBalance($UserId, $Balance);
+        return $this->UserWalletRepositoryV2->UpdateUserWalletBalance($UserId, $Balance);
     }
 
     public function CheckWalletMoney($Money)
@@ -244,5 +244,35 @@ class CreateOrderServiceV2
         $UserId = $UserInfo->id;
         $OrderInfo = $this->OrderRepositoryV2->GetOrderInfoJoinOrder($UserId, $Oid);
         return $OrderInfo = $OrderInfo->map->only(['name', 'quanlity', 'price', 'description']);
+    }
+
+
+    public function GetWalletRecordOnRangeAndType($Range, $Type)
+    {
+        try {
+            $UserInfo = $this->UserRepositoryV2->GetUserInfo();
+            $UserId = $UserInfo->id;
+            if ($Type === 'in') {
+                $WalletRecord = $this->WalletRecordRepositoryV2->GetWalletRecordOnRangeAndType($Range, $Type, $UserId);
+                $Count = $WalletRecord->count();
+                return array('count' => $Count, 'data' => $WalletRecord);
+            }
+            if ($Type === 'out') {
+                $WalletRecord = $this->WalletRecordRepositoryV2->GetWalletRecordOnRangeAndType($Range, $Type, $UserId);
+                $Count = $WalletRecord->count();
+                return array('count' => $Count, 'data' => $WalletRecord);
+            } else {
+                $WalletRecord = [];
+                $Count = 0;
+                $WalletRecord['in'] = $this->WalletRecordRepositoryV2->GetWalletRecordOnRangeAndType($Range, 'in', $UserId);
+                $WalletRecord['out'] = $this->WalletRecordRepositoryV2->GetWalletRecordOnRangeAndType($Range, 'out', $UserId);
+                $Count += $WalletRecord['in']->count();
+                $Count += $WalletRecord['out']->count();
+                return array('count' => $Count, 'data' => $WalletRecord);
+            }
+        } catch (Throwable $e) {
+            throw new \Exception("ServiceErr:" . 500);
+        }
+
     }
 }
