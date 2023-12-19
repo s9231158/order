@@ -7,14 +7,22 @@ use Cache;
 
 class UserWalletRepositoryV2
 {
-    public function GetUserWallet($UserId)
+    public function GetOnId($UserId)
     {
-        return User_wallets::find($UserId);
+        try {
+            return User_wallets::where('id', '=', $UserId)->first();
+        } catch (\Throwable $e) {
+            Cache::set('GetUserWallet', 'GetUserWallet');
+        }
     }
-    public function UpdateUserWalletBalance($UserId, $Money)
+    public function UpdateOnId($UserId, $Money)
     {
-        $UserWallet = $this->GetUserWallet($UserId);
-        $UserWallet[0]->update(['balance' => $Money]);
+        try {
+            $apple = $this->GetOnId($UserId);
+            $apple->update(['balance' => $Money]);
+        } catch (\Throwable $e) {
+            Cache::set('UpdateUserWalletBalance', $e->getMessage());
+        }
     }
 
 }

@@ -10,10 +10,13 @@ use Throwable;
 
 class TAmenu implements RestaurantInterface
 {
+    private $GetMenuUrl = 'http://neil.xincity.xyz:9998/tasty/api/menu';
+    private $OrderUrl = 'http://neil.xincity.xyz:9998/oishii/api/notify/order';
+    private $GetMenuOnMenuIdUrl = 'http://neil.xincity.xyz:9998/tasty/api/menu?id=';
     public function Getmenu(int $Offset, int $Limit): array
     //修改為從api取得
     {
-        $Url = 'http://neil.xincity.xyz:9998/tasty/api/menu' . '?limit=' . $Limit . '&offset=' . $Offset;
+        $Url = $this->GetMenuUrl . '?limit=' . $Limit . '&offset=' . $Offset;
         try {
             $Client = new Client();
             $Response = $Client->request('GET', $Url);
@@ -81,7 +84,7 @@ class TAmenu implements RestaurantInterface
             }
             //發送Api
             $Client = new Client();
-            $Response = $Client->request('POST', 'http://neil.xincity.xyz:9998/oishii/api/notify/order', ['json' => $TargetData]);
+            $Response = $Client->request('POST', $this->OrderUrl, ['json' => $TargetData]);
             $GoodResponse = $Response->getBody();
             $TargetData;
             $ArrayGoodResponse = json_decode($GoodResponse);
@@ -99,7 +102,7 @@ class TAmenu implements RestaurantInterface
         try {
             foreach ($Order as $Item) {
                 $Client = new Client();
-                $Response = $Client->request('GET', 'http://neil.xincity.xyz:9998/tasty/api/menu?id=' . $Item['id']);
+                $Response = $Client->request('GET', $this->GetMenuOnMenuIdUrl . $Item['id']);
                 $GoodResponse = $Response->getBody();
                 $ArrayResponse = json_decode($GoodResponse, true);
                 if ($ArrayResponse['data']['list'] === []) {

@@ -4,10 +4,6 @@ namespace App;
 
 use App\Contract\RestaurantInterface;
 use App\Models\Local_menu;
-use App\Models\Restaurant;
-use App\Models\Tasty_menu;
-use GuzzleHttp\Client;
-use Illuminate\Support\Str;
 use Throwable;
 
 class Localmenu implements RestaurantInterface

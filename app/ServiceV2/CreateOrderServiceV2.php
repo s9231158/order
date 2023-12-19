@@ -10,6 +10,7 @@ use App\RepositoryV2\RestaurantRepositoryV2;
 use App\RepositoryV2\UserRepositoryV2;
 use App\RepositoryV2\UserWalletRepositoryV2;
 use App\RepositoryV2\WalletRecordRepositoryV2;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use App\CheckMacValueService;
 use GuzzleHttp\Client;
@@ -144,23 +145,27 @@ class CreateOrderServiceV2
     {
         $UserInfo = $this->UserRepositoryV2->GetUserInfo();
         $UserId = $UserInfo->id;
-        $UserWallet = $this->UserWalletRepositoryV2->GetUserWallet($UserId);
+        $UserWallet = $this->UserWalletRepositoryV2->GetOnId($UserId);
         $Balance = $UserWallet->balance -= $Money;
-        $this->UserWalletRepositoryV2->UpdateUserWalletBalance($UserId, $Balance);
+        $this->UserWalletRepositoryV2->UpdateOnId($UserId, $Balance);
     }
     public function AddMoney($Money, $Option)
     {
-        $UserId = $this->WalletRecordRepositoryV2->GetUserIdFormWallerRecordOnEid($Option);
-        $UserWallet = $this->UserWalletRepositoryV2->GetUserWallet($UserId[0]['uid']);
-        $Balance = $UserWallet->balance += $Money;
-        return $this->UserWalletRepositoryV2->UpdateUserWalletBalance($UserId, $Balance);
+        try {
+            $UserId = $this->WalletRecordRepositoryV2->GetUserIdFormWallerRecordOnEid($Option);
+            $UserWallet = $this->UserWalletRepositoryV2->GetOnId($UserId[0]['uid']);
+            $Balance = $UserWallet->balance += $Money;
+            $this->UserWalletRepositoryV2->UpdateOnId($UserId[0]['uid'], $Balance);
+        } catch (Throwable $e) {
+            Cache::set('AddMoney', 'AddMoney');
+        }
     }
 
     public function CheckWalletMoney($Money)
     {
         $UserInfo = $this->UserRepositoryV2->GetUserInfo();
         $UserId = $UserInfo->id;
-        $UserWallet = $this->UserWalletRepositoryV2->GetUserWallet($UserId);
+        $UserWallet = $this->UserWalletRepositoryV2->GetOnId($UserId);
         $UserBalcane = $UserWallet->balance;
         if ($Money > $UserBalcane) {
             return true;
@@ -191,10 +196,19 @@ class CreateOrderServiceV2
             $EcpayInfo['trade_desc'] = $UserId . '訂餐';
         }
         $CheckMacValueService = new CheckMacValueService($Key, $Iv);
+        $EcpayRestaurantInfo = [
+            "merchant_id" => 11,
+            "payment_type" => "aio",
+            "return_url" => env('Ecpay_ReturnUrl'),
+            "encrypt_type" => 1,
+            "lang" => "en",
+            "choose_payment" => "Credit",
+        ];
+        $EcpayInfo = array_merge($EcpayInfo, $EcpayRestaurantInfo);
         $CheckMacValue = $CheckMacValueService->generate($EcpayInfo);
         $EcpayInfo['check_mac_value'] = $CheckMacValue;
         $Client = new Client();
-        $Response = $Client->Request('POST', 'http://neil.xincity.xyz:9997/api/Cashier/AioCheckOut', ['json' => $EcpayInfo]);
+        $Response = $Client->Request('POST', env('Ecpay_ApiUrl'), ['json' => $EcpayInfo]);
         $GoodResponse = $Response->getBody();
         $ArrayGoodResponse = json_decode($GoodResponse);
         return [$ArrayGoodResponse, $EcpayInfo];
@@ -247,25 +261,25 @@ class CreateOrderServiceV2
     }
 
 
-    public function GetWalletRecordOnRangeAndType($Range, $Type)
+    public function GetWalletRecordOnRangeAndType($Option, $Type)
     {
         try {
             $UserInfo = $this->UserRepositoryV2->GetUserInfo();
             $UserId = $UserInfo->id;
             if ($Type === 'in') {
-                $WalletRecord = $this->WalletRecordRepositoryV2->GetWalletRecordOnRangeAndType($Range, $Type, $UserId);
+                $WalletRecord = $this->WalletRecordRepositoryV2->GetWalletRecordOnRangeAndType($Option, $Type, $UserId);
                 $Count = $WalletRecord->count();
                 return array('count' => $Count, 'data' => $WalletRecord);
             }
             if ($Type === 'out') {
-                $WalletRecord = $this->WalletRecordRepositoryV2->GetWalletRecordOnRangeAndType($Range, $Type, $UserId);
+                $WalletRecord = $this->WalletRecordRepositoryV2->GetWalletRecordOnRangeAndType($Option, $Type, $UserId);
                 $Count = $WalletRecord->count();
                 return array('count' => $Count, 'data' => $WalletRecord);
             } else {
                 $WalletRecord = [];
                 $Count = 0;
-                $WalletRecord['in'] = $this->WalletRecordRepositoryV2->GetWalletRecordOnRangeAndType($Range, 'in', $UserId);
-                $WalletRecord['out'] = $this->WalletRecordRepositoryV2->GetWalletRecordOnRangeAndType($Range, 'out', $UserId);
+                $WalletRecord['in'] = $this->WalletRecordRepositoryV2->GetWalletRecordOnRangeAndType($Option, 'in', $UserId);
+                $WalletRecord['out'] = $this->WalletRecordRepositoryV2->GetWalletRecordOnRangeAndType($Option, 'out', $UserId);
                 $Count += $WalletRecord['in']->count();
                 $Count += $WalletRecord['out']->count();
                 return array('count' => $Count, 'data' => $WalletRecord);
@@ -273,6 +287,5 @@ class CreateOrderServiceV2
         } catch (Throwable $e) {
             throw new \Exception("ServiceErr:" . 500);
         }
-
     }
 }

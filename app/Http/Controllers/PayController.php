@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\ErrorCodeService;
+use App\Models\User_wallets;
 use App\RepositoryV2\UserRepositoryV2;
 use App\Service\OrderInfoService;
 use App\Service\OrderService;
-use App\Service\RestaurantService;
 use App\Service\UserWallerService;
 use App\Service\WalletRecordService;
 use App\TotalService;
@@ -14,10 +14,10 @@ use App\UserService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
-use App\Models\Ecpay_back;
 use Throwable;
 use App\ServiceV2\CreateOrderServiceV2;
 
@@ -38,14 +38,12 @@ class PayController extends Controller
     //new
     private $Err;
     private $Keys;
-    private $RestaurantService;
     private $CreateOrderServiceV2;
     private $UserRepositoryV2;
-    public function __construct(UserRepositoryV2 $UserRepositoryV2, CreateOrderServiceV2 $CreateOrderServiceV2, OrderInfoService $OrderInfoService, RestaurantService $RestaurantService, ErrorCodeService $ErrorCodeService, WalletRecordService $WalletRecordService, OrderService $OrderService, UserService $UserService, TotalService $TotalService, UserWallerService $UserWallerService)
+    public function __construct(UserRepositoryV2 $UserRepositoryV2, CreateOrderServiceV2 $CreateOrderServiceV2, OrderInfoService $OrderInfoService, ErrorCodeService $ErrorCodeService, WalletRecordService $WalletRecordService, OrderService $OrderService, UserService $UserService, TotalService $TotalService, UserWallerService $UserWallerService)
     {
         $this->CreateOrderServiceV2 = $CreateOrderServiceV2;
         $this->OrderInfoService = $OrderInfoService;
-        $this->RestaurantService = $RestaurantService;
         $this->ErrorCodeService = $ErrorCodeService;
         $this->UserService = $UserService;
         $this->OrderService = $OrderService;
@@ -64,7 +62,7 @@ class PayController extends Controller
             'name' => ['required', 'max:25', 'min:3'],
             'address' => ['required', 'min:10', 'max:25'],
             'phone' => ['required', 'string', 'size:9', 'regex:/^[0-9]+$/'],
-            'totalprice' => ['required', 'regex:/^[0-9]+$/'],
+            'total_price' => ['required', 'regex:/^[0-9]+$/'],
             'taketime' => ['required', 'date'],
             'orders' => ['required', 'array'],
             'orders.*.rid' => ['required', 'regex:/^[0-9]+$/'],
@@ -174,7 +172,7 @@ class PayController extends Controller
                         'total' => $TotalPrice,
                         'phone' => $Phone,
                         'address' => $Address,
-                        'status' => '付款中',
+                        'status' => 11,
                         'rid' => $Rid,
                     ];
                     $Oid = $this->CreateOrderServiceV2->SaveOrder($SaveOrderInfo);
@@ -188,7 +186,7 @@ class PayController extends Controller
                         'total' => $TotalPrice,
                         'phone' => $Phone,
                         'address' => $Address,
-                        'status' => '0',
+                        'status' => 10,
                         'rid' => $Rid,
                     ];
                     $this->CreateOrderServiceV2->SaveOrder($SaveOrderInfo);
@@ -196,6 +194,7 @@ class PayController extends Controller
                 }
 
             } else {
+                //本地餐廳
                 $OrderInfo = ['name' => $Request->name, 'phone' => $Request->phone, 'taketime' => $Request->taketime, 'totalprice' => $Request->totalprice];
                 $SaveOrderInfo = [
                     'ordertime' => $Now,
@@ -203,7 +202,7 @@ class PayController extends Controller
                     'total' => $TotalPrice,
                     'phone' => $Phone,
                     'address' => $Address,
-                    'status' => '付款中',
+                    'status' => 11,
                     'rid' => $Rid,
                 ];
                 $Oid = $this->CreateOrderServiceV2->SaveOrder($SaveOrderInfo);
@@ -222,7 +221,7 @@ class PayController extends Controller
                 //將user錢包扣款
                 $this->CreateOrderServiceV2->DeductMoney($Money);
                 // 存入wallet record
-                $WalletRecordInfo = ['oid' => $Oid, 'out' => $Money, 'status' => '付款中', 'pid' => $this->Payment[$Request->payment]];
+                $WalletRecordInfo = ['oid' => $Oid, 'out' => $Money, 'status' => 0, 'pid' => $this->Payment[$Request->payment]];
                 $this->CreateOrderServiceV2->SaveWalletRecord($WalletRecordInfo);
                 return response()->json(['name' => $Request->name, 'phone' => $Request->phone, 'taketime' => $Request->taketime, 'totalprice' => $Request->totalprice, 'orders' => $GoodOrder]);
             }
@@ -234,24 +233,17 @@ class PayController extends Controller
                 $AllOrderMenuName = array_column($RequestOrder, 'name');
                 $ItemString = implode(",", $AllOrderMenuName);
                 $EcpayInfo = [
-                    "merchant_id" => 11,
                     "merchant_trade_no" => $Uuid,
                     "merchant_trade_date" => $Date,
-                    "payment_type" => "aio",
                     "amount" => $Money,
                     "item_name" => $ItemString,
-                    "return_url" => "http://192.168.83.26:9999/api/EcpayCallBack",
-                    "choose_payment" => "Credit",
-                    "check_mac_value" => "6CC73080A3CF1EA1A844F1EEF96A873FA4D1DD485BDA6517696A4D8EF0EAC94E",
-                    "encrypt_type" => 1,
-                    "lang" => "en"
                 ];
                 //發送api訂單至金流方
                 $SendEcpayApi = $this->CreateOrderServiceV2->SendEcpayApi($EcpayInfo);
                 //將發送訂單存入資料庫
                 $EcpayInfo = $this->CreateOrderServiceV2->SaveEcpay($SendEcpayApi[1]);
                 //將交易紀錄存進資料庫
-                $WalletRecordInfo = ['eid' => $Uuid, 'oid' => $Oid, 'out' => $Money, 'status' => '付款中', 'pid' => $this->Payment[$Request->payment]];
+                $WalletRecordInfo = ['eid' => $Uuid, 'oid' => $Oid, 'out' => $Money, 'status' => 11, 'pid' => $this->Payment[$Request->payment]];
                 $this->CreateOrderServiceV2->SaveWalletRecord($WalletRecordInfo);
                 if (isset($SendEcpayApi[0]->transaction_url)) {
                     return $SendEcpayApi[0];
@@ -260,7 +252,6 @@ class PayController extends Controller
                     return response()->json(['Err' => $SendEcpayApi[0]->error_code, 'Message' => '第三方金流錯誤']);
                 }
             }
-
         } catch (Exception $e) {
             return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
         } catch (Throwable $e) {
@@ -274,14 +265,16 @@ class PayController extends Controller
         try {
             $Trade_date = Carbon::createFromFormat('d/M/y H:m:s', $Request->trade_date);
             $Payment_date = Carbon::createFromFormat('d/M/y H:m:s', $Request->payment_date);
-            $EcpayBackInfo = ['merchant_id' => $Request->merchant_id,
+            $EcpayBackInfo = [
+                'merchant_id' => $Request->merchant_id,
                 'trade_date' => $Trade_date,
                 'check_mac_value' => $Request->check_mac_value,
                 'rtn_code' => $Request->rtn_code,
                 'rtn_msg' => $Request->rtn_msg,
                 'amount' => $Request->amount,
                 'payment_date' => $Payment_date,
-                'merchant_trade_no' => $Request->merchant_trade_no];
+                'merchant_trade_no' => $Request->merchant_trade_no
+            ];
             $this->CreateOrderServiceV2->SaveEcpayBack($EcpayBackInfo);
             if ($Request->rtn_code == 0) {
                 //將WalletRecord的status改為false
@@ -385,14 +378,14 @@ class PayController extends Controller
                 "payment_type" => "aio",
                 "amount" => $Money,
                 "item_name" => '加值',
-                "return_url" => "http://192.168.83.26:9999/api/moneycallback",
+                "return_url" => env('AddWalletMoneyEcpay_ReturnUrl'),
                 "choose_payment" => "Credit",
                 "encrypt_type" => 1,
                 "lang" => "en"
             ];
             $SendEcpayApi = $this->CreateOrderServiceV2->SendEcpayApi($EcpayInfo);
             $EcpayInfo = $this->CreateOrderServiceV2->SaveEcpay($SendEcpayApi[1]);
-            $WalletRecordInfo = ['eid' => $Uuid, 'in' => $Money, 'status' => '付款中', 'pid' => 2];
+            $WalletRecordInfo = ['eid' => $Uuid, 'in' => $Money, 'status' => 11, 'pid' => 2];
             $this->CreateOrderServiceV2->SaveWalletRecord($WalletRecordInfo);
             if (isset($SendEcpayApi[0]->transaction_url)) {
                 return $SendEcpayApi[0];
@@ -409,6 +402,7 @@ class PayController extends Controller
         try {
             $Money = $Request->amount;
             $Trade_date = Carbon::createFromFormat('d/M/y H:m:s', $Request->trade_date);
+
             $Payment_date = Carbon::createFromFormat('d/M/y H:m:s', $Request->payment_date);
             $EcpayBackInfo = ['merchant_id' => $Request->merchant_id,
                 'trade_date' => $Trade_date,
@@ -420,7 +414,7 @@ class PayController extends Controller
                 'merchant_trade_no' => $Request->merchant_trade_no];
             $this->CreateOrderServiceV2->SaveEcpayBack($EcpayBackInfo);
             if ($Request->rtn_code == 0) {
-                //將WalletRecord的status改為false
+                //將WalletRecord的 status改為false
                 $this->CreateOrderServiceV2->UpdateWalletRecordFail($Request->merchant_trade_no);
             } else {
                 $yesterday = date('Y-m-d H:i:s', strtotime('-1 day'));
@@ -430,9 +424,9 @@ class PayController extends Controller
                 $this->CreateOrderServiceV2->UpdateWalletRecordsuccess($Request->merchant_trade_no);
             }
         } catch (Exception $e) {
-            Cache::set('AddWalletErrMessage' . $today, $e);
+            Cache::set('moneycallback', $e);
         } catch (Throwable $e) {
-            Cache::set('AddWalletErrMessage' . $today, $e);
+            Cache::set('moneycallback', $e);
         }
     }
     public function wallet(Request $Request)

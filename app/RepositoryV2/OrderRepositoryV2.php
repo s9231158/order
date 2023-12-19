@@ -12,19 +12,19 @@ class OrderRepositoryV2
     }
     public function FindAndUpdateFailRecord($Oid)
     {
-        return Order::find($Oid)->update(['status' => 0]);
+        return Order::find($Oid)->update(['status' => 10]);
     }
     public function FindAndUpdatesuccessRecord($Oid)
     {
-        return Order::find($Oid)->update(['status' => 1]);
+        return Order::find($Oid)->update(['status' => 0]);
     }
     public function GetOrder($UserId, $Oid)
     {
         return Order::where('uid', '=', $UserId)->where('id', '=', $Oid)->get();
     }
-    public function GetOrdersByOffsetLimit($UserId, $OffsetLimit)
+    public function GetOrdersByOffsetLimit($UserId, $Option)
     {
-        return Order::where('uid', '=', $UserId)->offset($OffsetLimit['offset'])->limit($OffsetLimit['limit'])->get();
+        return Order::where('uid', '=', $UserId)->offset($Option['offset'])->limit($Option['limit'])->get();
     }
     public function GetOrderInfoJoinOrder($UserId, $Oid)
     {

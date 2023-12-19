@@ -10,10 +10,13 @@ use Throwable;
 
 class OSmenu implements RestaurantInterface
 {
+    private $GetMenuUrl = 'http://neil.xincity.xyz:9998/oishii/api/menu/all';
+    private $OrderUrl = 'http://neil.xincity.xyz:9998/oishii/api/notify/order';
+    private $GetMenuOnMenuIdUrl = 'http://neil.xincity.xyz:9998/oishii/api/menu/all?meal_id=';
     public function Getmenu(int $Offset, int $Limit): array
     //修改為從api取得
     {
-        $Url = 'http://neil.xincity.xyz:9998/oishii/api/menu/all' . '?limit=' . $Limit . '&offset=' . $Offset;
+        $Url = $this->GetMenuUrl . '?limit=' . $Limit . '&offset=' . $Offset;
         try {
             $Client = new Client();
             $Response = $Client->request('GET', $Url);
@@ -62,7 +65,7 @@ class OSmenu implements RestaurantInterface
             ];
             //如果再Service先把description處理好 萬一某些餐廳部接收description是空值
             foreach ($Order as $Item) {
-                if (isset($a['description'])) {
+                if (isset($Item['description'])) {
                     $Orders = [
                         'meal_id' => $Item['id'],
                         'count' => $Item['quanlity'],
@@ -78,7 +81,7 @@ class OSmenu implements RestaurantInterface
             }
             //發送Api
             $Client = new Client();
-            $Response = $Client->request('POST', 'http://neil.xincity.xyz:9998/oishii/api/notify/order', ['json' => $TargetData]);
+            $Response = $Client->request('POST', $this->OrderUrl, ['json' => $TargetData]);
             $GoodResponse = $Response->getBody();
             $ArrayGoodResponse = json_decode($GoodResponse);
             //取得結果
@@ -97,7 +100,7 @@ class OSmenu implements RestaurantInterface
             foreach ($Order as $Item) {
                 //取得店家菜單
                 $Client = new Client();
-                $Response = $Client->request('GET', 'http://neil.xincity.xyz:9998/oishii/api/menu/all?meal_id=' . $Item['id']);
+                $Response = $Client->request('GET', $this->GetMenuOnMenuIdUrl . $Item['id']);
                 $GoodResponse = $Response->getBody();
                 $ArrayResponse = json_decode($GoodResponse, true);
                 //找不到此id菜單就是錯誤

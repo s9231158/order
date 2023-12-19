@@ -9,10 +9,13 @@ use Throwable;
 
 class SHmenu implements RestaurantInterface
 {
+    private $GetMenuUrl = 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls';
+    private $OrderUrl = 'http://neil.xincity.xyz:9998/steak_home/api/mk/order';
+    private $GetMenuOnMenuIdUrl = 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls?ID=';
     public function Getmenu(int $Offset, int $Limit): array
     //修改為從api取得
     {
-        $Url = 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls' . '?LT=' . $Limit . '&PG=' . $Offset;
+        $Url = $this->GetMenuUrl . '?LT=' . $Limit . '&PG=' . $Offset;
         try {
             $Client = new Client();
             $Response = $Client->request('GET', $Url);
@@ -70,7 +73,7 @@ class SHmenu implements RestaurantInterface
             }
             //發送Api
             $Client = new Client();
-            $Response = $Client->request('POST', 'http://neil.xincity.xyz:9998/steak_home/api/mk/order', ['json' => $TargetData]);
+            $Response = $Client->request('POST', $this->OrderUrl, ['json' => $TargetData]);
             $GoodResponse = $Response->getBody();
             $ArrayGoodResponse = json_decode($GoodResponse);
             //取得結果
@@ -88,7 +91,7 @@ class SHmenu implements RestaurantInterface
         try {
             foreach ($Order as $Item) {
                 $Client = new Client();
-                $Response = $Client->request('GET', 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls?ID=' . $Item['id']);
+                $Response = $Client->request('GET', $this->GetMenuOnMenuIdUrl . $Item['id']);
                 $GoodResponse = $Response->getBody();
                 $ArrayResponse = json_decode($GoodResponse, true);
                 if ($ArrayResponse['LS'] === []) {
