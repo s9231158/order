@@ -56,7 +56,7 @@ class SHmenu implements RestaurantInterface
                 'OID' => $OrderInfo['uid'],
                 'NA' => $OrderInfo['name'],
                 'PH_NUM' => '0' . $OrderInfo['phone'],
-                'TOL_PRC' => $OrderInfo['totalprice'],
+                'TOL_PRC' => $OrderInfo['total_price'],
                 'LS' => [],
             ];
 

@@ -13,6 +13,7 @@ class OSmenu implements RestaurantInterface
     private $GetMenuUrl = 'http://neil.xincity.xyz:9998/oishii/api/menu/all';
     private $OrderUrl = 'http://neil.xincity.xyz:9998/oishii/api/notify/order';
     private $GetMenuOnMenuIdUrl = 'http://neil.xincity.xyz:9998/oishii/api/menu/all?meal_id=';
+
     public function Getmenu(int $Offset, int $Limit): array
     //修改為從api取得
     {
@@ -60,7 +61,7 @@ class OSmenu implements RestaurantInterface
                 'name' => $OrderInfo['name'],
                 'phone_number' => '0' . $OrderInfo['phone'],
                 'pickup_time' => $Iso8601String,
-                'total_price' => $OrderInfo['totalprice'],
+                'total_price' => $OrderInfo['total_price'],
                 'orders' => [],
             ];
             //如果再Service先把description處理好 萬一某些餐廳部接收description是空值

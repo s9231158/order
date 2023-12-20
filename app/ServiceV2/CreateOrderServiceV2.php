@@ -28,8 +28,21 @@ class CreateOrderServiceV2
     private $WalletRecordRepositoryV2;
     private $EcpayRepositoryV2;
     private $EcpayBackRepositoryV2;
-    public function __construct(EcpayBackRepositoryV2 $EcpayBackRepositoryV2, EcpayRepositoryV2 $EcpayRepositoryV2, WalletRecordRepositoryV2 $WalletRecordRepositoryV2, UserWalletRepositoryV2 $UserWalletRepositoryV2, UserRepositoryV2 $UserRepositoryV2, OrderInfoRepositoryV2 $OrderInfoRepositoryV2, OrderRepositoryV2 $OrderRepositoryV2, Factorise $Factorise, RestaurantRepositoryV2 $RestaurantRepositoryV2)
-    {
+    public function __construct(
+        EcpayBackRepositoryV2 $EcpayBackRepositoryV2,
+        EcpayRepositoryV2 $EcpayRepositoryV2,
+
+        WalletRecordRepositoryV2 $WalletRecordRepositoryV2,
+        UserWalletRepositoryV2 $UserWalletRepositoryV2,
+
+        OrderInfoRepositoryV2 $OrderInfoRepositoryV2,
+        OrderRepositoryV2 $OrderRepositoryV2,
+
+        UserRepositoryV2 $UserRepositoryV2,
+
+        Factorise $Factorise,
+        RestaurantRepositoryV2 $RestaurantRepositoryV2
+    ) {
         $this->Factorise = $Factorise;
         $this->RestaurantRepositoryV2 = $RestaurantRepositoryV2;
         $this->OrderRepositoryV2 = $OrderRepositoryV2;
@@ -44,41 +57,34 @@ class CreateOrderServiceV2
     public function MergeOrdersBySameId(array $Order): array
     {
         $GoodOrder = [];
-        $AllOrderMealId = array_column($Order, 'id');
-        $MealIdUnique = collect($AllOrderMealId)->unique()->toArray();
-        if ($this->CheckSameArray($AllOrderMealId, $MealIdUnique)) {
-            foreach ($Order as $Item) {
-                $Key = $Item['id'];
-                if (array_key_exists($Key, $GoodOrder)) {
-                    $GoodOrder[$Key]['price'] += $GoodOrder[$Key]['price'];
-                    $GoodOrder[$Key]['quanlity'] += $GoodOrder[$Key]['quanlity'];
-
+        foreach ($Order as $Item) {
+            $Key = $Item['id'];
+            if (array_key_exists($Key, $GoodOrder)) {
+                $GoodOrder[$Key]['price'] += $GoodOrder[$Key]['price'];
+                $GoodOrder[$Key]['quanlity'] += $GoodOrder[$Key]['quanlity'];
+            } else {
+                if (isset($Item['description'])) {
+                    $GoodOrder[$Key] = [
+                        "rid" => $Item['rid'],
+                        "id" => $Item['id'],
+                        "name" => $Item['name'],
+                        "price" => $Item['price'],
+                        "quanlity" => $Item['quanlity'],
+                        'description' => $Item['description']
+                    ];
                 } else {
-                    if (isset($Item['description'])) {
-                        $GoodOrder[$Key] = [
-                            "rid" => $Item['rid'],
-                            "id" => $Item['id'],
-                            "name" => $Item['name'],
-                            "price" => $Item['price'],
-                            "quanlity" => $Item['quanlity'],
-                            'description' => $Item['description']
-                        ];
-                    } else {
-                        $GoodOrder[$Key] = [
-                            "rid" => $Item['rid'],
-                            "id" => $Item['id'],
-                            "name" => $Item['name'],
-                            "price" => $Item['price'],
-                            "quanlity" => $Item['quanlity'],
-                        ];
-                    }
+                    $GoodOrder[$Key] = [
+                        "rid" => $Item['rid'],
+                        "id" => $Item['id'],
+                        "name" => $Item['name'],
+                        "price" => $Item['price'],
+                        "quanlity" => $Item['quanlity'],
+                    ];
                 }
             }
-            $GoodOrder = array_values($GoodOrder);
-            return $GoodOrder;
-        } else {
-            return $Order;
         }
+        $GoodOrder = array_values($GoodOrder);
+        return $GoodOrder;
     }
     public function CheckRestaurantInDatabase(int $Rid): bool
     {
@@ -106,13 +112,13 @@ class CreateOrderServiceV2
         return $this->RestaurantRepositoryV2->CheckRestaurantOpen($Rid, $Date);
     }
 
-    public function Menucorrect(int $Rid, array $RequestOrder): bool
+    public function MenuCorrect(int $Rid, array $RequestOrder): bool
     {
         $this->Restaurant = $this->Factorise->Setmenu($Rid);
         return $this->Restaurant->Menucorrect($RequestOrder);
     }
 
-    public function Menuenable(array $ArrayMenuId)
+    public function MenuEnable(array $ArrayMenuId)
     {
         return $this->Restaurant->Menuenable($ArrayMenuId);
     }
@@ -179,11 +185,7 @@ class CreateOrderServiceV2
         $WalletRecord['uid'] = $UserId;
         $this->WalletRecordRepositoryV2->SaveWalletRecord($WalletRecord);
     }
-    public function SaveEcpay($Data)
-    {
-        $this->EcpayRepositoryV2->SaveEcpay($Data);
-        return $Data;
-    }
+
     public function SendEcpayApi($EcpayInfo)
     {
         $Key = env('Ecpay_Key');
@@ -213,10 +215,7 @@ class CreateOrderServiceV2
         $ArrayGoodResponse = json_decode($GoodResponse);
         return [$ArrayGoodResponse, $EcpayInfo];
     }
-    public function SaveEcpayBack($EcpayBackInfo)
-    {
-        $this->EcpayBackRepositoryV2->SaveEcpayCallBack($EcpayBackInfo);
-    }
+
     public function UpdateWalletRecordFail($Uuid)
     {
         return $this->WalletRecordRepositoryV2->FindAndUpdateFailRecord($Uuid);
@@ -288,4 +287,18 @@ class CreateOrderServiceV2
             throw new \Exception("ServiceErr:" . 500);
         }
     }
+
+
+
+    ////Ecpay
+    public function SaveEcpay($Data)
+    {
+        $this->EcpayRepositoryV2->SaveEcpay($Data);
+        return $Data;
+    }
+    public function SaveEcpayBack($EcpayBackInfo)
+    {
+        $this->EcpayBackRepositoryV2->SaveEcpayCallBack($EcpayBackInfo);
+    }
+    //////Ecpay
 }

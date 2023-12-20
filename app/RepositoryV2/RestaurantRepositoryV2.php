@@ -5,11 +5,10 @@ use App\Models\Restaurant;
 
 class RestaurantRepositoryV2
 {
-    // public function GetRestaurantInfo(array $Rid)
-    // {
-    //     $RestaurantInfo = Restaurant::wherein("id", $Rid)->get();
-    //     return $RestaurantInfo;
-    // }
+    public function GetById($Rid)
+    {
+        return Restaurant::find($Rid);
+    }
     // public function GetRestaurantInfoOffsetLimit(array $Option, $Date)
     // {
     //     $Offset = $Option['offset'];
@@ -24,5 +23,12 @@ class RestaurantRepositoryV2
     public function CheckRestaurantInDatabase(int $Rid): bool
     {
         return Restaurant::where('id', '=', $Rid)->exists();
+    }
+    public function GetInRangeForDate(array $Option, $Date)
+    {
+        $Offset = $Option['offset'];
+        $Limit = $Option['limit'];
+        $RestaurantInfo = Restaurant::select('restaurants.id', 'restaurants.title', 'restaurants.img', 'restaurants.totalpoint', 'restaurants.countpoint', 'restaurants.enable')->join('restaurant_open_days', 'restaurant_open_days.id', '=', 'restaurants.id')->where('restaurant_open_days.' . $Date, '=', '1')->limit($Limit)->offset($Offset)->get();
+        return $RestaurantInfo;
     }
 }

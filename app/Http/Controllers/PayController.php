@@ -3,18 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\ErrorCodeService;
-use App\Models\User_wallets;
-use App\RepositoryV2\UserRepositoryV2;
-use App\Service\OrderInfoService;
-use App\Service\OrderService;
-use App\Service\UserWallerService;
-use App\Service\WalletRecordService;
 use App\TotalService;
-use App\UserService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
@@ -23,89 +15,82 @@ use App\ServiceV2\CreateOrderServiceV2;
 
 class PayController extends Controller
 {
-    private $OrderService;
-    private $UserService;
     private $TotalService;
-    private $UserWallerService;
-    private $WalletRecordService;
     private $ErrorCodeService;
-    private $OrderInfoService;
     private $Payment = [
         'ecpay' => 2,
         'local' => 1,
     ];
-
-    //new
     private $Err;
     private $Keys;
     private $CreateOrderServiceV2;
-    private $UserRepositoryV2;
-    public function __construct(UserRepositoryV2 $UserRepositoryV2, CreateOrderServiceV2 $CreateOrderServiceV2, OrderInfoService $OrderInfoService, ErrorCodeService $ErrorCodeService, WalletRecordService $WalletRecordService, OrderService $OrderService, UserService $UserService, TotalService $TotalService, UserWallerService $UserWallerService)
-    {
+    public function __construct(
+        CreateOrderServiceV2 $CreateOrderServiceV2,
+        ErrorCodeService $ErrorCodeService,
+        TotalService $TotalService
+    ) {
         $this->CreateOrderServiceV2 = $CreateOrderServiceV2;
-        $this->OrderInfoService = $OrderInfoService;
         $this->ErrorCodeService = $ErrorCodeService;
-        $this->UserService = $UserService;
-        $this->OrderService = $OrderService;
         $this->TotalService = $TotalService;
-        $this->UserWallerService = $UserWallerService;
-        $this->WalletRecordService = $WalletRecordService;
-        $this->UserRepositoryV2 = $UserRepositoryV2;
         $this->Err = $ErrorCodeService->GetErrCode();
         $this->Keys = $ErrorCodeService->GetErrKey();
     }
-    public function otherpay(Request $Request)
+    public function CreateOrder(Request $Request)
     {
         //規則
         $Ruls = [
-            'payment' => ['required', 'in:ecpay,local'],
-            'name' => ['required', 'max:25', 'min:3'],
-            'address' => ['required', 'min:10', 'max:25'],
-            'phone' => ['required', 'string', 'size:9', 'regex:/^[0-9]+$/'],
-            'total_price' => ['required', 'regex:/^[0-9]+$/'],
-            'taketime' => ['required', 'date'],
+            'payment' => ['required', 'string', 'in:ecpay,local'],
+            'name' => ['required', 'string', 'max:25', 'min:3'],
+            'address' => ['required', 'string', 'min:10', 'max:25'],
+            'phone' => ['required', 'string', 'digits_between:1,9'],
+            'total_price' => ['required', 'numeric', 'min:0'],
+            'take_time' => ['required', 'date'],
             'orders' => ['required', 'array'],
-            'orders.*.rid' => ['required', 'regex:/^[0-9]+$/'],
-            'orders.*.id' => ['required'],
-            'orders.*.name' => ['required', 'max:25', 'min:1'],
-            'orders.*.price' => ['required'],
+            'orders.*.rid' => ['required', 'integer'],
+            'orders.*.id' => ['required', 'integer'],
+            'orders.*.name' => ['required', 'string', 'max:25', 'min:1'],
+            'orders.*.price' => ['required', 'integer'],
         ];
         //什麼錯誤報什麼錯誤訊息
         $RulsMessage = [
-            'payment' => 2,
-            'payment.in' => 33,
-            'name.required' => 2,
-            'name.max' => 1,
-            'name.min' => 1,
-            'address.required' => 2,
-            'address.min' => 1,
-            'address.max' => 1,
-            'phone.required' => 2,
-            'phone.string' => 1,
-            'phone.size' => 1,
-            'phone.regex' => 1,
-            'totalprice.required' => 2,
-            'totalprice.regex' => 1,
-            'taketime.required' => 2,
-            'taketime.date' => 1,
-            'orders.required' => 1,
-            'orders.array' => 1,
-            'orders.*.rid.required' => 1,
-            'orders.*.rid.regex' => 2,
-            'orders.*.id.required' => 2,
-            'orders.*.id.regex' => 2,
-            'orders.*.name.required' => 1,
-            'orders.*.name.max' => 1,
-            'orders.*.name.min' => 1,
-            'orders.*.price.required' => 1,
-            'orders.*.price.regex' => 1,
+            'payment.required' => '資料填寫與規格不符',
+            'payment.string' => '資料填寫與規格不符',
+            'payment.in' => '請填入正確付款方式',
+            'name.required' => '必填資料未填',
+            'name.max' => '資料填寫與規格不符',
+            'name.min' => '資料填寫與規格不符',
+            'name.string' => '資料填寫與規格不符',
+            'address.required' => '必填資料未填',
+            'address.min' => '資料填寫與規格不符',
+            'address.max' => '資料填寫與規格不符',
+            'address.string' => '資料填寫與規格不符',
+            'phone.required' => '必填資料未填',
+            'phone.string' => '資料填寫與規格不符',
+            'phone.digits_between' => '資料填寫與規格不符',
+            'total_price.required' => '必填資料未填',
+            'total_price.numeric' => '資料填寫與規格不符',
+            'total_price.min' => '資料填寫與規格不符',
+            'take_time.required' => '必填資料未填',
+            'take_time.date' => '資料填寫與規格不符',
+            'orders.required' => '資料填寫與規格不符',
+            'orders.array' => '資料填寫與規格不符',
+            'orders.*.rid.required' => '資料填寫與規格不符',
+            'orders.*.rid.integer' => '必填資料未填',
+            'orders.*.id.required' => '必填資料未填',
+            'orders.*.id.integer' => '必填資料未填',
+            'orders.*.name.required' => '資料填寫與規格不符',
+            'orders.*.name.max' => '資料填寫與規格不符',
+            'orders.*.name.min' => '資料填寫與規格不符',
+            'orders.*.name.string' => '資料填寫與規格不符',
+            'orders.*.price.required' => '資料填寫與規格不符',
+            'orders.*.price.integer' => '資料填寫與規格不符',
         ];
 
         try {
             //如果有錯回報錯誤訊息
             $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
             if ($Validator->fails()) {
-                return response()->json(['Err' => $Validator->Errors()->first(), 'Message' => $this->Err[$Validator->Errors()->first()]]);
+                return response()->json(['Err' => array_search($Validator->Errors()->first(), $this->Err), 'Message' => $Validator->Errors()->first()]);
             }
 
             //取出Request內Order         
@@ -119,19 +104,24 @@ class PayController extends Controller
                 return response()->json(['Err' => $this->Keys[22], 'Message' => $this->Err[22]]);
             }
 
-            //檢查Order內是否有一樣的菜單,有的話將一樣菜單合併
-            $GoodOrder = $this->CreateOrderServiceV2->MergeOrdersBySameId($RequestOrder);
+            //檢查Order內是否有一樣的菜單,有的話將一樣的菜單合併
+            $AllOrderMealId = array_column($RequestOrder, 'id');
+            $MealIdUnique = collect($AllOrderMealId)->unique()->toArray();
+            $CheckSameMenuIdInOrders = $this->CreateOrderServiceV2->CheckSameArray($AllOrderMealId, $MealIdUnique);
+            if ($CheckSameMenuIdInOrders) {
+                $RequestOrder = $this->CreateOrderServiceV2->MergeOrdersBySameId($RequestOrder);
+            }
 
             //餐廳是否存在且啟用
-            $Rid = $GoodOrder[0]['rid'];
+            $Rid = $RequestOrder[0]['rid'];
             $HasRestaurant = $this->CreateOrderServiceV2->CheckRestaurantInDatabase($Rid);
             if (!$HasRestaurant) {
                 return response()->json(['Err' => $this->Keys[16], 'Message' => $this->Err[16]]);
             }
 
             //訂單總金額是否正確
-            $TotalPrice = $Request->totalprice;
-            $CheckTotalPrice = $this->CreateOrderServiceV2->CheckTotalPrice($GoodOrder, $TotalPrice);
+            $TotalPrice = $Request->total_price;
+            $CheckTotalPrice = $this->CreateOrderServiceV2->CheckTotalPrice($RequestOrder, $TotalPrice);
             if (!$CheckTotalPrice) {
                 return response()->json(['Err' => $this->Keys[20], 'Message' => $this->Err[20]]);
             }
@@ -142,26 +132,28 @@ class PayController extends Controller
             if (!$RestaurantOpen) {
                 return response()->json(['Err' => $this->Keys[17], 'Message' => $this->Err[17]]);
             }
+
             //檢查菜單金額名稱id是否與店家一致
-            $Menucorrect = $this->CreateOrderServiceV2->Menucorrect($Rid, $RequestOrder);
-            if (!$Menucorrect) {
+            $MenuCorrect = $this->CreateOrderServiceV2->MenuCorrect($Rid, $RequestOrder);
+            if (!$MenuCorrect) {
                 return response()->json(['Err' => $this->Keys[30], 'Message' => $this->Err[30]]);
             }
 
             // 餐點是否停用
-            $AllMenuId = array_column($GoodOrder, 'id');
-            $MenuEnable = $this->CreateOrderServiceV2->Menuenable($AllMenuId);
+            $AllMenuId = array_column($RequestOrder, 'id');
+            $MenuEnable = $this->CreateOrderServiceV2->MenuEnable($AllMenuId);
             if (!$MenuEnable) {
                 return response()->json(['Err' => $this->Keys[25], 'Message' => $this->Err[25]]);
             }
 
-            $Money = $Request->totalprice;
+            $Money = $Request->total_price;
             $Now = now();
-            $Taketime = $Request->taketime;
+            $Taketime = $Request->take_time;
             $Address = $Request->address;
             $Phone = $Request->phone;
+
             if ($Rid !== 4) {
-                $OrderInfo = ['name' => $Request->name, 'phone' => $Request->phone, 'taketime' => $Request->taketime, 'totalprice' => $Request->totalprice];
+                $OrderInfo = ['name' => $Request->name, 'phone' => $Request->phone, 'taketime' => $Request->take_time, 'total_price' => $Request->total_price];
                 //如果非本地廠商需打Api傳送訂單      
                 $Response = $this->CreateOrderServiceV2->SendApi($OrderInfo, $RequestOrder);
                 if ($Response) {
@@ -175,6 +167,7 @@ class PayController extends Controller
                         'status' => 11,
                         'rid' => $Rid,
                     ];
+                    //儲存訂單
                     $Oid = $this->CreateOrderServiceV2->SaveOrder($SaveOrderInfo);
                     //儲存訂單詳情
                     $this->CreateOrderServiceV2->SaveOrderInfo($RequestOrder, $Oid);
@@ -189,13 +182,13 @@ class PayController extends Controller
                         'status' => 10,
                         'rid' => $Rid,
                     ];
+                    //儲存訂單
                     $this->CreateOrderServiceV2->SaveOrder($SaveOrderInfo);
                     return response()->json(['Err' => $this->Keys[34], 'Message' => $this->Err[34]]);
                 }
-
             } else {
                 //本地餐廳
-                $OrderInfo = ['name' => $Request->name, 'phone' => $Request->phone, 'taketime' => $Request->taketime, 'totalprice' => $Request->totalprice];
+                $OrderInfo = ['name' => $Request->name, 'phone' => $Request->phone, 'taketime' => $Request->take_time, 'total_price' => $Request->total_price];
                 $SaveOrderInfo = [
                     'ordertime' => $Now,
                     'taketime' => $Taketime,
@@ -205,6 +198,7 @@ class PayController extends Controller
                     'status' => 11,
                     'rid' => $Rid,
                 ];
+                //儲存訂單
                 $Oid = $this->CreateOrderServiceV2->SaveOrder($SaveOrderInfo);
                 //儲存訂單詳情
                 $this->CreateOrderServiceV2->SaveOrderInfo($RequestOrder, $Oid);
@@ -213,7 +207,7 @@ class PayController extends Controller
             //如果是本地付款
             if ($Request->payment === 'local') {
                 //檢查User錢包是否足夠付款
-                $Money = $Request->totalprice;
+                $Money = $Request->total_price;
                 $CheckWalletMoney = $this->CreateOrderServiceV2->CheckWalletMoney($Money);
                 if ($CheckWalletMoney) {
                     return response()->json(['Err' => $this->Keys[18], 'Message' => $this->Err[18]]);
@@ -223,7 +217,7 @@ class PayController extends Controller
                 // 存入wallet record
                 $WalletRecordInfo = ['oid' => $Oid, 'out' => $Money, 'status' => 0, 'pid' => $this->Payment[$Request->payment]];
                 $this->CreateOrderServiceV2->SaveWalletRecord($WalletRecordInfo);
-                return response()->json(['name' => $Request->name, 'phone' => $Request->phone, 'taketime' => $Request->taketime, 'totalprice' => $Request->totalprice, 'orders' => $GoodOrder]);
+                return response()->json(['name' => $Request->name, 'phone' => $Request->phone, 'take_time' => $Request->take_time, 'total_price' => $Request->total_price, 'orders' => $RequestOrder]);
             }
             //如果是金流付款
             if ($Request->payment === 'ecpay') {
@@ -231,12 +225,12 @@ class PayController extends Controller
                 $Uuid = substr(Str::uuid(), 0, 20);
                 $Date = Carbon::now()->format('Y/m/d H:i:s');
                 $AllOrderMenuName = array_column($RequestOrder, 'name');
-                $ItemString = implode(",", $AllOrderMenuName);
+                $Itemstring = implode(",", $AllOrderMenuName);
                 $EcpayInfo = [
                     "merchant_trade_no" => $Uuid,
                     "merchant_trade_date" => $Date,
                     "amount" => $Money,
-                    "item_name" => $ItemString,
+                    "item_name" => $Itemstring,
                 ];
                 //發送api訂單至金流方
                 $SendEcpayApi = $this->CreateOrderServiceV2->SendEcpayApi($EcpayInfo);
@@ -253,12 +247,11 @@ class PayController extends Controller
                 }
             }
         } catch (Exception $e) {
-            return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
+            return response()->json([$e->getMessage(), 'Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
         } catch (Throwable $e) {
-            return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
+            return response()->json([$e->getMessage(), 'Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
         }
     }
-
 
     public function EcpayCallBack(Request $Request)
     {
@@ -286,32 +279,31 @@ class PayController extends Controller
                 $this->CreateOrderServiceV2->UpdateOredersuccess($Request->merchant_trade_no);
             }
         } catch (Exception $e) {
-            return $e;
+            return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
         } catch (Throwable $e) {
             return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
         }
     }
 
-
-    public function Order(Request $Request)
+    public function GetOrder(Request $Request)
     {
         //規則
         $Ruls = [
-            'limit' => ['regex:/^[0-9]+$/'],
-            'offset' => ['regex:/^[0-9]+$/'],
-            'oid' => ['regex:/^[0-9]+$/'],
+            'limit' => ['integer'],
+            'offset' => ['integer'],
+            'oid' => ['integer'],
         ];
         //什麼錯誤報什麼錯誤訊息
         $RulsMessage = [
-            'limit.regex' => 23,
-            'offset.regex' => 23,
-            'oid.regex' => 23,
+            'limit.integer' => '無效的範圍',
+            'offset.integer' => '無效的範圍',
+            'oid.integer' => '無效的範圍',
         ];
         try {
             //驗證參輸入數
             $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
             if ($Validator->fails()) {
-                return response()->json(['Err' => $Validator->errors()->first(), 'Message' => $this->Err[$Validator->Errors()->first()]]);
+                return response()->json(['Err' => array_search($Validator->Errors()->first(), $this->Err), 'Message' => $Validator->Errors()->first()]);
             }
             //取得offset limit
             $OffsetLimit = ['limit' => $Request['limit'], 'offset' => $Request['offset']];
@@ -325,21 +317,21 @@ class PayController extends Controller
             return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
         }
     }
-    public function orderinfo(Request $Request)
+    public function GetOrderInfo(Request $Request)
     {
         //規則
         $Ruls = [
-            'oid' => ['regex:/^[0-9]+$/'],
+            'oid' => ['integer'],
         ];
         //什麼錯誤報什麼錯誤訊息
         $RulsMessage = [
-            'oid.regex' => 1
+            'oid.integer' => '資料填寫與規格不符'
         ];
         try {
             //驗證參輸入數
             $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
             if ($Validator->fails()) {
-                return response()->json(['Err' => $Validator->errors()->first(), 'Message' => $this->Err[$Validator->Errors()->first()]]);
+                return response()->json(['Err' => array_search($Validator->Errors()->first(), $this->Err), 'Message' => $Validator->Errors()->first()]);
             }
             $Oid = $Request->oid;
             $OrderInfo = $this->CreateOrderServiceV2->GetOrderInfo($Oid);
@@ -355,18 +347,19 @@ class PayController extends Controller
     {
         //規則
         $Ruls = [
-            'money' => ['regex:/^[0-9]+$/', 'required'],
+            'money' => ['required', 'numeric', 'min:0'],
         ];
         //什麼錯誤報什麼錯誤訊息
         $RulsMessage = [
-            'money.regex' => 23,
-            'money.required' => 2
+            'money.numeric' => '無效的範圍',
+            'money.required' => '必填資料未填',
+            'money.min' => '無效的範圍'
         ];
         try {
             //驗證參輸入數
             $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
             if ($Validator->fails()) {
-                return response()->json(['Err' => $Validator->errors()->first(), 'Message' => $this->Err[$Validator->Errors()->first()]]);
+                return response()->json(['Err' => array_search($Validator->Errors()->first(), $this->Err), 'Message' => $Validator->Errors()->first()]);
             }
             $Uuid = substr(Str::uuid(), 0, 20);
             $Date = Carbon::now()->format('Y/m/d H:i:s');
@@ -397,12 +390,11 @@ class PayController extends Controller
             return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
         }
     }
-    public function moneycallback(Request $Request)
+    public function AddWalletMoneyCallBack(Request $Request)
     {
         try {
             $Money = $Request->amount;
             $Trade_date = Carbon::createFromFormat('d/M/y H:m:s', $Request->trade_date);
-
             $Payment_date = Carbon::createFromFormat('d/M/y H:m:s', $Request->payment_date);
             $EcpayBackInfo = ['merchant_id' => $Request->merchant_id,
                 'trade_date' => $Trade_date,
@@ -429,22 +421,22 @@ class PayController extends Controller
             Cache::set('moneycallback', $e);
         }
     }
-    public function wallet(Request $Request)
+    public function GetWallet(Request $Request)
     {
         //規則
-        $ruls = [
-            'limit' => ['regex:/^[0-9]+$/'],
-            'offset' => ['regex:/^[0-9]+$/'],
+        $Ruls = [
+            'limit' => ['integer'],
+            'offset' => ['integer'],
         ];
         //什麼錯誤報什麼錯誤訊息
-        $rulsMessage = [
-            'limit.regex' => 23,
-            'offset.regex' => 23,
+        $RulsMessage = [
+            'limit.integer' => '無效的範圍',
+            'offset.integer' => '無效的範圍',
         ];
         try {
-            $validator = Validator::make($Request->all(), $ruls, $rulsMessage);
-            if ($validator->fails()) {
-                return response()->json(['Err' => $validator->Errors()->first(), 'Message' => $this->Err[$validator->Errors()->first()]]);
+            $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
+            if ($Validator->fails()) {
+                return response()->json(['Err' => array_search($Validator->Errors()->first(), $this->Err), 'Message' => $Validator->Errors()->first()]);
             }
             //取的抓取範圍&類型
             $OffsetLimit = ['limit' => $Request['limit'], 'offset' => $Request['offset']];

@@ -30,4 +30,9 @@ class OrderRepositoryV2
     {
         return Order::where('orders.uid', '=', $UserId)->where('orders.id', '=', $Oid)->join('order_infos', 'orders.id', '=', 'order_infos.oid')->get();
     }
+
+    public function ExistByRidAndUserId($UserId, $Rid, $Time)
+    {
+        return Order::where('uid', '=', $UserId)->where('ordertime', '>', $Time)->wherein('status', [0, 9])->exists();
+    }
 }

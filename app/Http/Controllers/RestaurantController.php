@@ -7,6 +7,7 @@ use App\Service\OrderService;
 use App\Service\RestaurantCommentService;
 use App\Service\RestaurantHistoryService;
 use App\Service\RestaurantService;
+use App\ServiceV2\RestaurantServiceV2;
 use App\TotalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -20,240 +21,212 @@ class RestaurantController extends Controller
 {
     //new
     private $TotalService;
-    private $ErrorCodeService;
-    private $RestaurantService;
-    private $err = [];
-    private $keys = [];
-    private $RestaurantHistoryService;
-    private $OrderService;
-    private $RestaurantCommentService;
-    public function __construct(RestaurantCommentService $RestaurantCommentService, OrderService $OrderService, RestaurantHistoryService $RestaurantHistoryService, TotalService $TotalService, ErrorCodeService $ErrorCodeService, RestaurantService $RestaurantService)
-    {
-        $this->OrderService = $OrderService;
-        $this->RestaurantHistoryService = $RestaurantHistoryService;
-        $this->RestaurantService = $RestaurantService;
+    private $Err;
+    private $Keys;
+    private $RestaurantServiceV2;
+    public function __construct(
+        RestaurantServiceV2 $RestaurantServiceV2,
+        RestaurantCommentService $RestaurantCommentService,
+        TotalService $TotalService,
+        ErrorCodeService $ErrorCodeService,
+    ) {
+        $this->RestaurantServiceV2 = $RestaurantServiceV2;
         $this->TotalService = $TotalService;
         $this->RestaurantCommentService = $RestaurantCommentService;
         $this->ErrorCodeService = $ErrorCodeService;
-        $this->err = $ErrorCodeService->GetErrCode();
-        $this->keys = $ErrorCodeService->GetErrKey();
+        $this->Err = $ErrorCodeService->GetErrCode();
+        $this->Keys = $ErrorCodeService->GetErrKey();
     }
-    public function restaurant(Request $request)
+    public function Restaurant(Request $Request)
     {
-        //new
-        //驗證輸入參數
+        //規則
+        $Ruls = [
+            'limit' => ['integer'],
+            'offset' => ['integer']
+        ];
+        
+        //什麼錯誤報什麼錯誤訊息
+        $RulsMessage = [
+            'limit.integer' => '無效的範圍',
+            'offset.integer' => '無效的範圍'
+        ];
         try {
-            $Validator = $this->TotalService->LimitOffsetValidator($request);
-            if ($Validator !== true) {
-                return $Validator;
+            //驗證參輸入數
+            $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
+            if ($Validator->fails()) {
+                return response()->json(['Err' => array_search($Validator->Errors()->first(), $this->Err), 'Message' => $Validator->Errors()->first()]);
             }
 
             //取得OffsetLimit
-            $OffsetLimit = ['limit' => $request['limit'], 'offset' => $request['offset']];
+            $OffsetLimit = ['limit' => $Request['limit'], 'offset' => $Request['offset']];
             $OffsetLimit = $this->TotalService->GetOffsetLimit($OffsetLimit);
 
             //今天星期幾
             $Today = date('l');
 
             //取得餐廳info並打亂順序
-            $RestaurantInfo = $this->RestaurantService->GetRestaurantInfoOffsetLimit($OffsetLimit, $Today)->where('enable', '=', '1')->shuffle()->map->only(['id', 'title', 'img', 'totalpoint', 'countpoint']);
+            $RestaurantInfo = $this->RestaurantServiceV2->GetRestaurantOnOffsetLimit($OffsetLimit, $Today);
             $RestaurantInfoCount = $RestaurantInfo->count();
-            return response()->json(['message' => $this->keys[0], 'err' => $this->err['0'], 'count' => $RestaurantInfoCount, 'data' => $RestaurantInfo]);
-
+            return response()->json(['message' => $this->Keys[0], 'Err' => $this->Err['0'], 'count' => $RestaurantInfoCount, 'data' => $RestaurantInfo]);
         } catch (Exception) {
-            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
+            return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
         } catch (Throwable) {
-            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
+            return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
         }
     }
 
-
-
-
-    public function menu(Request $request)
+    public function Menu(Request $Request)
     {
         //規則
-        $ruls = [
-            'limit' => ['regex:/^[0-9]+$/'],
-            'offset' => ['regex:/^[0-9]+$/'],
-            'rid' => ['required', 'regex:/^[0-9]+$/'],
+        $Ruls = [
+            'limit' => ['integer'],
+            'offset' => ['integer'],
+            'rid' => ['required', 'integer'],
         ];
         //什麼錯誤報什麼錯誤訊息
-        $rulsMessage = [
-            'limit.regex' => $this->err['23'],
-            'offset.regex' => $this->err['23'],
-            'rid.regex' => $this->err['23'],
-            'rid.required' => $this->err['2'],
+        $RulsMessage = [
+            'limit.integer' => '無效的範圍',
+            'offset.integer' => '無效的範圍',
+            'rid.integer' => '無效的範圍',
+            'rid.required' => '必填資料未填',
         ];
         try {
-
-            //new
             //驗證參輸入數
-            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
-            if ($validator->fails()) {
-                return response()->json(['err' => $validator->errors()->first()]);
+            $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
+            if ($Validator->fails()) {
+                return response()->json(['Err' => array_search($Validator->Errors()->first(), $this->Err), 'Message' => $Validator->Errors()->first()]);
             }
 
             //取得OffsetLimit
-            $OffsetLimit = ['limit' => $request['limit'], 'offset' => $request['offset']];
+            $OffsetLimit = ['limit' => $Request['limit'], 'offset' => $Request['offset']];
             $OffsetLimit = $this->TotalService->GetOffsetLimit($OffsetLimit);
-            $Offset = $OffsetLimit['offset'];
-            $Limit = $OffsetLimit['limit'];
-
-            $Rid = $request->rid;
-            $ArrayRid[] = $request->rid;
 
             //是否有該餐廳
-            $HasRestraunt = $this->RestaurantService->CheckRestaurantInDatabase($Rid);
+            $Rid = $Request->rid;
+            $HasRestraunt = $this->RestaurantServiceV2->CheckRestaurantInDatabase($Rid);
             if (!$HasRestraunt) {
-                return response()->json(['err' => $this->keys['16'], 'message' => $this->err[16]]);
+                return response()->json(['Err' => $this->Keys['16'], 'message' => $this->Err[16]]);
             }
 
-            //取得該餐廳的實例
-            $Restaurant = Factorise::Setmenu($Rid);
-
-            //使用該餐廳實例取的菜單
-            $Menu = $Restaurant->getmenu($Offset, $Limit);
-            $Restaurantinfo = $this->RestaurantService->GetRestaurantinfo($ArrayRid);
-            $Restaurantinfo = $Restaurantinfo->map->only(['title', 'info', 'openday', 'opentime', 'closetime', 'img', 'address', 'totalpoint', 'countpoint']);
+            //取得菜單
+            $Menu = $this->RestaurantServiceV2->GetMenu($Rid, $OffsetLimit);
+            $Restaurantinfo = $this->RestaurantServiceV2->GetRestaurantinfo($Rid);
 
             //檢查是否有登入
-            $Token = $request->header('Authorization');
+            $Token = $Request->header('Authorization');
             if ($Token) {
                 $TokenCheck = $this->TotalService->CheckToken($Token);
                 //檢查是否Token正確
                 if ($TokenCheck === false) {
-                    return response()->json(['err' => $this->keys['5'], 'message' => $this->err[5]]);
+                    return response()->json(['Err' => $this->Keys['5'], 'Message' => $this->Err[5]]);
                 }
-                //取得使用者資料
-                $UserInfo = $this->TotalService->GetUserInfo();
-                $UserId = $UserInfo->id;
-
                 //是否已存在資料庫,有的話更新時間,沒有則建立紀錄
-                $this->RestaurantHistoryService->UpdateOrCreateHistory($UserId, $Rid);
+                $this->RestaurantServiceV2->UpdateOrCreateHistory($Rid);
             }
-
-
-
-
-            return response()->json(['err' => $this->keys['0'], 'message' => $this->err[0], 'data' => $Restaurantinfo[0], 'menu' => $Menu]);
+            return response()->json(['Err' => $this->Keys['0'], 'Message' => $this->Err[0], 'data' => $Restaurantinfo, 'menu' => $Menu]);
         } catch (TokenInvalidException $e) {
-            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
+            return response()->json(['Err' => $this->Keys['26'], 'Message' => $this->Err[26]]);
         } catch (Throwable $e) {
-            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
+            return response()->json(['Err' => $this->Keys['26'], 'Message' => $this->Err[26]]);
         }
     }
-    public function comment(Request $request)
+    public function Comment(Request $Request)
     {
         //規則
-        $ruls = [
-            'point' => ['required', 'size:1', 'regex:/^[1-5]+$/'],
-            'comment' => ['required', 'min:10', 'max:25'],
+        $Ruls = [
+            'point' => ['required', 'integer', 'between:1,5'],
+            'comment' => ['required', 'string', 'min:10', 'max:25'],
         ];
         //什麼錯誤報什麼錯誤訊息
-        $rulsMessage = [
-            'point.required' => $this->err['2'],
-            'point.size' => $this->err['1'],
-            'point.regex' => $this->err['1'],
-            'comment.required' => $this->err['2'],
-            'comment.min' => $this->err['1'],
-            'comment.max' => $this->err['1']
+        $RulsMessage = [
+            'point.required' => '必填資料未填',
+            'point.integer' => '資料填寫與規格不符',
+            'point.between' => '資料填寫與規格不符',
+            'comment.required' => '必填資料未填',
+            'comment.string' => '必填資料未填',
+            'comment.min' => '資料填寫與規格不符',
+            'comment.max' => '資料填寫與規格不符'
         ];
         try {
             //驗證輸入數值
-            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
-            //如果有錯回報錯誤訊息
-            if ($validator->fails()) {
-                return response()->json(['err' => $validator->errors()->first()]);
+            $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
+            if ($Validator->fails()) {
+                return response()->json(['Err' => array_search($Validator->Errors()->first(), $this->Err), 'Message' => $Validator->Errors()->first()]);
             }
 
             //是否有該餐廳
-            $Rid = $request->rid;
-            $HasRestaurant = $this->RestaurantService->CheckRestaurantInDatabase($Rid);
+            $Rid = $Request->rid;
+            $HasRestaurant = $this->RestaurantServiceV2->CheckRestaurantInDatabase($Rid);
             if (!$HasRestaurant) {
-                return response()->json(['err' => $this->keys['16'], 'message' => $this->err[16]]);
+                return response()->json(['Err' => $this->Keys['16'], 'message' => $this->Err[16]]);
             }
 
             //評論者是否在此訂餐廳訂過餐且訂單狀態是成功且記錄在24小時內
-            $UserInfo = $this->TotalService->GetUserInfo();
-            $UserId = $UserInfo['id'];
-            $Yesterday = Carbon::yesterday();
-            $Order = $this->OrderService->GetOrder($UserId);
-            $Has24HOrder = $Order->where('rid', '=', $Rid)->where('ordertime', '>', $Yesterday)->where('status', '=', '成功')->count();
-            if ($Has24HOrder < 1) {
-                return response()->json(['err' => $this->keys['12'], 'message' => $this->err[12]]);
+            $OrderIn24Hour = $this->RestaurantServiceV2->CheckOrderIn24Hour($Rid);
+            if (!$OrderIn24Hour) {
+                return response()->json(['Err' => $this->Keys['12'], 'message' => $this->Err[12]]);
             }
 
-            //評論者是否第一次對該餐廳評論
-            $UserComment = $this->RestaurantCommentService->GetUserComment($UserId);
-            $Existed = $UserComment->count();
-            if ($Existed === 1) {
-                return response()->json(['err' => $this->keys['14'], 'message' => $this->err[14]]);
+            //是否第一次評論該餐廳
+            $UserFirstComment = $this->RestaurantServiceV2->CheckUserFirstComment($Rid);
+            if ($UserFirstComment) {
+                return response()->json(['Err' => $this->Keys['14'], 'message' => $this->Err[14]]);
             }
-            //將評論存到資料庫
-            $Data = ['uid' => $UserId, 'rid' => $request->rid, 'comment' => $request->comment, 'point' => $request->point];
-            $this->RestaurantCommentService->AddComment($Data);
-            return response()->json(['err' => $this->keys['0'], 'message' => $this->err[0]]);
+            //將評論存入資料庫
+            $Comment = ['rid' => $Request->rid, 'comment' => $Request->comment, 'point' => $Request->point];
+            $this->RestaurantServiceV2->SaveComment($Comment);
+            return response()->json(['Err' => $this->Keys['0'], 'message' => $this->Err[0]]);
         } catch (Exception $e) {
-            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
+            return response()->json(['Err' => $this->Keys['26'], 'message' => $this->Err[26]]);
         } catch (Throwable $e) {
-            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
+            return response()->json(['Err' => $this->Keys['26'], 'message' => $this->Err[26]]);
         }
     }
-
-
-
-    public function getcomment(Request $request)
+    public function GetComment(Request $Request)
     {
         //規則
-        $ruls = [
-            'limit' => ['regex:/^[0-9]+$/'],
-            'offset' => ['regex:/^[0-9]+$/'],
-            'rid' => ['required', 'regex:/^[0-9]+$/'],
+        $Ruls = [
+            'limit' => ['integer'],
+            'offset' => ['integer'],
+            'rid' => ['required', 'integer'],
         ];
         //什麼錯誤報什麼錯誤訊息
-        $rulsMessage = [
-            'limit.regex' => $this->err['23'],
-            'offset.regex' => $this->err['23'],
-            'rid.regex' => $this->err['23'],
-            'rid.required' => $this->err['2'],
+        $RulsMessage = [
+            'limit.integer' => '無效的範圍',
+            'offset.integer' => '無效的範圍',
+            'rid.integer' => '無效的範圍',
+            'rid.required' => '必填資料未填',
         ];
         try {
-            //new
-            //驗證
-            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
-            //驗證失敗回傳錯誤訊息
-            if ($validator->fails()) {
-                return response()->json(['err' => $validator->errors()->first()]);
+            $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
+            if ($Validator->fails()) {
+                return response()->json(['Err' => array_search($Validator->Errors()->first(), $this->Err), 'Message' => $Validator->Errors()->first()]);
             }
 
             //取得OffsetLimit
-            $OffsetLimit = ['limit' => $request['limit'], 'offset' => $request['offset']];
+            $OffsetLimit = ['limit' => $Request['limit'], 'offset' => $Request['offset']];
             $OffsetLimit = $this->TotalService->GetOffsetLimit($OffsetLimit);
-            $Offset = $OffsetLimit['offset'];
-            $Limit = $OffsetLimit['limit'];
 
             //是否有該餐廳 
-            $Rid = $request->rid;
-            $HasRestaurant = $this->TotalService->CheckRestaurantInDatabase($Rid);
-            if (!$HasRestaurant) {
-                return response()->json(['err' => $this->keys[16], 'message' => $this->err[16]]);
+            $Rid = $Request->rid;
+            $RestaurantExist = $this->RestaurantServiceV2->CheckRestaurantInDatabase($Rid);
+            if (!$RestaurantExist) {
+                return response()->json(['Err' => $this->Keys[16], 'message' => $this->Err[16]]);
             }
 
             //取出評論
-            $RestaurantComment = $this->RestaurantCommentService->GetRestaurantComment($Rid, $OffsetLimit);
+            $RestaurantComment = $this->RestaurantServiceV2->GetRestaurantComment($Rid, $OffsetLimit);
 
             //計算評論數量
             $RestaurantCommentCount = $RestaurantComment->count();
 
             //排序取出評論
             $RestaurantComment = $RestaurantComment->sortByDesc('created_at')->values()->all();
-            return response()->json(['err' => $this->keys[0], 'message' => $this->err[0], 'count' => $RestaurantCommentCount, 'Comment' => $RestaurantComment]);
-
+            return response()->json(['Err' => $this->Keys[0], 'message' => $this->Err[0], 'count' => $RestaurantCommentCount, 'Comment' => $RestaurantComment]);
         } catch (Exception $e) {
-            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
+            return response()->json(['Err' => $this->Keys['26'], 'message' => $this->Err[26]]);
         } catch (Throwable) {
-            return response()->json(['err' => $this->keys['26'], 'message' => $this->err[26]]);
+            return response()->json(['Err' => $this->Keys['26'], 'message' => $this->Err[26]]);
         }
     }
 }
