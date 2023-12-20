@@ -12,7 +12,7 @@ class SHmenu implements RestaurantInterface
     private $GetMenuUrl = 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls';
     private $OrderUrl = 'http://neil.xincity.xyz:9998/steak_home/api/mk/order';
     private $GetMenuOnMenuIdUrl = 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls?ID=';
-    public function Getmenu(int $Offset, int $Limit): array
+    public function GetMenu(int $Offset, int $Limit): array
     //修改為從api取得
     {
         $Url = $this->GetMenuUrl . '?LT=' . $Limit . '&PG=' . $Offset;
@@ -39,7 +39,7 @@ class SHmenu implements RestaurantInterface
             return $TargetData;
         }
     }
-    public function Menuenable(array $MenuId): bool
+    public function MenuEnable(array $MenuId): bool
     {
         $Menu = Steakhome_menu::wherein('id', $MenuId)->get();
         $OrderCount = count($MenuId);
@@ -86,7 +86,7 @@ class SHmenu implements RestaurantInterface
         }
 
     }
-    public function Menucorrect(array $Order): bool
+    public function MenuCorrect(array $Order): bool
     {
         try {
             foreach ($Order as $Item) {

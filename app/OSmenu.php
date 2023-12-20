@@ -14,7 +14,7 @@ class OSmenu implements RestaurantInterface
     private $OrderUrl = 'http://neil.xincity.xyz:9998/oishii/api/notify/order';
     private $GetMenuOnMenuIdUrl = 'http://neil.xincity.xyz:9998/oishii/api/menu/all?meal_id=';
 
-    public function Getmenu(int $Offset, int $Limit): array
+    public function GetMenu(int $Offset, int $Limit): array
     //修改為從api取得
     {
         $Url = $this->GetMenuUrl . '?limit=' . $Limit . '&offset=' . $Offset;
@@ -41,7 +41,7 @@ class OSmenu implements RestaurantInterface
             return $TargetData;
         }
     }
-    public function Menuenable(array $MenuId): bool
+    public function MenuEnable(array $MenuId): bool
     {
         $Menu = Oishii_menu::wherein('id', $MenuId)->get();
         $OrderCount = count($MenuId);
@@ -95,7 +95,7 @@ class OSmenu implements RestaurantInterface
         }
 
     }
-    public function Menucorrect(array $Order): bool
+    public function MenuCorrect(array $Order): bool
     {
         try {
             foreach ($Order as $Item) {

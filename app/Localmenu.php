@@ -8,7 +8,7 @@ use Throwable;
 
 class Localmenu implements RestaurantInterface
 {
-    public function Getmenu(int $Offset, int $Limit): array
+    public function GetMenu(int $Offset, int $Limit): array
     {
         try {
             $menu = Local_menu::select('rid', 'id', 'info', 'name', 'price', 'img')->limit($Limit)->offset($Offset)->get()->toArray();
@@ -17,7 +17,7 @@ class Localmenu implements RestaurantInterface
             return $menu;
         }
     }
-    public function Menuenable(array $MenuId): bool
+    public function MenuEnable(array $MenuId): bool
     {
         $Menu = Local_menu::wherein('id', $MenuId)->get();
         $OrderCount = count($MenuId);
@@ -31,7 +31,7 @@ class Localmenu implements RestaurantInterface
     {
         return true;
     }
-    public function Menucorrect(array $Order): bool
+    public function MenuCorrect(array $Order): bool
     {
         try {
             foreach ($Order as $Item) {

@@ -115,12 +115,12 @@ class CreateOrderServiceV2
     public function MenuCorrect(int $Rid, array $RequestOrder): bool
     {
         $this->Restaurant = $this->Factorise->Setmenu($Rid);
-        return $this->Restaurant->Menucorrect($RequestOrder);
+        return $this->Restaurant->MenuCorrect($RequestOrder);
     }
 
     public function MenuEnable(array $ArrayMenuId)
     {
-        return $this->Restaurant->Menuenable($ArrayMenuId);
+        return $this->Restaurant->MenuEnable($ArrayMenuId);
     }
 
     public function SendApi($OrderInfo, $Order)
