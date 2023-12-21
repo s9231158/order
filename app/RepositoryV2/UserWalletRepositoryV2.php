@@ -25,4 +25,8 @@ class UserWalletRepositoryV2
         }
     }
 
+    public function Create($UserId)
+    {
+        User_wallets::create(['id' => $UserId, 'balance' => 0]);
+    }
 }

@@ -17,7 +17,6 @@ class RecordRepository
     }
     public function GetRecord($offset, $limit)
     {
-        
         $User = $this->TotalService->GetUserInfo();
         $UserId = $User->id;
         $Record = User_recode::select('ip', 'login', 'device')->offset($offset)->limit($limit)->orderBy('login', 'desc')->where('uid', '=', $UserId)->get();

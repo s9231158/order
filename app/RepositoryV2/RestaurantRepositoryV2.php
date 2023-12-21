@@ -31,4 +31,9 @@ class RestaurantRepositoryV2
         $RestaurantInfo = Restaurant::select('restaurants.id', 'restaurants.title', 'restaurants.img', 'restaurants.totalpoint', 'restaurants.countpoint', 'restaurants.enable')->join('restaurant_open_days', 'restaurant_open_days.id', '=', 'restaurants.id')->where('restaurant_open_days.' . $Date, '=', '1')->limit($Limit)->offset($Offset)->get();
         return $RestaurantInfo;
     }
+    public function GetInfoByArray($RidArray, $Option)
+    {
+        return Restaurant::select('id', 'totalpoint', 'countpoint', 'title', 'img')->wherein('id', $RidArray)->limit($Option['limit'])->offset($Option['limit'])->orderBy('created_at', 'desc')->get();
+    }
+
 }

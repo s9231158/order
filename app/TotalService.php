@@ -69,20 +69,22 @@ class TotalService
     }
 
 
-    public function CheckHasLogin($TokenEmail)
+    public function CheckHasLogin($Token, $Email)
     {
         try {
-            $Token = $TokenEmail['Token'];
-            $Redistoken = 'Bearer ' . Cache::get($TokenEmail['Email']);
+            $Redistoken = 'Bearer ' . Cache::get($Email);
             //有emial 有token 但token錯誤 系統錯誤
-            if (Cache::has($TokenEmail['Email']) && $Token !== null && $Token !== $Redistoken) {
-                Cache::forget($TokenEmail['Email']);
+            if (Cache::has($Email) && $Token !== null && $Token !== $Redistoken) {
+                Cache::forget($Email);
                 return 5;
             }
             //有email 沒token 重別的裝置登入
-            if (Cache::has($TokenEmail['Email']) && $Token === null) {
-                Cache::forget($TokenEmail['Email']);
+            if (Cache::has($Email) && $Token === null) {
+                Cache::forget($Email);
                 return 31;
+            }
+            if (!Cache::has($Email)) {
+                return 5;
             }
             return true;
         } catch (\Throwable $e) {

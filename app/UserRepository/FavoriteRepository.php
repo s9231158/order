@@ -17,7 +17,6 @@ class FavoriteRepository
     public function GetFavoriteCount()
     {
         try {
-
             $UserInfo = $this->TotalService->GetUserInfo();
             $UserId = $UserInfo["id"];
             $UserFavorite = User_favorite::where("uid", "=", $UserId)->get();
@@ -47,7 +46,6 @@ class FavoriteRepository
         } catch (\Throwable $e) {
             return $e;
         }
-
     }
 
     public function GetUserFavoriteInfo($OffsetLimit)
