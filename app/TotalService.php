@@ -10,7 +10,6 @@ use App\ErrorCodeService;
 
 class TotalService
 {
-
     private $ErrorCodeService;
     private $err = [];
     private $keys = [];
@@ -20,7 +19,6 @@ class TotalService
         $this->err = $this->ErrorCodeService->GetErrCode();
         $this->keys = $this->ErrorCodeService->GetErrKey();
     }
-
     public function LimitOffsetValidator($Request)
     {
         try { //規則
@@ -43,20 +41,18 @@ class TotalService
             return $e;
         }
     }
-
-    public function GetOffsetLimit($OffsetLimit)
+    public function GetOffsetLimit($Option)
     {
-        $offset = 0;
-        $limit = 20;
-        if ($OffsetLimit['offset'] != null) {
-            $offset = $OffsetLimit['offset'];
+        $Offset = 0;
+        $Limit = 20;
+        if ($Option['offset'] != null) {
+            $Offset = $Option['offset'];
         }
-        if ($OffsetLimit['limit'] != null) {
-            $limit = $OffsetLimit['limit'];
+        if ($Option['limit'] != null) {
+            $Limit = $Option['limit'];
         }
-        return array('offset' => $offset, 'limit' => $limit);
+        return array('offset' => $Offset, 'limit' => $Limit);
     }
-
     public function GetUserInfo()
     {
         try {
@@ -65,10 +61,7 @@ class TotalService
         } catch (\Throwable $e) {
             return $e;
         }
-
     }
-
-
     public function CheckHasLogin($Token, $Email)
     {
         try {
@@ -92,22 +85,10 @@ class TotalService
         }
 
     }
-    // public static function GetUserInfo()
-    // {
-    //     try {
-    //         $User = JWTAuth::parseToken()->authenticate();
-    //         return $User;
-    //     } catch (\Throwable $e) {
-    //         return 'err';
-
-    //     }
-    // }
-
     public static function CheckRestaurantInDatabase($rid)
     {
         return Restaurant::where('id', '=', $rid)->count();
     }
-
     public function CheckToken($Token)
     {
         try {

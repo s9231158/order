@@ -84,7 +84,6 @@ class SHmenu implements RestaurantInterface
         } catch (Throwable) {
             return false;
         }
-
     }
     public function MenuCorrect(array $Order): bool
     {

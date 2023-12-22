@@ -3,19 +3,28 @@
 namespace App\RepositoryV2;
 
 use App\Models\User_recode;
+use Throwable;
 
 class LoginRecordRepositoryV2
 {
     public function Create($LoginInfo)
     {
-        User_recode::create($LoginInfo);
+        try {
+            User_recode::create($LoginInfo);
+        } catch (Throwable $e) {
+            throw new \Exception("RepossitoryErr:" . 500);
+        }
     }
     public function GetById($UserId, $Option)
     {
-        return User_recode::offset($Option['offset'])
-            ->limit($Option['limit'])
-            ->orderBy('login', 'desc')
-            ->where('uid', '=', $UserId)
-            ->get();
+        try {
+            return User_recode::offset($Option['offset'])
+                ->limit($Option['limit'])
+                ->orderBy('login', 'desc')
+                ->where('uid', '=', $UserId)
+                ->get();
+        } catch (Throwable $e) {
+            throw new \Exception("RepossitoryErr:" . 500);
+        }
     }
 }

@@ -90,7 +90,10 @@ class PayController extends Controller
             //如果有錯回報錯誤訊息
             $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
             if ($Validator->fails()) {
-                return response()->json(['Err' => array_search($Validator->Errors()->first(), $this->Err), 'Message' => $Validator->Errors()->first()]);
+                return response()->json([
+                    'Err' => array_search($Validator->Errors()->first(), $this->Err),
+                    'Message' => $Validator->Errors()->first()
+                ]);
             }
 
             //取出Request內Order         
@@ -101,7 +104,10 @@ class PayController extends Controller
             $ReataurantIdUnique = collect($AllOrderRid)->unique()->toArray();
             $CheckSameRestaurantIdInOrders = $this->CreateOrderServiceV2->CheckSameArray($AllOrderRid, $ReataurantIdUnique);
             if (!$CheckSameRestaurantIdInOrders) {
-                return response()->json(['Err' => $this->Keys[22], 'Message' => $this->Err[22]]);
+                return response()->json([
+                    'Err' => $this->Keys[22],
+                    'Message' => $this->Err[22]
+                ]);
             }
 
             //檢查Order內是否有一樣的菜單,有的話將一樣的菜單合併
@@ -116,34 +122,49 @@ class PayController extends Controller
             $Rid = $RequestOrder[0]['rid'];
             $HasRestaurant = $this->CreateOrderServiceV2->CheckRestaurantInDatabase($Rid);
             if (!$HasRestaurant) {
-                return response()->json(['Err' => $this->Keys[16], 'Message' => $this->Err[16]]);
+                return response()->json([
+                    'Err' => $this->Keys[16],
+                    'Message' => $this->Err[16]
+                ]);
             }
 
             //訂單總金額是否正確
             $TotalPrice = $Request->total_price;
             $CheckTotalPrice = $this->CreateOrderServiceV2->CheckTotalPrice($RequestOrder, $TotalPrice);
             if (!$CheckTotalPrice) {
-                return response()->json(['Err' => $this->Keys[20], 'Message' => $this->Err[20]]);
+                return response()->json([
+                    'Err' => $this->Keys[20],
+                    'Message' => $this->Err[20]
+                ]);
             }
 
             //餐廳今天是否有營業
             $Today = date('l');
             $RestaurantOpen = $this->CreateOrderServiceV2->CheckRestaurantOpen($Rid, $Today);
             if (!$RestaurantOpen) {
-                return response()->json(['Err' => $this->Keys[17], 'Message' => $this->Err[17]]);
+                return response()->json([
+                    'Err' => $this->Keys[17],
+                    'Message' => $this->Err[17]
+                ]);
             }
 
             //檢查菜單金額名稱id是否與店家一致
             $MenuCorrect = $this->CreateOrderServiceV2->MenuCorrect($Rid, $RequestOrder);
             if (!$MenuCorrect) {
-                return response()->json(['Err' => $this->Keys[30], 'Message' => $this->Err[30]]);
+                return response()->json([
+                    'Err' => $this->Keys[30],
+                    'Message' => $this->Err[30]
+                ]);
             }
 
             // 餐點是否停用
             $AllMenuId = array_column($RequestOrder, 'id');
             $MenuEnable = $this->CreateOrderServiceV2->MenuEnable($AllMenuId);
             if (!$MenuEnable) {
-                return response()->json(['Err' => $this->Keys[25], 'Message' => $this->Err[25]]);
+                return response()->json([
+                    'Err' => $this->Keys[25],
+                    'Message' => $this->Err[25]
+                ]);
             }
 
             $Money = $Request->total_price;
@@ -153,7 +174,12 @@ class PayController extends Controller
             $Phone = $Request->phone;
 
             if ($Rid !== 4) {
-                $OrderInfo = ['name' => $Request->name, 'phone' => $Request->phone, 'taketime' => $Request->take_time, 'total_price' => $Request->total_price];
+                $OrderInfo = [
+                    'name' => $Request->name,
+                    'phone' => $Request->phone,
+                    'taketime' => $Request->take_time,
+                    'total_price' => $Request->total_price
+                ];
                 //如果非本地廠商需打Api傳送訂單      
                 $Response = $this->CreateOrderServiceV2->SendApi($OrderInfo, $RequestOrder);
                 if ($Response) {
@@ -184,11 +210,19 @@ class PayController extends Controller
                     ];
                     //儲存訂單
                     $this->CreateOrderServiceV2->SaveOrder($SaveOrderInfo);
-                    return response()->json(['Err' => $this->Keys[34], 'Message' => $this->Err[34]]);
+                    return response()->json([
+                        'Err' => $this->Keys[34],
+                        'Message' => $this->Err[34]
+                    ]);
                 }
             } else {
                 //本地餐廳
-                $OrderInfo = ['name' => $Request->name, 'phone' => $Request->phone, 'taketime' => $Request->take_time, 'total_price' => $Request->total_price];
+                $OrderInfo = [
+                    'name' => $Request->name,
+                    'phone' => $Request->phone,
+                    'taketime' => $Request->take_time,
+                    'total_price' => $Request->total_price
+                ];
                 $SaveOrderInfo = [
                     'ordertime' => $Now,
                     'taketime' => $Taketime,
@@ -210,14 +244,28 @@ class PayController extends Controller
                 $Money = $Request->total_price;
                 $CheckWalletMoney = $this->CreateOrderServiceV2->CheckWalletMoney($Money);
                 if ($CheckWalletMoney) {
-                    return response()->json(['Err' => $this->Keys[18], 'Message' => $this->Err[18]]);
+                    return response()->json([
+                        'Err' => $this->Keys[18],
+                        'Message' => $this->Err[18]
+                    ]);
                 }
                 //將user錢包扣款
                 $this->CreateOrderServiceV2->DeductMoney($Money);
                 // 存入wallet record
-                $WalletRecordInfo = ['oid' => $Oid, 'out' => $Money, 'status' => 0, 'pid' => $this->Payment[$Request->payment]];
+                $WalletRecordInfo = [
+                    'oid' => $Oid,
+                    'out' => $Money,
+                    'status' => 0,
+                    'pid' => $this->Payment[$Request->payment]
+                ];
                 $this->CreateOrderServiceV2->SaveWalletRecord($WalletRecordInfo);
-                return response()->json(['name' => $Request->name, 'phone' => $Request->phone, 'take_time' => $Request->take_time, 'total_price' => $Request->total_price, 'orders' => $RequestOrder]);
+                return response()->json([
+                    'name' => $Request->name,
+                    'phone' => $Request->phone,
+                    'take_time' => $Request->take_time,
+                    'total_price' => $Request->total_price,
+                    'orders' => $RequestOrder
+                ]);
             }
             //如果是金流付款
             if ($Request->payment === 'ecpay') {
@@ -237,19 +285,38 @@ class PayController extends Controller
                 //將發送訂單存入資料庫
                 $EcpayInfo = $this->CreateOrderServiceV2->SaveEcpay($SendEcpayApi[1]);
                 //將交易紀錄存進資料庫
-                $WalletRecordInfo = ['eid' => $Uuid, 'oid' => $Oid, 'out' => $Money, 'status' => 11, 'pid' => $this->Payment[$Request->payment]];
+                $WalletRecordInfo = [
+                    'eid' => $Uuid,
+                    'oid' => $Oid,
+                    'out' => $Money,
+                    'status' => 11,
+                    'pid' => $this->Payment[$Request->payment
+                    ]];
                 $this->CreateOrderServiceV2->SaveWalletRecord($WalletRecordInfo);
                 if (isset($SendEcpayApi[0]->transaction_url)) {
                     return $SendEcpayApi[0];
                 }
                 if (!isset($SendEcpayApi[0]->transaction_url)) {
-                    return response()->json(['Err' => $SendEcpayApi[0]->error_code, 'Message' => '第三方金流錯誤']);
+                    return response()->json([
+                        'Err' => $SendEcpayApi[0]->error_code,
+                        'Message' => '第三方金流錯誤'
+                    ]);
                 }
             }
         } catch (Exception $e) {
-            return response()->json([$e->getMessage(), 'Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
+            return response()->json([
+                $e->getMessage(),
+                'Err' => $this->Keys[26],
+                'Message' => $this->Err[26],
+                'OtherErr' => $e->getMessage()
+            ]);
         } catch (Throwable $e) {
-            return response()->json([$e->getMessage(), 'Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
+            return response()->json([
+                $e->getMessage(),
+                'Err' => $this->Keys[26],
+                'Message' => $this->Err[26],
+                'OtherErr' => $e->getMessage()
+            ]);
         }
     }
 
@@ -276,12 +343,20 @@ class PayController extends Controller
                 $this->CreateOrderServiceV2->UpdateOrederFail($Request->merchant_trade_no);
             } else {
                 $this->CreateOrderServiceV2->UpdateWalletRecordsuccess($Request->merchant_trade_no);
-                $this->CreateOrderServiceV2->UpdateOredersuccess($Request->merchant_trade_no);
+                $this->CreateOrderServiceV2->UpdateOrederSuccess($Request->merchant_trade_no);
             }
         } catch (Exception $e) {
-            return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
+            return response()->json([
+                'Err' => $this->Keys[26],
+                'Message' => $this->Err[26],
+                'OtherErr' => $e->getMessage()
+            ]);
         } catch (Throwable $e) {
-            return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
+            return response()->json([
+                'Err' => $this->Keys[26],
+                'Message' => $this->Err[26],
+                'OtherErr' => $e->getMessage()
+            ]);
         }
     }
 
@@ -303,7 +378,10 @@ class PayController extends Controller
             //驗證參輸入數
             $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
             if ($Validator->fails()) {
-                return response()->json(['Err' => array_search($Validator->Errors()->first(), $this->Err), 'Message' => $Validator->Errors()->first()]);
+                return response()->json([
+                    'Err' => array_search($Validator->Errors()->first(), $this->Err),
+                    'Message' => $Validator->Errors()->first()
+                ]);
             }
             //取得offset limit
             $OffsetLimit = ['limit' => $Request['limit'], 'offset' => $Request['offset']];
@@ -312,16 +390,25 @@ class PayController extends Controller
             //取出訂單
             $Order = $this->CreateOrderServiceV2->GetOrder($Oid, $OffsetLimit);
             $OrderCount = $Order->count();
-            return response()->json(['Err' => $this->Keys[0], 'Message' => $this->Err[0], 'count' => $OrderCount, 'order' => $Order]);
+            return response()->json([
+                'Err' => $this->Keys[0],
+                'Message' => $this->Err[0],
+                'count' => $OrderCount,
+                'order' => $Order
+            ]);
         } catch (Throwable $e) {
-            return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
+            return response()->json([
+                'Err' => $this->Keys[26],
+                'Message' => $this->Err[26],
+                'OtherErr' => $e->getMessage()
+            ]);
         }
     }
     public function GetOrderInfo(Request $Request)
     {
         //規則
         $Ruls = [
-            'oid' => ['integer'],
+            'oid' => ['integer']
         ];
         //什麼錯誤報什麼錯誤訊息
         $RulsMessage = [
@@ -336,11 +423,22 @@ class PayController extends Controller
             $Oid = $Request->oid;
             $OrderInfo = $this->CreateOrderServiceV2->GetOrderInfo($Oid);
             if (!isset($OrderInfo[0])) {
-                return response()->json(['Err' => $this->Keys[19], 'Message' => $this->Err[19]]);
+                return response()->json([
+                    'Err' => $this->Keys[19],
+                    'Message' => $this->Err[19]
+                ]);
             }
-            return response()->json(['Err' => $this->Keys[0], 'Message' => $this->Err[0], 'ordersinfo' => $OrderInfo]);
+            return response()->json([
+                'Err' => $this->Keys[0],
+                'Message' => $this->Err[0],
+                'ordersinfo' => $OrderInfo
+            ]);
         } catch (Throwable $e) {
-            return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
+            return response()->json([
+                'Err' => $this->Keys[26],
+                'Message' => $this->Err[26],
+                'OtherErr' => $e->getMessage()
+            ]);
         }
     }
     public function AddWalletMoney(Request $Request)
@@ -359,7 +457,10 @@ class PayController extends Controller
             //驗證參輸入數
             $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
             if ($Validator->fails()) {
-                return response()->json(['Err' => array_search($Validator->Errors()->first(), $this->Err), 'Message' => $Validator->Errors()->first()]);
+                return response()->json([
+                    'Err' => array_search($Validator->Errors()->first(), $this->Err),
+                    'Message' => $Validator->Errors()->first()
+                ]);
             }
             $Uuid = substr(Str::uuid(), 0, 20);
             $Date = Carbon::now()->format('Y/m/d H:i:s');
@@ -384,10 +485,17 @@ class PayController extends Controller
                 return $SendEcpayApi[0];
             }
             if (!isset($SendEcpayApi[0]->transaction_url)) {
-                return response()->json(['Err' => $SendEcpayApi[0]->error_code, 'Message' => '第三方金流錯誤']);
+                return response()->json([
+                    'Err' => $SendEcpayApi[0]->error_code,
+                    'Message' => '第三方金流錯誤'
+                ]);
             }
         } catch (Throwable $e) {
-            return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26]]);
+            return response()->json([
+                'Err' => $this->Keys[26],
+                'Message' => $this->Err[26],
+                'OtherErr' => $e->getMessage()
+            ]);
         }
     }
     public function AddWalletMoneyCallBack(Request $Request)
@@ -396,14 +504,16 @@ class PayController extends Controller
             $Money = $Request->amount;
             $Trade_date = Carbon::createFromFormat('d/M/y H:m:s', $Request->trade_date);
             $Payment_date = Carbon::createFromFormat('d/M/y H:m:s', $Request->payment_date);
-            $EcpayBackInfo = ['merchant_id' => $Request->merchant_id,
+            $EcpayBackInfo = [
+                'merchant_id' => $Request->merchant_id,
                 'trade_date' => $Trade_date,
                 'check_mac_value' => $Request->check_mac_value,
                 'rtn_code' => $Request->rtn_code,
                 'rtn_msg' => $Request->rtn_msg,
                 'amount' => $Request->amount,
                 'payment_date' => $Payment_date,
-                'merchant_trade_no' => $Request->merchant_trade_no];
+                'merchant_trade_no' => $Request->merchant_trade_no
+            ];
             $this->CreateOrderServiceV2->SaveEcpayBack($EcpayBackInfo);
             if ($Request->rtn_code == 0) {
                 //將WalletRecord的 status改為false
@@ -411,9 +521,13 @@ class PayController extends Controller
             } else {
                 $yesterday = date('Y-m-d H:i:s', strtotime('-1 day'));
                 $today = date('Y-m-d H:i:s');
-                $Option = ['Eid' => $Request->merchant_trade_no, 'StartTime' => $yesterday, 'EndTime' => $today];
+                $Option = [
+                    'Eid' => $Request->merchant_trade_no,
+                    'StartTime' => $yesterday,
+                    'EndTime' => $today
+                ];
                 $this->CreateOrderServiceV2->AddMoney($Money, $Option);
-                $this->CreateOrderServiceV2->UpdateWalletRecordsuccess($Request->merchant_trade_no);
+                $this->CreateOrderServiceV2->UpdateWalletRecordSuccess($Request->merchant_trade_no);
             }
         } catch (Exception $e) {
             Cache::set('moneycallback', $e);
@@ -436,16 +550,27 @@ class PayController extends Controller
         try {
             $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
             if ($Validator->fails()) {
-                return response()->json(['Err' => array_search($Validator->Errors()->first(), $this->Err), 'Message' => $Validator->Errors()->first()]);
+                return response()->json([
+                    'Err' => array_search($Validator->Errors()->first(), $this->Err),
+                    'Message' => $Validator->Errors()->first()
+                ]);
             }
             //取的抓取範圍&類型
             $OffsetLimit = ['limit' => $Request['limit'], 'offset' => $Request['offset']];
             $OffsetLimit = $this->TotalService->GetOffsetLimit($OffsetLimit);
             $Type = $Request->type;
             $GetWalletRecord = $this->CreateOrderServiceV2->GetWalletRecordOnRangeAndType($OffsetLimit, $Type);
-            return response()->json(['Err' => $this->Keys[0], 'Message' => $this->Err[0], 'count' => $GetWalletRecord['count'], 'data' => $GetWalletRecord['data']]);
+            return response()->json([
+                'Err' => $this->Keys[0],
+                'Message' => $this->Err[0],
+                'count' => $GetWalletRecord['count'],
+                'data' => $GetWalletRecord['data']]);
         } catch (Throwable $e) {
-            return response()->json(['Err' => $this->Keys[26], 'Message' => $this->Err[26], 'OtherErr' => $e->getMessage()]);
+            return response()->json([
+                'Err' => $this->Keys[26],
+                'Message' => $this->Err[26],
+                'OtherErr' => $e->getMessage()
+            ]);
         }
     }
 }

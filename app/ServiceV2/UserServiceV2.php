@@ -3,6 +3,7 @@
 namespace App\ServiceV2;
 
 use App\RepositoryV2\LoginRecordRepositoryV2;
+use App\RepositoryV2\ResraurantHistoryRepositoryV2;
 use App\RepositoryV2\RestaurantRepositoryV2;
 use App\RepositoryV2\UserFavoriteRepositoryV2;
 use App\RepositoryV2\UserRepositoryV2;
@@ -26,8 +27,10 @@ class UserServiceV2
     private $TotalService;
     private $RestaurantRepositoryV2;
     private $UserFavoriteRepositoryV2;
-    public function __construct(UserFavoriteRepositoryV2 $UserFavoriteRepositoryV2, RestaurantRepositoryV2 $RestaurantRepositoryV2, LoginRecordRepositoryV2 $LoginRecordRepositoryV2, TotalService $TotalService, UserWalletRepositoryV2 $UserWalletRepositoryV2, UserRepositoryV2 $UserRepositoryV2)
+    private $ResraurantHistoryRepositoryV2;
+    public function __construct(ResraurantHistoryRepositoryV2 $ResraurantHistoryRepositoryV2, UserFavoriteRepositoryV2 $UserFavoriteRepositoryV2, RestaurantRepositoryV2 $RestaurantRepositoryV2, LoginRecordRepositoryV2 $LoginRecordRepositoryV2, TotalService $TotalService, UserWalletRepositoryV2 $UserWalletRepositoryV2, UserRepositoryV2 $UserRepositoryV2)
     {
+        $this->ResraurantHistoryRepositoryV2 = $ResraurantHistoryRepositoryV2;
         $this->UserFavoriteRepositoryV2 = $UserFavoriteRepositoryV2;
         $this->RestaurantRepositoryV2 = $RestaurantRepositoryV2;
         $this->LoginRecordRepositoryV2 = $LoginRecordRepositoryV2;
@@ -48,10 +51,10 @@ class UserServiceV2
     public function CreatrWallet($Email)
     {
         try {
-            $Userid = $this->UserRepositoryV2->GetInfoByEmil($Email);
-            $this->UserWalletRepositoryV2->Create($Userid[0]['id']);
+            $UserId = $this->UserRepositoryV2->GetInfoByEmil($Email);
+            $this->UserWalletRepositoryV2->Create($UserId[0]['id']);
         } catch (Throwable $e) {
-            throw new \Exception("ServiceErr:" . $e);
+            throw new \Exception("ServiceErr:" . 500);
         }
     }
     public function LoginCheckTooManyAttempts($Ip, $Email)
@@ -200,7 +203,6 @@ class UserServiceV2
             throw new \Exception("ServiceErr:" . 500);
         }
     }
-
     public function CreateFavorite($Rid)
     {
         try {
@@ -214,12 +216,52 @@ class UserServiceV2
     }
     public function GetFavoriteInfo($OffsetLimit)
     {
-        $UserInfo = $this->TotalService->GetUserInfo();
-        $UserId = $UserInfo->id;
-        $FavoriteRid = $this->UserFavoriteRepositoryV2->GetByUserIdOnRange($UserId, $OffsetLimit)->toArray();
-        $ArrayRid = array_map(function ($item) {
-            return $item['rid'];
-        }, $FavoriteRid);
-     return   $RestaurantInfo = $this->RestaurantRepositoryV2->GetInfoByArray($ArrayRid, $OffsetLimit);
+        try {
+            $UserInfo = $this->TotalService->GetUserInfo();
+            $UserId = $UserInfo->id;
+            $FavoriteRid = $this->UserFavoriteRepositoryV2->GetRidByUserIdOnRange($UserId, $OffsetLimit)->toArray();
+            $ArrayRid = array_map(function ($item) {
+                return $item['rid'];
+            }, $FavoriteRid);
+            $RestaurantInfo = $this->RestaurantRepositoryV2->GetInfoByArray($ArrayRid, $OffsetLimit);
+            $RestaurantCount = $RestaurantInfo->count();
+            return ['data' => $RestaurantInfo, 'count' => $RestaurantCount];
+        } catch (Throwable $e) {
+            throw new \Exception("ServiceErr:" . 500);
+        }
+    }
+    public function RidExistFavorite($Rid)
+    {
+        try {
+            $UserInfo = $this->TotalService->GetUserInfo();
+            $UserId = $UserInfo->id;
+            return $this->UserFavoriteRepositoryV2->CheckRidExist($UserId, $Rid);
+        } catch (Throwable $e) {
+            throw new \Exception("ServiceErr:" . 500);
+        }
+    }
+    public function DeleteFavorite($Rid)
+    {
+        try {
+            $UserInfo = $this->TotalService->GetUserInfo();
+            $UserId = $UserInfo->id;
+            $this->UserFavoriteRepositoryV2->Delete($UserId, $Rid);
+        } catch (Throwable $e) {
+            throw new \Exception("ServiceErr:" . 500);
+        }
+    }
+
+    public function GetFavoriteRestaurantInfo($Option)
+    {
+        try {
+            $UserInfo = $this->TotalService->GetUserInfo();
+            $UserId = $UserInfo->id;
+            $RidArray = $this->ResraurantHistoryRepositoryV2->GetRidByUserIdOnOption($UserId, $Option)->pluck('rid')->toArray();
+            $RestaurantInfo = $this->RestaurantRepositoryV2->GetInfoByArray($RidArray, $Option);
+            $RestaurantInfoCount = $RestaurantInfo->count();
+            return ['data' => $RestaurantInfo, 'count' => $RestaurantInfoCount];
+        } catch (Throwable $e) {
+            throw new \Exception("ServiceErr:" . 500);
+        }
     }
 }

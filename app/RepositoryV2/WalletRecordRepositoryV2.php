@@ -8,36 +8,51 @@ use Throwable;
 
 class WalletRecordRepositoryV2
 {
-    public function SaveWalletRecord($WalletRecord)
+    public function Create($WalletRecord)
     {
-        Wallet_Record::create($WalletRecord);
+        try {
+            Wallet_Record::create($WalletRecord);
+        } catch (Throwable $e) {
+            throw new \Exception("RepossitoryErr:" . 500);
+        }
     }
-    public function FindAndUpdateFailRecord($Uuid)
+    public function UpdateFailByUid($Uuid)
     {
-        return Wallet_Record::where('eid', '=', $Uuid)->update(['status' => 10]);
+        try {
+            return Wallet_Record::where('eid', '=', $Uuid)->update(['status' => 10]);
+        } catch (Throwable $e) {
+            throw new \Exception("RepossitoryErr:" . 500);
+        }
     }
-    public function FindAndUpdatesuccessRecord($Uuid)
+    public function UpdateSuccessById($Uuid)
     {
-        return Wallet_Record::where('eid', '=', $Uuid)->update(['status' => 0]);
+        try {
+            return Wallet_Record::where('eid', '=', $Uuid)->update(['status' => 0]);
+        } catch (Throwable $e) {
+            throw new \Exception("RepossitoryErr:" . 500);
+        }
     }
-    public function GetWalletRecord($Uuid)
+    public function GetById($Uuid)
     {
-        return Wallet_Record::where('eid', '=', $Uuid)->get();
+        try {
+            return Wallet_Record::where('eid', '=', $Uuid)->get();
+        } catch (Throwable $e) {
+            throw new \Exception("RepossitoryErr:" . 500);
+        }
     }
-    public function GetUserIdFormWallerRecordOnEid($Option)
+    public function GetUserIdByEidAndTime($Eid, $Option)
     {
         try {
             return Wallet_Record::select('uid')
                 ->where('created_at', '>', $Option['StartTime'])
                 ->where('created_at', '<', $Option['EndTime'])
-                ->where('eid', '=', $Option['Eid'])
+                ->where('eid', '=', $Eid)
                 ->get();
         } catch (Throwable $e) {
-            Cache::set('GetUserIdFormWallerRecordOnEid', $e->getMessage());
+            throw new \Exception("RepossitoryErr:" . 500);
         }
-
     }
-    public function GetWalletRecordOnRangeAndType($Option, $Type, $UserId)
+    public function GetByUidAndTypeOnRange($Option, $Type, $UserId)
     {
         try {
             return Wallet_Record::select('type', $Type, 'wallet__records.created_at')

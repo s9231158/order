@@ -13,21 +13,6 @@ class Factorise
     public static function Setmenu(int $Rid): object
     {
         return match ($Rid) {
-            // '1' => (function () {
-            //         return new OSmenu();
-            //     })(),
-            // '2' => (function () {
-            //         return new TAmenu();
-            //     })(),
-            // '3' => (function () {
-            //         return new SHmenu();
-            //     })(),
-            // '4' => (function () {
-            //         return new Localmenu();
-            //     })(),
-            // default => (function () {
-            //         return new Other();
-            //     })(),
             1 => (function () {
                     return new OSmenu();
                 })(),

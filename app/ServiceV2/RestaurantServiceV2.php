@@ -9,6 +9,7 @@ use App\RepositoryV2\RestaurantCommentRepositoryV2;
 use App\RepositoryV2\RestaurantRepositoryV2;
 use App\RepositoryV2\UserRepositoryV2;
 use Illuminate\Support\Carbon;
+use Throwable;
 
 class RestaurantServiceV2
 {
@@ -34,51 +35,102 @@ class RestaurantServiceV2
         $this->Factorise = $Factorise;
         $this->RestaurantRepositoryV2 = $RestaurantRepositoryV2;
     }
-    public function GetRestaurantOnOffsetLimit($Option, $Today)
+    public function GetOpenRestaurantsOnOffsetLimit($Option, $Today)
     {
-        return $this->RestaurantRepositoryV2->GetInRangeForDate($Option, $Today)->where('enable', '=', '1')->shuffle()->map->only(['id', 'title', 'img', 'totalpoint', 'countpoint']);
+        try {
+            return $this->RestaurantRepositoryV2->GetInRangeForDate($Option, $Today)
+                ->where('enable', '=', '1')
+                ->shuffle()
+                ->map
+                ->only(['id', 'title', 'img', 'totalpoint', 'countpoint']);
+        } catch (Throwable $e) {
+            throw new \Exception("ServiceErr:" . 500);
+        }
     }
     public function CheckRestaurantInDatabase(int $Rid): bool
     {
-        return $this->RestaurantRepositoryV2->CheckRestaurantInDatabase($Rid);
+        try {
+            return $this->RestaurantRepositoryV2->CheckRestaurantInDatabase($Rid);
+        } catch (Throwable $e) {
+            throw new \Exception("ServiceErr:" . 500);
+        }
     }
     public function GetMenu($Rid, $OffsetLimit)
     {
-        $this->Restaurant = $this->Factorise->Setmenu($Rid);
-        return $this->Restaurant->Getmenu($OffsetLimit['offset'], $OffsetLimit['limit']);
+        try {
+            $this->Restaurant = $this->Factorise->Setmenu($Rid);
+            return $this->Restaurant->Getmenu($OffsetLimit['offset'], $OffsetLimit['limit']);
+        } catch (Throwable $e) {
+            throw new \Exception("ServiceErr:" . 500);
+        }
     }
     public function GetRestaurantinfo($Rid)
     {
-        return $this->RestaurantRepositoryV2->GetById($Rid)->only(['title', 'info', 'openday', 'opentime', 'closetime', 'img', 'address', 'totalpoint', 'countpoint']);
+        try {
+            return $this->RestaurantRepositoryV2->GetById($Rid)
+                ->only([
+                    'title',
+                    'info',
+                    'openday',
+                    'opentime',
+                    'closetime',
+                    'img',
+                    'address',
+                    'totalpoint',
+                    'countpoint'
+                ]);
+        } catch (Throwable $e) {
+            throw new \Exception("ServiceErr:" . 500);
+        }
     }
     public function UpdateOrCreateHistory($Rid)
     {
-        $UserInfo = $this->UserRepositoryV2->GetUserInfo();
-        $UserId = $UserInfo->id;
-        $this->ResraurantHistoryRepositoryV2->UpdateOrCreate($UserId, $Rid);
+        try {
+            $UserInfo = $this->UserRepositoryV2->GetUserInfo();
+            $UserId = $UserInfo->id;
+            $this->ResraurantHistoryRepositoryV2->UpdateOrCreate($UserId, $Rid);
+        } catch (Throwable $e) {
+            throw new \Exception("ServiceErr:" . 500);
+        }
     }
     public function CheckOrderIn24Hour($Rid)
     {
-        $UserInfo = $this->UserRepositoryV2->GetUserInfo();
-        $UserId = $UserInfo->id;
-        $Time = Carbon::yesterday();
-        return $this->OrderRepositoryV2->ExistByRidAndUserId($UserId, $Rid, $Time);
+        try {
+            $UserInfo = $this->UserRepositoryV2->GetUserInfo();
+            $UserId = $UserInfo->id;
+            $Time = Carbon::yesterday();
+            return $this->OrderRepositoryV2->ExistByRidAndUserIdAtTime($UserId, $Rid, $Time);
+        } catch (Throwable $e) {
+            throw new \Exception("ServiceErr:" . 500);
+        }
     }
     public function CheckUserFirstComment($Rid)
     {
-        $UserInfo = $this->UserRepositoryV2->GetUserInfo();
-        $UserId = $UserInfo->id;
-        return $this->RestaurantCommentRepositoryV2->ExistByUidAndRid($UserId, $Rid);
+        try {
+            $UserInfo = $this->UserRepositoryV2->GetUserInfo();
+            $UserId = $UserInfo->id;
+            return $this->RestaurantCommentRepositoryV2->ExistByUidAndRid($UserId, $Rid);
+        } catch (Throwable $e) {
+            throw new \Exception("ServiceErr:" . 500);
+        }
     }
     public function SaveComment($Comment)
     {
-        $UserInfo = $this->UserRepositoryV2->GetUserInfo();
-        $UserId = $UserInfo->id;
-        $Comment['uid'] = $UserId;
-        $this->RestaurantCommentRepositoryV2->Create($Comment);
+        try {
+            $UserInfo = $this->UserRepositoryV2->GetUserInfo();
+            $UserId = $UserInfo->id;
+            $Comment['uid'] = $UserId;
+            $this->RestaurantCommentRepositoryV2->Create($Comment);
+        } catch (Throwable $e) {
+            throw new \Exception("ServiceErr:" . 500);
+        }
     }
     public function GetRestaurantComment($Rid, $Option)
     {
-        return $this->RestaurantCommentRepositoryV2->GetByRid($Rid, $Option);
+        try {
+            return $this->RestaurantCommentRepositoryV2->GetByRid($Rid, $Option);
+        } catch (Throwable $e) {
+            throw new \Exception("ServiceErr:" . 500);
+        }
     }
 }

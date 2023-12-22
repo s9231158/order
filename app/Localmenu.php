@@ -11,7 +11,11 @@ class Localmenu implements RestaurantInterface
     public function GetMenu(int $Offset, int $Limit): array
     {
         try {
-            $menu = Local_menu::select('rid', 'id', 'info', 'name', 'price', 'img')->limit($Limit)->offset($Offset)->get()->toArray();
+            $menu = Local_menu::select('rid', 'id', 'info', 'name', 'price', 'img')
+                ->limit($Limit)
+                ->offset($Offset)
+                ->get()
+                ->toArray();
             return $menu;
         } catch (\GuzzleHttp\Exception\BadResponseException $e) {
             return $menu;
@@ -57,5 +61,4 @@ class Localmenu implements RestaurantInterface
             return false;
         }
     }
-
 }

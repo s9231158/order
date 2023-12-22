@@ -3,36 +3,73 @@
 namespace App\RepositoryV2;
 
 use App\Models\Order;
+use Throwable;
 
 class OrderRepositoryV2
 {
-    public function SaveOrder($OrderInfo)
+    public function Create($OrderInfo)
     {
+        try {
+            throw new \Exception("RepossitoryErr:" . 500);
+        } catch (Throwable $e) {
+        }
         return Order::create($OrderInfo)['id'];
     }
-    public function FindAndUpdateFailRecord($Oid)
+    public function UpdateFailByOid($Oid)
     {
-        return Order::find($Oid)->update(['status' => 10]);
+        try {
+            return Order::find($Oid)->update(['status' => 10]);
+        } catch (Throwable $e) {
+            throw new \Exception("RepossitoryErr:" . 500);
+        }
     }
-    public function FindAndUpdatesuccessRecord($Oid)
+    public function UpdateSuccessByOid($Oid)
     {
-        return Order::find($Oid)->update(['status' => 0]);
+        try {
+            return Order::find($Oid)->update(['status' => 0]);
+        } catch (Throwable $e) {
+            throw new \Exception("RepossitoryErr:" . 500);
+        }
     }
-    public function GetOrder($UserId, $Oid)
+    public function GetByIdAndOid($UserId, $Oid)
     {
-        return Order::where('uid', '=', $UserId)->where('id', '=', $Oid)->get();
+        try {
+            return Order::where('uid', '=', $UserId)->where('id', '=', $Oid)->get();
+        } catch (Throwable $e) {
+            throw new \Exception("RepossitoryErr:" . 500);
+        }
     }
-    public function GetOrdersByOffsetLimit($UserId, $Option)
+    public function GetByUidAndOffsetLimit($UserId, $Option)
     {
-        return Order::where('uid', '=', $UserId)->offset($Option['offset'])->limit($Option['limit'])->get();
+        try {
+            return Order::where('uid', '=', $UserId)
+                ->offset($Option['offset'])
+                ->limit($Option['limit'])
+                ->get();
+        } catch (Throwable $e) {
+            throw new \Exception("RepossitoryErr:" . 500);
+        }
     }
-    public function GetOrderInfoJoinOrder($UserId, $Oid)
+    public function GetByUidAndOid($UserId, $Oid)
     {
-        return Order::where('orders.uid', '=', $UserId)->where('orders.id', '=', $Oid)->join('order_infos', 'orders.id', '=', 'order_infos.oid')->get();
+        try {
+            return Order::where('orders.uid', '=', $UserId)
+                ->where('orders.id', '=', $Oid)
+                ->join('order_infos', 'orders.id', '=', 'order_infos.oid')
+                ->get();
+        } catch (Throwable $e) {
+            throw new \Exception("RepossitoryErr:" . 500);
+        }
     }
-
-    public function ExistByRidAndUserId($UserId, $Rid, $Time)
+    public function ExistByRidAndUserIdAtTime($UserId, $Rid, $Time)
     {
-        return Order::where('uid', '=', $UserId)->where('ordertime', '>', $Time)->wherein('status', [0, 9])->exists();
+        try {
+            return Order::where('uid', '=', $UserId)
+                ->where('ordertime', '>', $Time)
+                ->wherein('status', [0, 9])
+                ->exists();
+        } catch (Throwable $e) {
+            throw new \Exception("RepossitoryErr:" . 500);
+        }
     }
 }

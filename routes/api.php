@@ -23,21 +23,21 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::group(['middleware' => 'Maintenance'], function () {
     // UserController routes
-    Route::post('/login', [UserController::class, 'login']);
-    Route::get('/logout', [UserController::class, 'logout']);
-    Route::post('/user', [UserController::class, 'create']);
-    Route::get('/user', [UserController::class, 'profile'])->middleware('token');
-    Route::get('/user/record', [UserController::class, 'record'])->middleware('token');
-    Route::post('/user/favorite', [UserController::class, 'favorite'])->middleware('token');
-    Route::get('/user/favorite', [UserController::class, 'getfavorite'])->middleware('token');
-    Route::delete('/user/favorite', [UserController::class, 'deletefavorite'])->middleware('token');
-    Route::get('/user/history', [UserController::class, 'history'])->middleware('token');
+    Route::post('/login', [UserController::class, 'Login']);
+    Route::get('/logout', [UserController::class, 'LogOut']);
+    Route::post('/user', [UserController::class, 'CreateUser']);
+    Route::get('/user', [UserController::class, 'GetProfile'])->middleware('token');
+    Route::get('/user/record', [UserController::class, 'GetRecord'])->middleware('token');
+    Route::post('/user/favorite', [UserController::class, 'AddFavorite'])->middleware('token');
+    Route::get('/user/favorite', [UserController::class, 'GetFavorite'])->middleware('token');
+    Route::delete('/user/favorite', [UserController::class, 'DeleteFavorite'])->middleware('token');
+    Route::get('/user/history', [UserController::class, 'GetHistory'])->middleware('token');
 
     // RestaurantController routes
-    Route::get('/restaurant', [RestaurantController::class, 'Restaurant']);
-    Route::post('/restaurant/comment', [RestaurantController::class, 'comment'])->middleware('token');
+    Route::get('/restaurant', [RestaurantController::class, 'GetRestaurant']);
+    Route::post('/restaurant/comment', [RestaurantController::class, 'AddComment'])->middleware('token');
     Route::get('/restaurant/comment', [RestaurantController::class, 'GetComment']);
-    Route::get('/menu', [RestaurantController::class, 'Menu']);
+    Route::get('/menu', [RestaurantController::class, 'GetMenu']);
 
     //PayController
     Route::post('/order', [PayController::class, 'CreateOrder'])->middleware('token');

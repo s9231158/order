@@ -93,7 +93,6 @@ class OSmenu implements RestaurantInterface
         } catch (Throwable $e) {
             return false;
         }
-
     }
     public function MenuCorrect(array $Order): bool
     {

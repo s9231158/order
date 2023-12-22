@@ -4,6 +4,7 @@ namespace App\RepositoryV2;
 
 use App\Models\User_wallets;
 use Cache;
+use Throwable;
 
 class UserWalletRepositoryV2
 {
@@ -11,22 +12,26 @@ class UserWalletRepositoryV2
     {
         try {
             return User_wallets::where('id', '=', $UserId)->first();
-        } catch (\Throwable $e) {
-            Cache::set('GetUserWallet', 'GetUserWallet');
+        } catch (Throwable $e) {
+            throw new \Exception("RepossitoryErr:" . 500);
         }
     }
     public function UpdateOnId($UserId, $Money)
     {
         try {
-            $apple = $this->GetOnId($UserId);
-            $apple->update(['balance' => $Money]);
-        } catch (\Throwable $e) {
-            Cache::set('UpdateUserWalletBalance', $e->getMessage());
+            $UserWallet = $this->GetOnId($UserId);
+            $UserWallet->update(['balance' => $Money]);
+        } catch (Throwable $e) {
+            throw new \Exception("RepossitoryErr:" . 500);
         }
     }
 
     public function Create($UserId)
     {
-        User_wallets::create(['id' => $UserId, 'balance' => 0]);
+        try {
+            User_wallets::create(['id' => $UserId, 'balance' => 0]);
+        } catch (Throwable $e) {
+            throw new \Exception("RepossitoryErr:" . 500);
+        }
     }
 }

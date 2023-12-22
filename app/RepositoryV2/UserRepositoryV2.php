@@ -3,6 +3,7 @@
 namespace App\RepositoryV2;
 
 use App\Models\User;
+use Throwable;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class UserRepositoryV2
@@ -11,15 +12,15 @@ class UserRepositoryV2
     {
         try {
             return JWTAuth::parseToken()->authenticate();
-        } catch (\Throwable $e) {
-            false;
+        } catch (Throwable $e) {
+            throw new \Exception("RepossitoryErr:" . 500);
         }
     }
     public function Create($UserInfo)
     {
         try {
             User::create($UserInfo);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             throw new \Exception("Repository:" . 500);
         }
     }
@@ -27,7 +28,7 @@ class UserRepositoryV2
     {
         try {
             return User::where("email", '=', $Email)->get();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             throw new \Exception("Repository:" . 500);
         }
     }
