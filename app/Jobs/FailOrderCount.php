@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\RepositoryV2\OrderRepositoryV2;
 use App\Service\OrderService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -23,13 +24,9 @@ class FailOrderCount implements ShouldQueue
      * @return void
      */
     private $Order;
+    private $OrderRepositoryV2;
     public function __construct(OrderService $OrderService)
     {
-        // //取出昨天00:00
-        // $Start = Carbon::yesterday();
-        // //取出今天00:00
-        // $End = Carbon::today();
-        // $this->Order = $this->OrderService->GetSomeTimeOrder($Start, $End);
         $this->OrderService = $OrderService;
     }
 
@@ -51,22 +48,24 @@ class FailOrderCount implements ShouldQueue
         $Orderlist = [];
         for ($I = 0; $I < 24; $I++) {
             //取得每小時失敗的所有訂單
-            $EveryHourFailOrder = $Order->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])->where('status', '=', '失敗');
+            $EveryHourFailOrder = $Order->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])
+            ->where('status', '!=', 0);
             //取得每小時的所有訂單
-            $EveryHourOrder = $Order->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])->where('status', '=', '失敗');
+            $EveryHourOrder = $Order->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])
+            ->where('status', '=', 0);
             //取得每小時失敗訂單次數
             $EveryHourFailOrderCount = $EveryHourFailOrder->count();
             //取得每小時訂單次數
             $EveryHourOrderCount = $EveryHourOrder->count();
-            //將開始時間放入Orderlist
-            $Orderlist[$I]['starttime'] = $Yesterday->copy();
-            //將結束時間放入Orderlist
-            $Orderlist[$I]['endtime'] = $YesterdayAddHour->copy();
-            //將失敗訂單次數放入Orderlist
-            $Orderlist[$I]['failcount'] = $EveryHourFailOrderCount;
-            $Orderlist[$I]['totalcount'] = $EveryHourOrderCount;
-            $Orderlist[$I]['created_at'] = Carbon::now();
-            $Orderlist[$I]['updated_at'] = Carbon::now();
+            if ($EveryHourFailOrderCount !== 0) {
+                $Orderlist[] = ['starttime' => $Yesterday->copy(),
+                    'endtime' => $YesterdayAddHour->copy(),
+                    'failcount' => $EveryHourFailOrderCount,
+                    'totalcount' => $EveryHourOrderCount,
+                    'created_at' => Carbon::now(),
+                    'updated_at' => Carbon::now(),
+                ];
+            }
             //對起始時間加一小
             $Yesterday = $Yesterday->addHour();
             //對終止時間加一小

@@ -37,16 +37,6 @@ class Kernel extends ConsoleKernel
         $schedule->call(function () {
             RestaurantFavoritrCount::dispatch();
         })->dailyAt('6:32');
-
-
-
-
-
-
-
-
-
-
     }
 
     /**

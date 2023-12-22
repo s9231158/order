@@ -3,12 +3,10 @@
 namespace App\Jobs;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use App\Models\User;
 use Illuminate\Support\Carbon;
 use App\Models\User_recode;
 use App\Models\Login_Total;
@@ -45,23 +43,25 @@ class UserRecordCount implements ShouldQueue
         //取出昨天01:00
         $To = Carbon::yesterday()->addHour();
         $I = 0;
-        $list = [];
+        $List = [];
         for ($I = 0; $I < 24; $I++) {
             $Count = $UserRecodeInfo->whereBetween('created_at', [$Go, $To])->count();
             //取出資料
-            $list[] = [
-                'count' => $Count,
-                'starttime' => $Go->copy(),
-                'endtime' => $To->copy(),
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now()
-            ];
+            if ($Count !== 0) {
+                $List[] = [
+                    'count' => $Count,
+                    'starttime' => $Go->copy(),
+                    'endtime' => $To->copy(),
+                    'created_at' => Carbon::now(),
+                    'updated_at' => Carbon::now()
+                ];
+            }
             //取出昨天00:00
             $Go = $Go->addHour();
             //取出昨天01:00
             $To = $To->addHour();
         }
         //存至資料庫
-        Login_Total::insert($list);
+        Login_Total::insert($List);
     }
 }

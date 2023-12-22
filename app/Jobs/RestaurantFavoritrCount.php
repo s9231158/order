@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Models\RestaruantFavoritCount;
 use App\Models\User_favorite;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -38,28 +37,21 @@ class RestaurantFavoritrCount implements ShouldQueue
         //取出今天00:00
         $End = Carbon::today();
         //取出昨天至今天所有訂單資料
-        $RestaruantFavorite = User_favorite::select('rid', 'created_at')->whereBetween('created_at', [$Start, $End])->get();
+        $RestaruantFavorite = User_favorite::select('rid', 'created_at')
+            ->whereBetween('created_at', [$Start, $End])->get();
         $Yesterday = Carbon::yesterday();
         $YesterdayAddHour = Carbon::yesterday()->addHour();
-        $RestaruantFavoriteList = [];
-        $list = [];
+        $List = [];
         for ($I = 0; $I < 24; $I++) {
             // //取得每小時的ecpay支付方式
-            $EveryHourFavoriteCount = $RestaruantFavorite->whereBetween('created_at', [$Yesterday, $YesterdayAddHour]);
-            //將開始時間放入Paymentlist
-            $RestaruantFavoriteList[$I]['starttime'] = $Yesterday->copy();
-            //將失敗時間放入Paymentlist
-            $RestaruantFavoriteList[$I]['endtime'] = $YesterdayAddHour->copy();
-            $RestaruantFavoriteList[$I]['list'] = [];
-            $Timelist[] = [
-                'starttime' => $RestaruantFavoriteList[$I]['starttime'],
-                'endtime' => $RestaruantFavoriteList[$I]['endtime'],
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),
-            ];
-            foreach ($EveryHourFavoriteCount as $i) {
-                $list[] = ['rid' => $i['rid'], 'starttime' => $RestaruantFavoriteList[$I]['starttime'], 'endtime' => $RestaruantFavoriteList[$I]['endtime']];
-                $RestaruantFavoriteList[$I]['list'] = ['rid' => $i['rid']];
+            $EveryHourFavoriteCount = $RestaruantFavorite
+                ->whereBetween('created_at', [$Yesterday, $YesterdayAddHour]);
+            foreach ($EveryHourFavoriteCount as $A) {
+                $List[] = [
+                    'rid' => $A['rid'],
+                    'starttime' => $Yesterday->copy(),
+                    'endtime' => $YesterdayAddHour->copy()
+                ];
             }
             //對起始時間加一小
             $Yesterday = $Yesterday->addHour();
@@ -67,47 +59,33 @@ class RestaurantFavoritrCount implements ShouldQueue
             $YesterdayAddHour = $YesterdayAddHour->addHour();
         }
         //將相同時間與相同餐廳次數加總
-        $sums = [];
-        foreach ($list as $item) {
-            $key = $item['starttime'] . $item['rid'];
-            if (array_key_exists($key, $sums)) {
-                $sums[$key]['Count'] += 1;
+        $Sums = [];
+        foreach ($List as $Item) {
+            $Key = $Item['starttime'] . $Item['rid'];
+            if (array_key_exists($Key, $Sums)) {
+                $Sums[$Key]['Count'] += 1;
             } else {
-                $sums[$key] = [
-                    'rid' => $item['rid'],
+                $Sums[$Key] = [
+                    'rid' => $Item['rid'],
                     'Count' => 1,
-                    'starttime' => $item['starttime'],
-                    'endtime' => $item['endtime'],
+                    'starttime' => $Item['starttime'],
+                    'endtime' => $Item['endtime'],
                 ];
             }
         }
         //將結果整理後存進資料庫
-        $result = [];
-        foreach ($sums as $item) {
-            $result[] = [
-                'rid' => $item['rid'],
-                'count' => $item['Count'],
-                'starttime' => $item['starttime'],
-                'endtime' => $item['endtime'],
+        $Result = [];
+        foreach ($Sums as $Item) {
+            $Result[] = [
+                'rid' => $Item['rid'],
+                'count' => $Item['Count'],
+                'starttime' => $Item['starttime'],
+                'endtime' => $Item['endtime'],
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
             ];
         }
-        $ResultTimelist = [];
-        foreach ($Timelist as $elementA) {
-            $exists = false;
-            foreach ($result as $elementB) {
-                if ($elementA['starttime'] === $elementB['starttime'] && $elementA['endtime'] === $elementB['endtime']) {
-                    $exists = true;
-                }
-            }
-            if (!$exists) {
-                $ResultTimelist[] = $elementA;
-            }
-        }
         //存入資料庫
-        RestaruantFavoritCount::insert($result);
-        RestaruantFavoritCount::insert($ResultTimelist);
+        RestaruantFavoritCount::insert($Result);
     }
 }
-
