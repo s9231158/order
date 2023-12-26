@@ -5,16 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Wallet_Record extends Model
+class OrderInfo extends Model
 {
     use HasFactory;
+    public $timestamps = true;
+
     protected $fillable = [
-        'out',
-        'in',
-        'oid',
-        'uid',
-        'eid',
-        'status',
-        'pid',
+        'price',
+        'quanlity',
+        'name',
+        'oid ',
+        'description',
     ];
 }

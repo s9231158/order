@@ -4,8 +4,6 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -15,36 +13,6 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
 class User extends Authenticatable implements JWTSubject
 {
     use HasApiTokens, HasFactory, Notifiable;
-    public function wallet(): HasOne
-    {
-        return $this->hasOne(User_wallets::class, 'id');
-    }
-
-    public function recode(): HasMany
-    {
-        return $this->hasMany(User_recode::class, 'uid');
-    }
-    public function favorite()
-    {
-        return $this->belongsToMany(Restaurant::class, 'user_favorites', 'uid', 'rid')->withTimestamps();
-    }
-    public function history()
-    {
-        return $this->belongsToMany(Restaurant::class, 'restaurant_histories', 'uid', 'rid')->withTimestamps();
-    }
-    public function comment()
-    {
-        return $this->belongsToMany(Restaurant::class, 'restaurant_comments', 'uid', 'rid')->withTimestamps();
-    }
-    public function order()
-    {
-        return $this->hasMany(Order::class, 'uid');
-    }
-    public function WalletRecord()
-    {
-        return $this->hasMany(Wallet_Record::class, 'uid');
-    }
-
     /**
      * The attributes that are mass assignable.
      *

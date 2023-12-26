@@ -3,7 +3,7 @@
 namespace App;
 
 use App\Contract\RestaurantInterface;
-use App\Models\Local_menu;
+use App\Models\LocalMenu as Local_menu;
 use Throwable;
 
 class Localmenu implements RestaurantInterface
@@ -11,14 +11,14 @@ class Localmenu implements RestaurantInterface
     public function GetMenu(int $Offset, int $Limit): array
     {
         try {
-            $menu = Local_menu::select('rid', 'id', 'info', 'name', 'price', 'img')
+            $Menu = Local_menu::select('rid', 'id', 'info', 'name', 'price', 'img')
                 ->limit($Limit)
                 ->offset($Offset)
                 ->get()
                 ->toArray();
-            return $menu;
+            return $Menu;
         } catch (\GuzzleHttp\Exception\BadResponseException $e) {
-            return $menu;
+            return $Menu;
         }
     }
     public function MenuEnable(array $MenuId): bool

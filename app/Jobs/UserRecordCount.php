@@ -9,7 +9,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
 use App\Models\User_recode;
-use App\Models\Login_Total;
+use App\Models\LoginTotal as Login_Total;
 
 class UserRecordCount implements ShouldQueue
 {

@@ -5,11 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class User_wallets extends Model
+class RestaruantTotalMoney extends Model
 {
-    protected $fillable = [
-        'id',
-        'balance'
-    ];
+    protected $fillable = ['money', 'starttime', 'endtime','rid'];
     use HasFactory;
 }

@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 class User_favorite extends Model
 {
     use HasFactory;
-
     protected $fillable = [
         'uid',
         'rid',

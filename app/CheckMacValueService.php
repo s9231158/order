@@ -6,127 +6,83 @@ use Exception;
 
 class CheckMacValueService
 {
-    const METHOD_MD5 = 'md5';
-    const METHOD_SHA256 = 'sha256';
-
     /**
      * Hash 方式
      *
      * @var string
      */
-    private $method;
-    protected $hash_Iv;
-    protected $hash_Key;
+    private $Method;
+    protected $HashIv;
+    protected $HashKey;
 
 
-    public function __construct($key, $iv)
+    public function __construct($Key, $Iv)
     {
-        $this->setHashKey($key);
-        $this->setHashIv($iv);
+        $this->setHashKey($Key);
+        $this->setHashIv($Iv);
     }
 
-    public function generate($source)
+    public function Generate($Source)
     {
         try {
             //如果有checkvalue 移除他
-            $filtered = $this->filter($source);
+            $Filtered = $this->filter($Source);
             //對key進行大小寫排序
-            $sorted = $this->naturalSort($filtered);
+            $Sorted = $this->NaturalSort($Filtered);
             //array to string & add hashiv,key
-            $combined = $this->toEncodeSourceString($sorted);
+            $Combined = $this->ToEncodeSourceString($Sorted);
             //進行URL encode & 轉成小寫
-            $encoded = $this->ecpayUrlEncode($combined);
+            $Encoded = $this->EcpayUrlEncode($Combined);
             //使用sha256產生雜湊
-            $hash = $this->generateHash($encoded);
+            $Hash = $this->GenerateHash($Encoded);
             //轉大寫
-            $checkMacValue = strtoupper($hash);
-            return $checkMacValue;
+            $CheckMacValue = strtoupper($Hash);
+            return $CheckMacValue;
         } catch (Exception $e) {
             throw $e;
         }
     }
-    //如果有checkvalue 移除他
-    // {
-    //     "merchant_id": 11,
-    //     "merchant_trade_no": "1111111111111111111",
-    //     "merchant_trade_date": "2023/10/20 11:59:59",
-    //     "payment_type": "aio",
-    //     "amount": 123,
-    //     "trade_desc": "購買商品",
-    //     "item_name": "product#dskjf",
-    //     "return_url": "http://localhost:8082/api/test",
-    //     "choose_payment": "Credit",
-    //     "encrypt_type": 1,
-    //     "lang": "en"
-    // }
-
-
-    //對key進行大小寫排序
-    // {
-    //     "amount": 123,
-    //     "choose_payment": "Credit",
-    //     "encrypt_type": 1,
-    //     "item_name": "product#dskjf",
-    //     "lang": "en",
-    //     "merchant_id": 11,
-    //     "merchant_trade_date": "2023/10/20 11:59:59",
-    //     "merchant_trade_no": "1111111111111111111",
-    //     "payment_type": "aio",
-    //     "return_url": "http://localhost:8082/api/test",
-    //     "trade_desc": "購買商品"
-    // }
-
-    //array to string & add hashiv,key
-    // hash_key=0dd22e31042fbbdd&amount=123&choose_payment=Credit&encrypt_type=1&item_name=product#dskjf&lang=en&merchant_id=11&merchant_trade_date=2023/10/20 11:59:59&merchant_trade_no=1111111111111111111&payment_type=aio&return_url=http://localhost:8082/api/test&trade_desc=購買商品&HashIV=e62f6e3bbd7c2e9d
-
-
-    //進行URL encode & 轉成小寫
-    // hashkey%3d0dd22e31042fbbdd%26amount%3d123%26choose_payment%3dcredit%26encrypt_type%3d1%26item_name%3dproduct%23dskjf%26lang%3den%26merchant_id%3d11%26merchant_trade_date%3d2023%2f10%2f20+11%3a59%3a59%26merchant_trade_no%3d1111111111111111111%26payment_type%3daio%26return_url%3dhttp%3a%2f%2flocalhost%3a8082%2fapi%2ftest%26trade_desc%3d%e8%b3%bc%e8%b2%b7%e5%95%86%e5%93%81%26hashiv%3de62f6e3bbd7c2e9d
-
-    //使用sha256產生雜湊
-    // 6b00274ba07937b2c00e1f03ba2b76c11946f1c976754578cc3dc757c6cb9a16
-
-
-    public function generateHash($source)
+   
+    public function GenerateHash($Source)
     {
-        $hash = hash('sha256', $source);
-        return $hash;
+        $Hash = hash('sha256', $Source);
+        return $Hash;
     }
 
-    public static function naturalSort($source)
+    public static function NaturalSort($Source)
     {
-        uksort($source, function ($first, $second) {
+        uksort($Source, function ($First, $Second) {
 
-            return strcasecmp($first, $second);
+            return strcasecmp($First, $Second);
         });
-        return $source;
+        return $Source;
     }
 
-    public function filter($source)
+    public function Filter($Source)
     {
-        if (isset($source[$this->getFieldName()])) {
-            unset($source[$this->getFieldName()]);
+        if (isset($Source[$this->getFieldName()])) {
+            unset($Source[$this->getFieldName()]);
         }
-        return $source;
+        return $Source;
     }
-    public function toEncodeSourceString($source)
+    public function ToEncodeSourceString($Source)
     {
-        $combined = 'hash_key=' . $this->getHashKey();
-        foreach ($source as $name => $value) {
-            $combined .= '&' . $name . '=' . $value;
+        $Combined = 'hash_key=' . $this->GetHashKey();
+        foreach ($Source as $Name => $Value) {
+            $Combined .= '&' . $Name . '=' . $Value;
         }
-        $combined .= '&hash_iv=' . $this->getHashIv();
-        return $combined;
+        $Combined .= '&hash_iv=' . $this->GetHashIv();
+        return $Combined;
     }
 
 
-    public static function ecpayUrlEncode($source)
+    public static function EcpayUrlEncode($Source)
     {
-        $encoded = urlencode($source);
-        $lower = strtolower($encoded);
-        $dotNetFormat = self::toDotNetUrlEncode($lower);
+        $Encoded = urlencode($Source);
+        $Lower = strtolower($Encoded);
+        $DotNetFormat = self::ToDotNetUrlEncode($Lower);
 
-        return $dotNetFormat;
+        return $DotNetFormat;
     }
 
     /**
@@ -135,9 +91,9 @@ class CheckMacValueService
      * @param  string $source
      * @return string
      */
-    public static function toDotNetUrlEncode($source)
+    public static function ToDotNetUrlEncode($Source)
     {
-        $search = [
+        $Search = [
             '%2d',
             '%5f',
             '%2e',
@@ -146,7 +102,7 @@ class CheckMacValueService
             '%28',
             '%29',
         ];
-        $replace = [
+        $Replace = [
             '-',
             '_',
             '.',
@@ -155,18 +111,18 @@ class CheckMacValueService
             '(',
             ')',
         ];
-        $replaced = str_replace($search, $replace, $source);
+        $Replaced = str_replace($Search, $Replace, $Source);
 
-        return $replaced;
+        return $Replaced;
     }
-    public function getFieldName()
+    public function GetFieldName()
     {
         return 'check_mac_value';
     }
 
-    public function getHashIv()
+    public function GetHashIv()
     {
-        return $this->hash_Iv;
+        return $this->HashIv;
     }
 
     /**
@@ -174,30 +130,30 @@ class CheckMacValueService
      *
      * @return string
      */
-    public function getHashKey()
+    public function GetHashKey()
     {
-        return $this->hash_Key;
+        return $this->HashKey;
     }
 
     /**
      * 設定 Hash IV
      *
-     * @param  string $iv
+     * @param  string $Iv
      * @return void
      */
-    public function setHashIv($iv)
+    public function setHashIv($Iv)
     {
-        $this->hash_Iv = $iv;
+        $this->HashIv = $Iv;
     }
 
     /**
      * 設定 Hash Key
      *
-     * @param  string $key
+     * @param  string $Key
      * @return void
      */
-    public function setHashKey($key)
+    public function setHashKey($Key)
     {
-        $this->hash_Key = $key;
+        $this->HashKey = $Key;
     }
 }

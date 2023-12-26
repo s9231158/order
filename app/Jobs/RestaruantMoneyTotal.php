@@ -9,7 +9,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
 use App\Models\Order;
-use App\Models\Restaruant_Total_Money;
+use App\Models\RestaruantTotalMoney as Restaruant_Total_Money;
 
 class RestaruantMoneyTotal implements ShouldQueue
 {

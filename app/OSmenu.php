@@ -4,7 +4,7 @@ namespace App;
 
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Date;
-use App\Models\Oishii_menu;
+use App\Models\OishiiMenu as Oishii_menu;
 use App\Contract\RestaurantInterface;
 use Throwable;
 

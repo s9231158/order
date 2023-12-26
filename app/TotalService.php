@@ -2,44 +2,13 @@
 
 namespace App;
 
-use App\Models\Restaurant;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
-use App\ErrorCodeService;
 
 class TotalService
 {
-    private $ErrorCodeService;
-    private $err = [];
-    private $keys = [];
-    public function __construct(ErrorCodeService $ErrorCodeService)
+    public function __construct()
     {
-        $this->ErrorCodeService = $ErrorCodeService;
-        $this->err = $this->ErrorCodeService->GetErrCode();
-        $this->keys = $this->ErrorCodeService->GetErrKey();
-    }
-    public function LimitOffsetValidator($Request)
-    {
-        try { //規則
-            $ruls = [
-                'limit' => ['regex:/^[0-9]+$/'],
-                'offset' => ['regex:/^[0-9]+$/'],
-            ];
-            //什麼錯誤報什麼錯誤訊息
-            $rulsMessage = [
-                'limit.regex' => $this->keys['23'],
-                'offset.regex' => $this->keys['23']
-            ];
-            $validator = Validator::make($Request->all(), $ruls, $rulsMessage);
-            //驗證失敗回傳錯誤訊息
-            if ($validator->fails()) {
-                return response()->json(['err' => $validator->errors()->first(), 'message' => $this->err[$validator->errors()->first()]]);
-            }
-            return true;
-        } catch (\Throwable $e) {
-            return $e;
-        }
     }
     public function GetOffsetLimit($Option)
     {
@@ -65,9 +34,9 @@ class TotalService
     public function CheckHasLogin($Token, $Email)
     {
         try {
-            $Redistoken = 'Bearer ' . Cache::get($Email);
+            $RedisToken = 'Bearer ' . Cache::get($Email);
             //有emial 有token 但token錯誤 系統錯誤
-            if (Cache::has($Email) && $Token !== null && $Token !== $Redistoken) {
+            if (Cache::has($Email) && $Token !== null && $Token !== $RedisToken) {
                 Cache::forget($Email);
                 return 5;
             }
@@ -84,10 +53,6 @@ class TotalService
             return 'err';
         }
 
-    }
-    public static function CheckRestaurantInDatabase($rid)
-    {
-        return Restaurant::where('id', '=', $rid)->count();
     }
     public function CheckToken($Token)
     {

@@ -6,7 +6,6 @@ use App\OSmenu;
 use App\TAmenu;
 use App\SHmenu;
 use App\Localmenu;
-use App\Other;
 
 class Factorise
 {

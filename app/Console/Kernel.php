@@ -9,7 +9,6 @@ use App\Jobs\RestaurantFavoritrCount;
 use App\Jobs\UserRecordCount;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
-use App\Service\OrderService;
 
 class Kernel extends ConsoleKernel
 {
@@ -21,15 +20,14 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $orderServiceInstance = new OrderService();
         $schedule->call(function () {
             UserRecordCount::dispatch();
         })->dailyAt('6:32');
         $schedule->call(function () {
             RestaruantMoneyTotal::dispatch();
         })->dailyAt('6:32');
-        $schedule->call(function () use ($orderServiceInstance) {
-            FailOrderCount::dispatch($orderServiceInstance);
+        $schedule->call(function () {
+            FailOrderCount::dispatch();
         })->dailyAt('6:32');
         $schedule->call(function () {
             PaymentCount::dispatch();

@@ -4,7 +4,7 @@ namespace App;
 
 class ErrorCodeService
 {
-    private $err = [
+    private $Err = [
         0 => '成功',
         1 => '資料填寫與規格不符',
         2 => '必填資料未填',
@@ -41,17 +41,17 @@ class ErrorCodeService
         33 => '請填入正確付款方式',
         34 => '訂單傳送失敗'
     ];
-    private $keys = [];
+    private $Keys = [];
     public function __construct()
     {
-        $this->keys = array_keys($this->err);
+        $this->Keys = array_keys($this->Err);
     }
     public function GetErrCode()
     {
-        return $this->err;
+        return $this->Err;
     }
     public function GetErrKey()
     {
-        return $this->keys;
+        return $this->Keys;
     }
 }

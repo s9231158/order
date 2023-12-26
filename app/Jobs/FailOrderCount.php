@@ -2,17 +2,14 @@
 
 namespace App\Jobs;
 
-use App\RepositoryV2\OrderRepositoryV2;
-use App\Service\OrderService;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
+use App\Models\FailOrderCount as Fail_Order_Count;
 use App\Models\Order;
-use App\Models\Fail_Order_Count;
 
 class FailOrderCount implements ShouldQueue
 {
@@ -25,9 +22,8 @@ class FailOrderCount implements ShouldQueue
      */
     private $Order;
     private $OrderRepositoryV2;
-    public function __construct(OrderService $OrderService)
+    public function __construct()
     {
-        $this->OrderService = $OrderService;
     }
 
     /**
@@ -42,23 +38,23 @@ class FailOrderCount implements ShouldQueue
         //取出今天00:00
         $End = Carbon::today();
         //取出昨天至今天所有訂單資料
-        $Order = $this->OrderService->GetSomeTimeOrder($Start, $End);
+        $Order = Order::select('status', 'created_at')->whereBetween('created_at', [$Start, $End])->get();
         $Yesterday = Carbon::yesterday();
         $YesterdayAddHour = Carbon::yesterday()->addHour();
-        $Orderlist = [];
+        $OrderList = [];
         for ($I = 0; $I < 24; $I++) {
             //取得每小時失敗的所有訂單
             $EveryHourFailOrder = $Order->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])
-            ->where('status', '!=', 0);
+                ->where('status', '!=', 0);
             //取得每小時的所有訂單
             $EveryHourOrder = $Order->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])
-            ->where('status', '=', 0);
+                ->where('status', '=', 0);
             //取得每小時失敗訂單次數
             $EveryHourFailOrderCount = $EveryHourFailOrder->count();
             //取得每小時訂單次數
             $EveryHourOrderCount = $EveryHourOrder->count();
             if ($EveryHourFailOrderCount !== 0) {
-                $Orderlist[] = ['starttime' => $Yesterday->copy(),
+                $OrderList[] = ['starttime' => $Yesterday->copy(),
                     'endtime' => $YesterdayAddHour->copy(),
                     'failcount' => $EveryHourFailOrderCount,
                     'totalcount' => $EveryHourOrderCount,
@@ -72,6 +68,6 @@ class FailOrderCount implements ShouldQueue
             $YesterdayAddHour = $YesterdayAddHour->addHour();
         }
         //存入資料庫
-        Fail_Order_Count::insert($Orderlist);
+        Fail_Order_Count::insert($OrderList);
     }
 }

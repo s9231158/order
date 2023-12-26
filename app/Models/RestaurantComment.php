@@ -5,11 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class User_wallets extends Model
+class RestaurantComment extends Model
 {
-    protected $fillable = [
-        'id',
-        'balance'
-    ];
+    protected $fillable = ['point', 'comment', 'uid', 'rid'];
     use HasFactory;
 }

@@ -1,10 +1,10 @@
 <?php
 
-use App\Http\Controllers\PayController;
-use App\Http\Controllers\RestaurantController;
+use App\Http\Controllers\Pay as PayController;
+use App\Http\Controllers\Restaurant as RestaurantController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\UserController;
+use App\Http\Controllers\User as UserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -44,7 +44,7 @@ Route::group(['middleware' => 'Maintenance'], function () {
     Route::post('/ecpayCallBack', [PayController::class, 'EcpayCallBack']);
     Route::get('/order', [PayController::class, 'GetOrder'])->middleware('token');
     Route::get('/orderinfo', [PayController::class, 'GetOrderInfo'])->middleware('token');
-    Route::post('/money', [PayController::class, 'AddWalletMoney']);
+    Route::post('/money', [PayController::class, 'AddWalletMoney'])->middleware('token');
     Route::post('/moneycallback', [PayController::class, 'AddWalletMoneyCallBack']);
     Route::get('/wallet', [PayController::class, 'GetWallet'])->middleware('token');
     Route::get('/apple', [PayController::class, 'apple']);

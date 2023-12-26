@@ -46,9 +46,9 @@ class RestaurantFavoritrCount implements ShouldQueue
             // //取得每小時的ecpay支付方式
             $EveryHourFavoriteCount = $RestaruantFavorite
                 ->whereBetween('created_at', [$Yesterday, $YesterdayAddHour]);
-            foreach ($EveryHourFavoriteCount as $A) {
+            foreach ($EveryHourFavoriteCount as $Item) {
                 $List[] = [
-                    'rid' => $A['rid'],
+                    'rid' => $Item['rid'],
                     'starttime' => $Yesterday->copy(),
                     'endtime' => $YesterdayAddHour->copy()
                 ];
