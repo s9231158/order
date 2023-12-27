@@ -11,7 +11,7 @@ use Throwable;
 class TAmenu implements RestaurantInterface
 {
     private $GetMenuUrl = 'http://neil.xincity.xyz:9998/tasty/api/menu';
-    private $OrderUrl = 'http://neil.xincity.xyz:9998/oishii/api/notify/order';
+    private $OrderUrl = 'http://neil.xincity.xyz:9998/tasty/api/order';
     private $GetMenuOnMenuIdUrl = 'http://neil.xincity.xyz:9998/tasty/api/menu?id=';
     public function GetMenu(int $Offset, int $Limit): array
     //修改為從api取得
@@ -63,8 +63,8 @@ class TAmenu implements RestaurantInterface
                 'order_id' => $OrderInfo['uid'],
                 'name' => $OrderInfo['name'],
                 'phone_number' => '0' . $OrderInfo['phone'],
-                'pickup_time' => "2016-06-01T14:41:36+08:00",
-                'total_price' => $OrderInfo['totalprice'],
+                'pickup_time' => '2016-06-01T14:41:36+08:00',
+                'total_price' => $OrderInfo['total_price'],
                 'order' => ['list' => []],
             ];
             foreach ($Order as $Item) {
@@ -86,8 +86,7 @@ class TAmenu implements RestaurantInterface
             $Client = new Client();
             $Response = $Client->request('POST', $this->OrderUrl, ['json' => $TargetData]);
             $GoodResponse = $Response->getBody();
-            $TargetData;
-            $ArrayGoodResponse = json_decode($GoodResponse);
+             $ArrayGoodResponse = json_decode($GoodResponse);
             //取得結果
             if ($ArrayGoodResponse->error_code === 0) {
                 return true;

@@ -10,10 +10,11 @@ class Order
     public function Create($OrderInfo)
     {
         try {
-            throw new \Exception("RepossitoryErr:" . 500);
+            return OrderModel::create($OrderInfo);
         } catch (Throwable $e) {
+            throw new \Exception("RepossitoryErr:" . 500);
         }
-        return OrderModel::create($OrderInfo)['id'];
+
     }
     public function UpdateFailByOid($Oid)
     {

@@ -158,7 +158,7 @@ class User
     public function GetUserInfo()
     {
         try {
-            return $this->TotalService->GetUserInfo()->only(['email', 'name', 'address', 'phone', 'age']);
+            return $this->TotalService->GetUserInfo()->only(['id','email', 'name', 'address', 'phone', 'age']);
         } catch (Throwable $e) {
             throw new \Exception("ServiceErr:" . 500);
         }

@@ -12,7 +12,7 @@ class WalletRecord
         try {
             Wallet_Record::create($WalletRecord);
         } catch (Throwable $e) {
-            throw new \Exception("RepossitoryErr:" . 500);
+            throw new \Exception("RepossitoryErr:" . 500 . $e);
         }
     }
     public function UpdateFailByUid($Uuid)
@@ -34,7 +34,7 @@ class WalletRecord
     public function GetById($Uuid)
     {
         try {
-            return Wallet_Record::where('eid', '=', $Uuid)->get();
+            return Wallet_Record::where('eid', '=', $Uuid)->first();
         } catch (Throwable $e) {
             throw new \Exception("RepossitoryErr:" . 500);
         }

@@ -18,8 +18,7 @@ class UserWallet
     public function UpdateOnId($UserId, $Money)
     {
         try {
-            $UserWallet = $this->GetOnId($UserId);
-            $UserWallet->update(['balance' => $Money]);
+            User_wallets::where('id', $UserId)->update(['balance' => $Money]);
         } catch (Throwable $e) {
             throw new \Exception("RepossitoryErr:" . 500);
         }
