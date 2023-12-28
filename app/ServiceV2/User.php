@@ -59,7 +59,7 @@ class User
     {
         try {
             $UserId = $this->UserRepositoryV2->GetInfoByEmil($Email);
-            $this->UserWalletRepositoryV2->Create($UserId[0]['id']);
+            $this->UserWalletRepositoryV2->Create($UserId->id);
         } catch (Throwable $e) {
             throw new \Exception("ServiceErr:" . 500);
         }
@@ -111,7 +111,7 @@ class User
     {
         try {
             $UserId = $this->UserRepositoryV2->GetInfoByEmil($RocordInfo['email']);
-            $RocordInfo['uid'] = $UserId[0]['id'];
+            $RocordInfo['uid'] = $UserId->id;
             unset($RocordInfo['email']);
             $this->LoginRecordRepositoryV2->Create($RocordInfo);
         } catch (Throwable $e) {
@@ -122,9 +122,9 @@ class User
     {
         try {
             $UserInfo = $this->UserRepositoryV2->GetInfoByEmil($Email);
-            $Id = $UserInfo[0]['id'];
-            $Name = $UserInfo[0]['name'];
-            $Email = $UserInfo[0]['email'];
+            $Id = $UserInfo->id;
+            $Name = $UserInfo->name;
+            $Email = $UserInfo->email;
             $Time = Carbon::now()->addDay();
             $UserClaims = [
                 'id' => $Id,
@@ -132,7 +132,7 @@ class User
                 'email' => $Email,
                 'exp' => $Time
             ];
-            $Token = JWTAuth::claims($UserClaims)->fromUser($UserInfo[0]);
+            $Token = JWTAuth::claims($UserClaims)->fromUser($UserInfo);
             Cache::put($Email, $Token, 60 * 60 * 24);
             return $Token;
         } catch (Throwable $e) {
@@ -158,7 +158,7 @@ class User
     public function GetUserInfo()
     {
         try {
-            return $this->TotalService->GetUserInfo()->only(['id','email', 'name', 'address', 'phone', 'age']);
+            return $this->TotalService->GetUserInfo()->only(['id', 'email', 'name', 'address', 'phone', 'age']);
         } catch (Throwable $e) {
             throw new \Exception("ServiceErr:" . 500);
         }
@@ -172,6 +172,7 @@ class User
         } catch (Throwable $e) {
             throw new \Exception("ServiceErr:" . 500);
         }
+        
     }
     public function CheckRestaurantInDatabase(int $Rid): bool
     {
@@ -189,20 +190,6 @@ class User
             $UserFavorite = $this->UserFavoriteRepositoryV2->GetByUserId($UserId);
             $UserFavoriteCount = $UserFavorite->count();
             if ($UserFavoriteCount >= 20) {
-                return true;
-            }
-            return false;
-        } catch (Throwable $e) {
-            throw new \Exception("ServiceErr:" . 500);
-        }
-    }
-    public function CheckAlreadyAddFavorite($Rid)
-    {
-        try {
-            $UserInfo = $this->TotalService->GetUserInfo();
-            $UserId = $UserInfo->id;
-            $UserFavorite = $this->UserFavoriteRepositoryV2->CheckRidExist($UserId, $Rid);
-            if ($UserFavorite) {
                 return true;
             }
             return false;

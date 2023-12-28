@@ -27,13 +27,13 @@ class Ecpay
     public function SendEcpayApi($EcpayInfo)
     {
         try {
-            $Key = env('Ecpay_Key');
-            $Iv = env('Ecpay_Iv');
+            $Key = env('ECPAY_KEY');
+            $Iv = env('ECPAY_IV');
             $CheckMacValueService = new CheckMacValueService($Key, $Iv);
             $EcpayRestaurantInfo = [
                 "merchant_id" => 11,
                 "payment_type" => "aio",
-                "return_url" => env('Ecpay_ReturnUrl'),
+                "return_url" => env('ECPAY_RETURNURL'),
                 "encrypt_type" => 1,
                 "lang" => "en",
                 "choose_payment" => "Credit",
@@ -41,7 +41,7 @@ class Ecpay
             $EcpayInfo = array_merge($EcpayInfo, $EcpayRestaurantInfo);
             $EcpayInfo['check_mac_value'] = $CheckMacValueService->Generate($EcpayInfo);
             $Client = new Client();
-            $Response = $Client->Request('POST', env('Ecpay_ApiUrl'), ['json' => $EcpayInfo]);
+            $Response = $Client->Request('POST', env('ECPAY_APIURL'), ['json' => $EcpayInfo]);
             $ArrayGoodResponse = json_decode($Response->getBody());
             return [$ArrayGoodResponse, $EcpayInfo];
         } catch (Throwable $e) {

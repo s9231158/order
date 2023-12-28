@@ -5,7 +5,6 @@ use App\Factorise;
 use App\RepositoryV2\OrderInfo as OrderInfoRepositoryV2;
 use App\RepositoryV2\Order as OrderRepositoryV2;
 use App\RepositoryV2\Restaurant as RestaurantRepositoryV2;
-use App\RepositoryV2\User as UserRepositoryV2;
 use App\RepositoryV2\UserWallet as UserWalletRepositoryV2;
 use App\RepositoryV2\WalletRecord as WalletRecordRepositoryV2;
 use Illuminate\Support\Str;
@@ -20,7 +19,6 @@ class CreateOrder
     private $Restaurant;
     private $OrderRepositoryV2;
     private $OrderInfoRepositoryV2;
-    private $UserRepositoryV2;
     private $UserWalletRepositoryV2;
     private $WalletRecordRepositoryV2;
     private $EcpayRepositoryV2;
@@ -30,7 +28,6 @@ class CreateOrder
         UserWalletRepositoryV2 $UserWalletRepositoryV2,
         OrderInfoRepositoryV2 $OrderInfoRepositoryV2,
         OrderRepositoryV2 $OrderRepositoryV2,
-        UserRepositoryV2 $UserRepositoryV2,
         Factorise $Factorise,
         RestaurantRepositoryV2 $RestaurantRepositoryV2
     ) {
@@ -39,7 +36,6 @@ class CreateOrder
         $this->RestaurantRepositoryV2 = $RestaurantRepositoryV2;
         $this->OrderRepositoryV2 = $OrderRepositoryV2;
         $this->OrderInfoRepositoryV2 = $OrderInfoRepositoryV2;
-        $this->UserRepositoryV2 = $UserRepositoryV2;
         $this->UserWalletRepositoryV2 = $UserWalletRepositoryV2;
         $this->WalletRecordRepositoryV2 = $WalletRecordRepositoryV2;
     }
@@ -47,18 +43,6 @@ class CreateOrder
     {
         try {
             return $this->RestaurantRepositoryV2->CheckRestaurantInDatabase($Rid);
-        } catch (Throwable $e) {
-            throw new \Exception("ServiceErr:" . 500);
-        }
-    }
-
-    public function CheckSameArray(array $Array1, array $Array2): bool
-    {
-        try {
-            if (count($Array1) === count($Array2) && count($Array1) !== 1) {
-                return false;
-            }
-            return true;
         } catch (Throwable $e) {
             throw new \Exception("ServiceErr:" . 500);
         }
@@ -102,7 +86,7 @@ class CreateOrder
         try {
             return $this->OrderRepositoryV2->Create($Order)['id'];
         } catch (Throwable $e) {
-            throw new \Exception("ServiceErr:" . 500);
+            throw new \Exception("ServiceErr:" . 500 . $e->getMessage());
         }
     }
     public function SaveOrderInfo($OrderInfo)
@@ -173,11 +157,9 @@ class CreateOrder
     {
         return $this->WalletRecordRepositoryV2->GetById($Uuid);
     }
-    public function GetOrder($Oid, $Option)
+    public function GetOrder($UserId, $Oid, $Option)
     {
         try {
-            $UserInfo = $this->UserRepositoryV2->GetUserInfo();
-            $UserId = $UserInfo->id;
             if ($Oid !== null) {
                 $Order = $this->OrderRepositoryV2->GetByIdAndOid($UserId, $Oid);
                 return $Order = $Order->map->only(['id', 'ordertime', 'taketime', 'total', 'status']);
@@ -189,11 +171,9 @@ class CreateOrder
             throw new \Exception("ServiceErr:" . 500);
         }
     }
-    public function GetOrderInfo($Oid)
+    public function GetOrderInfo($UserId, $Oid)
     {
         try {
-            $UserInfo = $this->UserRepositoryV2->GetUserInfo();
-            $UserId = $UserInfo->id;
             $OrderInfo = $this->OrderRepositoryV2->GetByUidAndOid($UserId, $Oid);
             return $OrderInfo = $OrderInfo->map->only(['name', 'quanlity', 'price', 'description']);
         } catch (Throwable $e) {

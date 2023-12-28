@@ -67,7 +67,7 @@ class Wallet extends Controller
                 "amount" => $Money,
                 "item_name" => '加值',
                 'trade_desc' => $UserId . '訂餐',
-                "return_url" => env('AddWalletMoneyEcpay_ReturnUrl'),
+                "return_url" => env('ADD_WALLET_MONEY_ECPAY_RETURNURL'),
                 "choose_payment" => "Credit",
                 "encrypt_type" => 1,
                 "lang" => "en"

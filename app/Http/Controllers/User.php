@@ -321,7 +321,7 @@ class User extends Controller
             }
 
             //檢查是否重複新增我的最愛
-            $CheckAlreadyAddFavorite = $this->UserServiceV2->CheckAlreadyAddFavorite($Rid);
+            $CheckAlreadyAddFavorite = $this->UserServiceV2->RidExistFavorite($Rid);
             if ($CheckAlreadyAddFavorite) {
                 return response()->json([
                     'Err' => $this->Keys[15],

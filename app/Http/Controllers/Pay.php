@@ -173,7 +173,6 @@ class Pay extends Controller
             $Phone = $Request['phone'];
             $UserInfo = $this->User->GetUserInfo();
             $UserId = $UserInfo->id;
-
             if ($Rid !== 4) {
                 $OrderInfo = [
                     'name' => $Request['name'],
@@ -231,6 +230,7 @@ class Pay extends Controller
                     'address' => $Address,
                     'status' => 11,
                     'rid' => $Rid,
+                    'uid' => $UserId,
                 ];
                 //儲存訂單
                 $Oid = $this->CreateOrderServiceV2->SaveOrder($SaveOrderInfo);
@@ -311,14 +311,12 @@ class Pay extends Controller
             }
         } catch (Exception $e) {
             return response()->json([
-                $e->getMessage(),
                 'Err' => $this->Keys[26],
                 'Message' => $this->Err[26],
                 'OtherErr' => $e->getMessage()
             ]);
         } catch (Throwable $e) {
             return response()->json([
-                $e->getMessage(),
                 'Err' => $this->Keys[26],
                 'Message' => $this->Err[26],
                 'OtherErr' => $e->getMessage()
@@ -395,7 +393,9 @@ class Pay extends Controller
             $OffsetLimit = $this->TotalService->GetOffsetLimit($OffsetLimit);
             $Oid = $Request['oid'];
             //取出訂單
-            $Order = $this->CreateOrderServiceV2->GetOrder($Oid, $OffsetLimit);
+            $UserInfo = $this->User->GetUserInfo();
+            $UserId = $UserInfo->id;
+            $Order = $this->CreateOrderServiceV2->GetOrder($UserId, $Oid, $OffsetLimit);
             $OrderCount = $Order->count();
             return response()->json([
                 'Err' => $this->Keys[0],
@@ -428,7 +428,9 @@ class Pay extends Controller
                 return response()->json(['Err' => array_search($Validator->Errors()->first(), $this->Err), 'Message' => $Validator->Errors()->first()]);
             }
             $Oid = $Request['oid'];
-            $OrderInfo = $this->CreateOrderServiceV2->GetOrderInfo($Oid);
+            $UserInfo = $this->User->GetUserInfo();
+            $UserId = $UserInfo->id;
+            $OrderInfo = $this->CreateOrderServiceV2->GetOrderInfo($UserId, $Oid);
             if (!isset($OrderInfo[0])) {
                 return response()->json([
                     'Err' => $this->Keys[19],

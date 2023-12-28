@@ -12,7 +12,7 @@ class Order
         try {
             return OrderModel::create($OrderInfo);
         } catch (Throwable $e) {
-            throw new \Exception("RepossitoryErr:" . 500);
+            throw new \Exception("RepossitoryErr:" . 500 .$e->getMessage());
         }
 
     }

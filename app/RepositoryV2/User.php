@@ -27,7 +27,7 @@ class User
     public function GetInfoByEmil($Email)
     {
         try {
-            return UserModel::where("email", '=', $Email)->get();
+            return UserModel::where("email", '=', $Email)->first();
         } catch (Throwable $e) {
             throw new \Exception("Repository:" . 500);
         }
