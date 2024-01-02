@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\User as userService;
+use App\Services\UserWallet;
+
 use App\ErrorCodeService;
 use App\ServiceV2\User as UserServiceV2;
 use App\TotalService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Throwable;
 
@@ -18,36 +22,49 @@ class User extends Controller
     private $Keys = [];
     private $TotalService;
     private $UserServiceV2;
+    //new 
+    private $userService;
+    private $err = [];
+    private $keys = [];
+    //new 
     public function __construct(
         UserServiceV2 $UserServiceV2,
         ErrorCodeService $ErrorCodeService,
         TotalService $TotalService,
+        //new
+        userService $userService,
+        ErrorCodeService $errorCodeService,
+        //new 
     ) {
         $this->UserServiceV2 = $UserServiceV2;
         $this->Keys = $ErrorCodeService->GetErrKey();
         $this->Err = $ErrorCodeService->GetErrCode();
         $this->TotalService = $TotalService;
+        //new
+        $this->userService = $userService;
+        $this->keys = $errorCodeService->GetErrKey();
+        $this->err = $errorCodeService->GetErrCode();
+        //new 
     }
-    public function CreateUser(Request $Request)
+    public function CreateUser(Request $request)
     {
         try {
             //規則
-            $Ruls = [
+            $ruls = [
                 'name' => ['required', 'string', 'max:25', 'min:3'],
-                'email' => ['required', 'string', 'unique:users,email', 'min:15', 'max:50', 'email'],
+                'email' => ['required', 'string', 'min:15', 'max:50', 'email'],
                 'password' => ['required', 'min:10', 'max:25', 'string'],
-                'phone' => ['required', 'string', 'size:9', 'digits_between:1,9', 'unique:users,phone'],
+                'phone' => ['required', 'string', 'size:9', 'digits_between:1,9'],
                 'address' => ['required', 'string', 'min:10', 'max:25'],
                 'age' => ['required', 'before:' . Carbon::now()->subYears(12)->format('Y-m-d'), 'date'],
             ];
             //什麼錯誤報什麼錯誤訊息
-            $RulsMessage = [
+            $rulsMessage = [
                 'name.required' => '資料填寫與規格不符',
                 'name.max' => '資料填寫與規格不符',
                 'name.min' => '資料填寫與規格不符',
                 'name.string' => '資料填寫與規格不符',
                 'email.required' => '必填資料未填',
-                'email.unique' => 'email已註冊',
                 'email.min' => '資料填寫與規格不符',
                 'email.max' => '資料填寫與規格不符',
                 'email.email' => '資料填寫與規格不符',
@@ -60,7 +77,6 @@ class User extends Controller
                 'phone.string' => '資料填寫與規格不符',
                 'phone.size' => '資料填寫與規格不符',
                 'phone.digits_between' => '資料填寫與規格不符',
-                'phone.unique' => '電話已註冊',
                 'address.required' => '必填資料未填',
                 'address.min' => '資料填寫與規格不符',
                 'address.string' => '資料填寫與規格不符',
@@ -69,48 +85,78 @@ class User extends Controller
                 'age.before' => '資料填寫與規格不符',
                 'age.date' => '資料填寫與規格不符',
             ];
-            $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
-            if ($Validator->fails()) {
+            //驗證輸入
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            if ($validator->fails()) {
                 return response()->json([
-                    'Err' => array_search($Validator->Errors()->first(), $this->Err),
-                    'Message' => $Validator->Errors()->first()
+                    'Err' => array_search($validator->Errors()->first(), $this->err),
+                    'Message' => $validator->Errors()->first()
                 ]);
             }
-
-            //Request將資料取出
-            $UserInfo = [
-                'password' => $Request['password'],
-                'email' => $Request['email'],
-                'name' => $Request['name'],
-                'phone' => $Request['phone'],
-                'address' => $Request['address'],
-                'age' => $Request['age']
-            ];
-
+            //檢查email是否重複
+            $email = $request['email'];
+            $eamilRepeat = $this->userService->getObjByEamil($email);
+            if ($eamilRepeat) {
+                return response()->json([
+                    'Err' => $this->keys[3],
+                    'Message' => $this->err[3],
+                ]);
+            }
+            //檢查電話是否重複
+            $phone = $request['phone'];
+            $phoneRepeat = $this->userService->phoneExist($phone);
+            if ($phoneRepeat) {
+                return response()->json([
+                    'Err' => $this->keys[4],
+                    'Message' => $this->err[4],
+                ]);
+            }
             // 將使用者資訊存入Users
-            $this->UserServiceV2->CreateUser($UserInfo);
-
+            $userInfo = [
+                'email' => $email,
+                'name' => $request['name'],
+                'phone' => $phone,
+                'address' => $request['address'],
+                'age' => $request['age']
+            ];
+            $userInfo['password'] = Hash::make($request['password']);
+            $response = $this->userService->create($userInfo);
+            if (!$response) {
+                return response()->json([
+                    'Err' => $this->keys[26],
+                    'Message' => $this->err[26],
+                ]);
+            }
             // 將使用者資訊存入UserWallet
-            $Email = $Request['email'];
-            $this->UserServiceV2->CreatrWallet($Email);
+            $balance = 0;
+            $userId = $response->id;
+            $userWalletService = new UserWallet;
+            $walletResponse = $userWalletService->updateOrCreate($userId, $balance);
+            if (!$walletResponse) {
+                return response()->json([
+                    'Err' => $this->keys[26],
+                    'Message' => $this->err[26],
+                ]);
+            }
             return response()->json([
-                'Err' => $this->Keys[0],
-                'Message' => $this->Err[0]
+                'Err' => $this->keys[0],
+                'Message' => $this->err[0]
             ]);
         } catch (Exception $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
+                'Err' => $this->keys[26],
+                'Message' => $this->err[26],
                 'OtherErr' => $e->getMessage()
             ]);
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
+                'Err' => $this->keys[26],
+                'Message' => $this->err[26],
                 'OtherErr' => $e->getMessage()
             ]);
         }
     }
+
     public function Login(Request $Request)
     {
         try {
