@@ -97,6 +97,15 @@ class Pay extends Controller
                 ]);
             }
 
+            try {
+                $User = GetUserInfo();
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'Err' => $this->Keys[22],
+                    'Message' => $this->Err[22]
+                ]);
+            }
+
             //取出Request內Order         
             $RequestOrder = $Request['orders'];
             //訂單內餐廳是否都一致
@@ -190,7 +199,7 @@ class Pay extends Controller
                         'total' => $TotalPrice,
                         'phone' => $Phone,
                         'address' => $Address,
-                        'status' => 11,
+                        'status' => 0,
                         'rid' => $Rid,
                         'uid' => $UserId,
                     ];
@@ -208,7 +217,7 @@ class Pay extends Controller
                         'total' => $TotalPrice,
                         'phone' => $Phone,
                         'address' => $Address,
-                        'status' => 10,
+                        'status' => 10, //變常數 寫近service 額外一個errstatusFile
                         'rid' => $Rid,
                         'uid' => $UserId,
                     ];
@@ -228,7 +237,7 @@ class Pay extends Controller
                     'total' => $TotalPrice,
                     'phone' => $Phone,
                     'address' => $Address,
-                    'status' => 11,
+                    'status' => 0,
                     'rid' => $Rid,
                     'uid' => $UserId,
                 ];
@@ -299,7 +308,7 @@ class Pay extends Controller
                     'uid' => $UserId,
                 ];
                 $this->CreateOrderServiceV2->SaveWalletRecord($WalletRecordInfo);
-                if (isset($SendEcpayApi[0]->transaction_url)) {
+                if (isset($SendEcpayApi[0]->transaction_url)) { //-> []
                     return $SendEcpayApi[0];
                 }
                 if (!isset($SendEcpayApi[0]->transaction_url)) {
@@ -328,7 +337,7 @@ class Pay extends Controller
     {
         try {
             $Tradedate = Carbon::createFromFormat('d/M/y H:m:s', $Request['trade_date']);
-            $Paymentdate = Carbon::createFromFormat('d/M/y H:m:s', $Request['payment_date']);
+            $Paymentdate = Carbon::createFromFormat('d/M/y H:m:s', $Request['payment_date']); //大小寫
             $EcpayBackInfo = [
                 'merchant_id' => $Request['merchant_id'],
                 'trade_date' => $Tradedate,
@@ -400,8 +409,8 @@ class Pay extends Controller
             return response()->json([
                 'Err' => $this->Keys[0],
                 'Message' => $this->Err[0],
-                'count' => $OrderCount,
-                'order' => $Order
+                'Count' => $OrderCount,
+                'Order' => $Order
             ]);
         } catch (Throwable $e) {
             return response()->json([
@@ -478,20 +487,20 @@ class Pay extends Controller
                 } else {
                     if (isset($Item['description'])) {
                         $GoodOrder[$Key] = [
-                            "rid" => $Item['rid'],
-                            "id" => $Item['id'],
-                            "name" => $Item['name'],
-                            "price" => $Item['price'],
-                            "quanlity" => $Item['quanlity'],
+                            'rid' => $Item['rid'],
+                            'id' => $Item['id'],
+                            'name' => $Item['name'],
+                            'price' => $Item['price'],
+                            'quanlity' => $Item['quanlity'],
                             'description' => $Item['description']
                         ];
                     } else {
                         $GoodOrder[$Key] = [
-                            "rid" => $Item['rid'],
-                            "id" => $Item['id'],
-                            "name" => $Item['name'],
-                            "price" => $Item['price'],
-                            "quanlity" => $Item['quanlity'],
+                            'rid' => $Item['rid'],
+                            'id' => $Item['id'],
+                            'name' => $Item['name'],
+                            'price' => $Item['price'],
+                            'quanlity' => $Item['quanlity'],
                         ];
                     }
                 }

@@ -22,6 +22,7 @@ class TotalService
         }
         return array('offset' => $Offset, 'limit' => $Limit);
     }
+    
     public function GetUserInfo()
     {
         try {

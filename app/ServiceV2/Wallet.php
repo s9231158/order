@@ -51,7 +51,7 @@ class Wallet
             $Eid = $Option['Eid'];
             $UserId = $this->WalletRecordRepositoryV2->GetUserIdByEidAndTime($Eid, $Option);
             $UserWallet = $this->UserWalletRepositoryV2->GetOnId($UserId[0]['uid']);
-            $Balance = $UserWallet->balance += $Money;
+            $Balance = $UserWallet->balance + $Money;
             $this->UserWalletRepositoryV2->UpdateOnId($UserId[0]['uid'], $Balance);
         } catch (Throwable $e) {
             throw new \Exception("ServiceErr:" . 500);

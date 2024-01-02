@@ -16,7 +16,7 @@ class CreateOrder
     private $Ecpay;
     private $RestaurantRepositoryV2;
     private $Factorise;
-    private $Restaurant;
+    private $Restaurant;//不會在這使用會在Controller
     private $OrderRepositoryV2;
     private $OrderInfoRepositoryV2;
     private $UserWalletRepositoryV2;
