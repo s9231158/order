@@ -2,51 +2,38 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Restaurant;
 use App\Services\User as userService;
 use App\Services\UserWallet;
-
+use App\Services\Token;
+use App\Services\UserRecord;
+use App\Services\UserFavorite;
+use App\Services\RestaurantHistory;
 use App\ErrorCodeService;
-use App\ServiceV2\User as UserServiceV2;
-use App\TotalService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Throwable;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class User extends Controller
 {
-    //錯誤訊息統整
-    private $Err = [];
-    private $Keys = [];
-    private $TotalService;
-    private $UserServiceV2;
-    //new 
     private $userService;
     private $err = [];
     private $keys = [];
-    //new 
     public function __construct(
-        UserServiceV2 $UserServiceV2,
-        ErrorCodeService $ErrorCodeService,
-        TotalService $TotalService,
-        //new
         userService $userService,
         ErrorCodeService $errorCodeService,
-        //new 
     ) {
-        $this->UserServiceV2 = $UserServiceV2;
-        $this->Keys = $ErrorCodeService->GetErrKey();
-        $this->Err = $ErrorCodeService->GetErrCode();
-        $this->TotalService = $TotalService;
-        //new
         $this->userService = $userService;
         $this->keys = $errorCodeService->GetErrKey();
         $this->err = $errorCodeService->GetErrCode();
-        //new 
     }
-    public function CreateUser(Request $request)
+    public function createUser(Request $request)
     {
         try {
             //規則
@@ -89,8 +76,8 @@ class User extends Controller
             $validator = Validator::make($request->all(), $ruls, $rulsMessage);
             if ($validator->fails()) {
                 return response()->json([
-                    'Err' => array_search($validator->Errors()->first(), $this->err),
-                    'Message' => $validator->Errors()->first()
+                    'err' => array_search($validator->Errors()->first(), $this->err),
+                    'message' => $validator->Errors()->first()
                 ]);
             }
             //檢查email是否重複
@@ -98,8 +85,8 @@ class User extends Controller
             $eamilRepeat = $this->userService->getObjByEamil($email);
             if ($eamilRepeat) {
                 return response()->json([
-                    'Err' => $this->keys[3],
-                    'Message' => $this->err[3],
+                    'err' => $this->keys[3],
+                    'message' => $this->err[3],
                 ]);
             }
             //檢查電話是否重複
@@ -107,8 +94,8 @@ class User extends Controller
             $phoneRepeat = $this->userService->phoneExist($phone);
             if ($phoneRepeat) {
                 return response()->json([
-                    'Err' => $this->keys[4],
-                    'Message' => $this->err[4],
+                    'err' => $this->keys[4],
+                    'message' => $this->err[4],
                 ]);
             }
             // 將使用者資訊存入Users
@@ -123,8 +110,8 @@ class User extends Controller
             $response = $this->userService->create($userInfo);
             if (!$response) {
                 return response()->json([
-                    'Err' => $this->keys[26],
-                    'Message' => $this->err[26],
+                    'err' => $this->keys[26],
+                    'message' => $this->err[26],
                 ]);
             }
             // 將使用者資訊存入UserWallet
@@ -134,39 +121,39 @@ class User extends Controller
             $walletResponse = $userWalletService->updateOrCreate($userId, $balance);
             if (!$walletResponse) {
                 return response()->json([
-                    'Err' => $this->keys[26],
-                    'Message' => $this->err[26],
+                    'err' => $this->keys[26],
+                    'message' => $this->err[26],
                 ]);
             }
             return response()->json([
-                'Err' => $this->keys[0],
-                'Message' => $this->err[0]
+                'err' => $this->keys[0],
+                'message' => $this->err[0]
             ]);
         } catch (Exception $e) {
             return response()->json([
-                'Err' => $this->keys[26],
-                'Message' => $this->err[26],
-                'OtherErr' => $e->getMessage()
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
+                'other_err' => $e->getMessage()
             ]);
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->keys[26],
-                'Message' => $this->err[26],
-                'OtherErr' => $e->getMessage()
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
+                'other_err' => $e->getMessage()
             ]);
         }
     }
 
-    public function Login(Request $Request)
+    public function login(Request $request)
     {
         try {
             //規則
-            $Ruls = [
+            $ruls = [
                 'email' => ['required', 'string', 'min:15', 'max:50', 'email'],
                 'password' => ['required', 'min:10', 'max:25', 'string'],
             ];
             //什麼錯誤報什麼錯誤訊息
-            $RulsMessage = [
+            $rulsMessage = [
                 'email.required' => '必填資料未填',
                 'email.min' => '資料填寫與規格不符',
                 'email.string' => '資料填寫與規格不符',
@@ -177,369 +164,437 @@ class User extends Controller
                 'password.max' => '資料填寫與規格不符',
                 'password.string' => '資料填寫與規格不符',
             ];
-            $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
-            if ($Validator->fails()) {
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            if ($validator->fails()) {
                 return response()->json([
-                    'Err' => array_search($Validator->Errors()->first(), $this->Err),
-                    'Message' => $Validator->Errors()->first()
+                    'err' => array_search($validator->Errors()->first(), $this->err),
+                    'message' => $validator->Errors()->first()
                 ]);
             }
-
-            //檢查此組Key是否一定時間內登入多次            
-            $Ip = $Request->ip();
-            $Email = $Request['email'];
-            $LoginToManyTimes = $this->UserServiceV2->LoginCheckTooManyAttempts($Ip, $Email);
-            if ($LoginToManyTimes) {
-                return response()->json([
-                    'Err' => $this->Keys[7],
-                    'Message' => $this->Err[7]
-                ]);
-            }
-
-            // 檢查是否有重複登入
-            $Token = $Request->header('Authorization');
-            if ($Token !== null) {
-                $AlreadyLogin = $this->UserServiceV2->CheckHasLogin($Token, $Email);
-                if ($AlreadyLogin) {
+            //檢查是否重複登入
+            $token = $request->header('Authorization');
+            $email = $request['email'];
+            $tokenService = new Token;
+            if ($token !== null) {
+                $alreadyLogin = $tokenService->checkToken($token, $email);
+                if ($alreadyLogin) {
                     return response()->json([
-                        'Err' => $this->Keys[$AlreadyLogin],
-                        'Message' => $this->Err[$AlreadyLogin]
+                        'err' => $this->keys[$alreadyLogin],
+                        'message' => $this->err[$alreadyLogin]
                     ]);
                 }
             }
-
+            //檢查此組Key是否一定時間內登入多次            
+            $ip = $request->ip();
+            if (RateLimiter::tooManyAttempts(Str::lower($email) . '|' . $ip, 5)) {
+                return response()->json(['err' => $this->err['7']]);
+            }
             //驗證帳號密碼
-            $Account = ['email' => $Email, 'password' => $Request['password']];
-            $CheckUser = $this->UserServiceV2->CheckUser($Account);
-            if (!$CheckUser) {
+            $user = $this->userService->getObjByEamil($email);
+            if (!$user or !password_verify($request['password'], $user['password'])) {
                 return response()->json([
-                    'Err' => $this->Keys[8],
-                    'Message' => $this->Err[8]
+                    'err' => $this->keys[8],
+                    'message' => $this->err[8]
                 ]);
             }
-
-            //將使用者登入資訊存入該使用者user_recode
-            $Device = $Request->header('User-Agent');
-            $Time = date('Y-m-d H:i:s', time());
-            $RocordInfo = [
-                'login' => $Time,
-                'ip' => $Ip,
-                'device' => $Device,
-                'email' => $Email,
+            //將登入記入存入資料庫
+            $userId = $user->id;
+            $device = $request->header('User-Agent');
+            $time = date('Y-m-d H:i:s', time());
+            $recordInfo = [
+                'uid' => $userId,
+                'login' => $time,
+                'ip' => $ip,
+                'device' => $device,
+                'email' => $email,
             ];
-            $this->UserServiceV2->SaveLoginRecord($RocordInfo);
-
-            //製作token 
-            $Token = $this->UserServiceV2->CreatToken($Email);
+            $userRecordService = new UserRecord;
+            $userRecordService->create($recordInfo);
+            //製做token
+            $token = $tokenService->create($user);
             return response()->json([
-                'Err' => $this->Keys[0],
-                'Message' => $this->Err[0],
-                'token' => $Token
+                'err' => $this->keys[0],
+                'message' => $this->err[0],
+                'token' => $token
             ]);
         } catch (Exception $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
-                'OtherErr' => $e->getMessage()
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
+                'other_err' => $e->getMessage()
             ]);
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
-                'OtherErr' => $e->getMessage()
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
+                'other_err' => $e->getMessage()
             ]);
         }
     }
 
-    public function LogOut(Request $Request)
+    public function logout(Request $request)
     {
         try {
-            $Logout = $this->UserServiceV2->Logout();
-            if (!$Logout) {
+            $tokenService = new Token;
+            $token = $request->header('Authorization');
+            $payload = JWTAuth::parseToken($token)->getPayload();
+            $email = $payload['email'];
+            $logout = $tokenService->forget($email);
+            if (!$logout) {
                 return response()->json([
-                    'Err' => $this->Keys[10],
-                    'Message' => $this->Err[10]
+                    'err' => $this->keys[10],
+                    'message' => $this->err[10],
                 ]);
             }
             return response()->json([
-                'Err' => $this->Keys[0],
-                'Message' => $this->Err[0]
+                'err' => $this->keys[0],
+                'message' => $this->err[0],
             ]);
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26]
+                'err' => $this->keys[10],
+                'message' => $this->err[10],
+                'other_err' => $e->getMessage()
             ]);
         }
     }
 
-    public function GetProfile()
+    public function getProfile(Request $request)
     {
         try {
-            $UserInfo = $this->UserServiceV2->GetUserInfo();
+            $token = $request->header('Authorization');
+            $payload = JWTAuth::parseToken($token)->getPayload();
+            $email = $payload['email'];
+            $UserInfo = $this->userService->getObjByEamil($email)->only(['email', 'name', 'address', 'phone', 'age']);
             return response()->json([
-                'Err' => $this->Keys[0],
-                'Message' => $this->Err[0],
-                'UserInfo' => $UserInfo
+                'err' => $this->keys[0],
+                'message' => $this->err[0],
+                'user_info' => $UserInfo
             ]);
         } catch (Exception $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
-                'OtherErr' => $e->getMessage()
+                'err' => $this->keys[10],
+                'message' => $this->err[10],
+                'other_err' => $e->getMessage()
             ]);
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
-                'OtherErr' => $e->getMessage()
+                'err' => $this->keys[10],
+                'message' => $this->err[10],
+                'other_err' => $e->getMessage()
             ]);
         }
     }
 
-    public function GetRecord(Request $Request)
+    public function getRecord(Request $request)
     {
         try {
             //規則
-            $Ruls = [
+            $ruls = [
                 'limit' => ['integer'],
                 'offset' => ['integer'],
             ];
             //什麼錯誤報什麼錯誤訊息
-            $RulsMessage = [
+            $rulsMessage = [
                 'limit.integer' => '無效的範圍',
                 'offset.integer' => '無效的範圍',
             ];
-            $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
+            $Validator = Validator::make($request->all(), $ruls, $rulsMessage);
             if ($Validator->fails()) {
                 return response()->json([
-                    'Err' => array_search($Validator->Errors()->first(), $this->Err),
-                    'Message' => $Validator->Errors()->first()
+                    'err' => array_search($Validator->Errors()->first(), $this->err),
+                    'message' => $Validator->Errors()->first()
                 ]);
             }
-
             //取得offset&limit預設
-            $OffsetLimit = ['limit' => $Request['limit'], 'offset' => $Request['offset']];
-            $OffsetLimit = $this->TotalService->GetOffsetLimit($OffsetLimit);
-
+            $offset = $request['offset'] === null ? 0 : $request['offset'];
+            $limit = $request['limit'] === null ? 20 : $request['limit'];
+            $option = ['offset' => $offset, 'limit' => $limit];
             //取得登入紀錄
-            $Record = $this->UserServiceV2->GetRecord($OffsetLimit);
+            $token = $request->header('Authorization');
+            $payload = JWTAuth::parseToken($token)->getPayload();
+            $userId = $payload['id'];
+            $userRecordService = new UserRecord;
+            $recordList = $userRecordService->getListByUserIdOnRange($userId, $option);
+            $count = count($recordList);
             return response()->json([
-                'Err' => $this->Keys[0],
-                'Message' => $this->Err[0],
-                'Record_List' => $Record
+                'err' => $this->keys[0],
+                'message' => $this->err[0],
+                'count' => $count,
+                'record_list' => $recordList
             ]);
         } catch (Exception $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
-                'OtherErr' => $e->getMessage()
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
+                'other_err' => $e->getMessage()
             ]);
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
-                'OtherErr' => $e->getMessage()
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
+                'other_err' => $e->getMessage()
             ]);
         }
     }
 
-    public function AddFavorite(Request $Request)
-    {
-        try {
-            //餐廳是否存在且啟用
-            $Rid = $Request['rid'];
-            $HasRestaurant = $this->UserServiceV2->CheckRestaurantInDatabase($Rid);
-            if (!$HasRestaurant) {
-                return response()->json([
-                    'Err' => $this->Keys[16],
-                    'Message' => $this->Err[16]
-                ]);
-            }
-
-            //檢查使用者我的最愛資料表內是否超過20筆
-            $CheckFavoriteTooMuch = $this->UserServiceV2->CheckFavoriteTooMuch();
-            if ($CheckFavoriteTooMuch) {
-                return response()->json([
-                    'Err' => $this->Keys[28],
-                    'Message' => $this->Err[28]
-                ]);
-            }
-
-            //檢查是否重複新增我的最愛
-            $CheckAlreadyAddFavorite = $this->UserServiceV2->RidExistFavorite($Rid);
-            if ($CheckAlreadyAddFavorite) {
-                return response()->json([
-                    'Err' => $this->Keys[15],
-                    'Message' => $this->Err[15]
-                ]);
-            }
-
-            //新增至我的最愛
-            $this->UserServiceV2->CreateFavorite($Rid);
-            return response()->json([
-                'Err' => $this->Keys[0],
-                'Message' => $this->Err[0]
-            ]);
-        } catch (Exception $e) {
-            return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
-                'OtherErr' => $e->getMessage()
-            ]);
-        } catch (Throwable $e) {
-            return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
-                'OtherErr' => $e->getMessage()
-            ]);
-        }
-    }
-
-    public function GetFavorite(Request $Request)
+    public function addFavorite(Request $request)
     {
         try {
             //規則
-            $Ruls = [
-                'limit' => ['integer'],
-                'offset' => ['integer'],
-            ];
-            //什麼錯誤報什麼錯誤訊息
-            $RulsMessage = [
-                'limit.integer' => '無效的範圍',
-                'offset.integer' => '無效的範圍',
-            ];
-            $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
-            if ($Validator->fails()) {
-                return response()->json([
-                    'Err' => array_search($Validator->Errors()->first(), $this->Err),
-                    'Message' => $Validator->Errors()->first()
-                ]);
-            }
-
-            //取得Offset&Limit預設
-            $OffsetLimit = ['limit' => $Request['limit'], 'offset' => $Request['offset']];
-            $OffsetLimit = $this->TotalService->GetOffsetLimit($OffsetLimit);
-
-            //取的我的最愛
-            $Favorite = $this->UserServiceV2->GetFavoriteInfo($OffsetLimit);
-            return response()->json([
-                'Err' => $this->Keys['0'],
-                'Message' => $this->Err[0],
-                'count' => $Favorite['count'],
-                'data' => $Favorite['data']
-            ]);
-        } catch (Exception $e) {
-            return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
-                'OtherErr' => $e->getMessage()
-            ]);
-        } catch (Throwable $e) {
-            return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
-                'OtherErr' => $e->getMessage()
-            ]);
-        }
-    }
-
-    public function DeleteFavorite(Request $Request)
-    {
-        try {
-            //規則
-            $Ruls = [
+            $ruls = [
                 'rid' => ['required', 'integer'],
             ];
             //什麼錯誤報什麼錯誤訊息
-            $RulsMessage = [
+            $rulsMessage = [
                 'rid.required' => '必填資料未填',
                 'rid.integer' => '無效的範圍',
             ];
             //驗證輸入
-            $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
-            if ($Validator->fails()) {
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            if ($validator->fails()) {
                 return response()->json([
-                    'Err' => array_search($Validator->Errors()->first(), $this->Err),
-                    'Message' => $Validator->Errors()->first()
+                    'err' => array_search($validator->Errors()->first(), $this->err),
+                    'message' => $validator->Errors()->first()
                 ]);
             }
-
-            //檢查此餐廳是否存在我的最愛內
-            $Rid = $Request['rid'];
-            $RidExistFavorite = $this->UserServiceV2->RidExistFavorite($Rid);
-            if (!$RidExistFavorite) {
+            $restaurantService = new Restaurant;
+            //餐廳是否存在且啟用
+            $rid = $request['rid'];
+            $restaurant = $restaurantService->getObjByRid($rid);
+            if (!$restaurant or $restaurant->enable != 1) {
                 return response()->json([
-                    'Err' => $this->Keys[16],
-                    'Message' => $this->Err[16]
+                    'err' => $this->keys[16],
+                    'message' => $this->err[16],
                 ]);
             }
-
-            //將此餐廳從我的最愛內刪除
-            $this->UserServiceV2->DeleteFavorite($Rid);
+            //檢查使用者我的最愛資料表內是否超過20筆
+            $userFavoriteService = new UserFavorite;
+            $token = $request->header('Authorization');
+            $payload = JWTAuth::parseToken($token)->getPayload();
+            $userId = $payload['id'];
+            $userFavorite = $userFavoriteService->getListByUser($userId);
+            $count = count($userFavorite);
+            if ($count > 20) {
+                return response()->json([
+                    'err' => $this->keys[28],
+                    'message' => $this->err[28],
+                ]);
+            }
+            //檢查是否重複新增我的最愛
+            $favoriteRid = array_column($userFavorite, 'rid');
+            if (in_array($rid, $favoriteRid)) {
+                return response()->json([
+                    'err' => $this->keys[15],
+                    'message' => $this->err[15],
+                ]);
+            }
+            //新增至我得最愛
+            $userFavoriteService = new UserFavorite;
+            $favoriteInfo = ['uid' => $userId, 'rid' => $rid];
+            $response = $userFavoriteService->create($favoriteInfo);
+            if ($response) {
+                return response()->json([
+                    'err' => $this->keys[0],
+                    'message' => $this->err[0],
+                ]);
+            }
             return response()->json([
-                'Err' => $this->Keys[0],
-                'Message' => $this->Err[0]
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
             ]);
         } catch (Exception $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
-                'OtherErr' => $e->getMessage()
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
+                'other_err' => $e->getMessage()
             ]);
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
-                'OtherErr' => $e->getMessage()
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
+                'other_err' => $e->getMessage()
             ]);
         }
     }
 
-    public function GetHistory(Request $Request)
+    public function getFavorite(Request $request)
     {
         try {
             //規則
-            $Ruls = [
+            $ruls = [
                 'limit' => ['integer'],
                 'offset' => ['integer'],
             ];
             //什麼錯誤報什麼錯誤訊息
-            $RulsMessage = [
+            $rulsMessage = [
                 'limit.integer' => '無效的範圍',
                 'offset.integer' => '無效的範圍',
             ];
-            $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
-            if ($Validator->fails()) {
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            if ($validator->fails()) {
                 return response()->json([
-                    'Err' => array_search($Validator->Errors()->first(), $this->Err),
-                    'Message' => $Validator->Errors()->first()
+                    'err' => array_search($validator->Errors()->first(), $this->err),
+                    'message' => $validator->Errors()->first()
                 ]);
             }
-
-            //取得offset&limit預設
-            $OffsetLimit = ['limit' => $Request['limit'], 'offset' => $Request['offset']];
-            $OffsetLimit = $this->TotalService->GetOffsetLimit($OffsetLimit);
-
-            //取出歷史紀錄餐廳的資訊
-            $RestaurantInfo = $this->UserServiceV2->GetFavoriteRestaurantInfo($OffsetLimit);
+            //取的我的最愛
+            $userFavoriteService = new UserFavorite;
+            $token = $request->header('Authorization');
+            $payload = JWTAuth::parseToken($token)->getPayload();
+            $userId = $payload['id'];
+            $userFavorite = $userFavoriteService->getListByUser($userId);
+            $favoriteRid = array_column($userFavorite, 'rid');
+            $reataurantService = new Restaurant;
+            $userFavorite = $reataurantService->getListByRid($favoriteRid);
+            $count = count($userFavorite);
+            $response = array_map(function ($item) {
+                return [
+                    'id' => $item['totalpoint'],
+                    'total_point' => $item['deleted_at'],
+                    'count_point' => $item['countpoint'],
+                    'title' => $item['title'],
+                    'img' => $item['img']
+                ];
+            }, $userFavorite);
             return response()->json([
-                'Err' => $this->Keys[0],
-                'Message' => $this->Err[0],
-                'count' => $RestaurantInfo['count'],
-                'data' => $RestaurantInfo['data']
+                'err' => $this->keys[0],
+                'message' => $this->err[0],
+                'count' => $count,
+                'data' => $response
             ]);
         } catch (Exception $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
-                'OtherErr' => $e->getMessage()
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
+                'other_err' => $e->getMessage()
             ]);
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
-                'OtherErr' => $e->getMessage()
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
+                'other_err' => $e->getMessage()
+            ]);
+        }
+    }
+
+    public function deleteFavorite(Request $request)
+    {
+        try {
+            //規則
+            $ruls = [
+                'rid' => ['required', 'integer'],
+            ];
+            //什麼錯誤報什麼錯誤訊息
+            $rulsMessage = [
+                'rid.required' => '必填資料未填',
+                'rid.integer' => '無效的範圍',
+            ];
+            //驗證輸入
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            if ($validator->fails()) {
+                return response()->json([
+                    'err' => array_search($validator->Errors()->first(), $this->err),
+                    'message' => $validator->Errors()->first()
+                ]);
+            }
+            //檢查此餐廳是否存在我的最愛內
+            $rid = $request['rid'];
+            $userFavoriteService = new UserFavorite;
+            $token = $request->header('Authorization');
+            $payload = JWTAuth::parseToken($token)->getPayload();
+            $userId = $payload['id'];
+            $userFavorite = $userFavoriteService->getListByUser($userId);
+            $favoriteRid = array_column($userFavorite, 'rid');
+            if (!in_array($rid, $favoriteRid)) {
+                return response()->json([
+                    'err' => $this->keys[16],
+                    'message' => $this->err[16]
+                ]);
+            }
+            //將此餐廳從我的最愛內刪除
+            $response = $userFavoriteService->delByUserIdAndRid($userId, $rid);
+            if ($response) {
+                return response()->json([
+                    'err' => $this->keys[0],
+                    'message' => $this->err[0]
+                ]);
+            }
+            return response()->json([
+                'err' => $this->keys[26],
+                'message' => $this->err[26]
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
+                'other_err' => $e->getMessage()
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
+                'other_err' => $e->getMessage()
+            ]);
+        }
+    }
+
+    public function getHistory(Request $request)
+    {
+        try {
+            //規則
+            $ruls = [
+                'limit' => ['integer'],
+                'offset' => ['integer'],
+            ];
+            //什麼錯誤報什麼錯誤訊息
+            $rulsMessage = [
+                'limit.integer' => '無效的範圍',
+                'offset.integer' => '無效的範圍',
+            ];
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            if ($validator->fails()) {
+                return response()->json([
+                    'err' => array_search($validator->Errors()->first(), $this->err),
+                    'message' => $validator->Errors()->first()
+                ]);
+            }
+            //取出歷史紀錄餐廳的資訊
+            $token = $request->header('Authorization');
+            $payload = JWTAuth::parseToken($token)->getPayload();
+            $userId = $payload['id'];
+            $restaurantHistoryService = new RestaurantHistory;
+            $restaurantHistory = $restaurantHistoryService->getListByUser($userId);
+            $restaurantHistoryRid = array_column($restaurantHistory, 'rid');
+            $restaurantService = new Restaurant;
+            $restaurantInfo = $restaurantService->getListByRid($restaurantHistoryRid);
+            $response = array_map(function ($item) {
+                return [
+                    'id' => $item['id'],
+                    'total_point' => $item['totalpoint'],
+                    'count_point' => $item['countpoint'],
+                    'title' => $item['title'],
+                    'img' => $item['img']
+                ];
+            }, $restaurantInfo);
+            $count = count($response);
+            return response()->json([
+                'err' => $this->keys[0],
+                'message' => $this->err[0],
+                'count' => $count,
+                'data' => $response
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
+                'other_err' => $e->getMessage()
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
+                'other_err' => $e->getMessage()
             ]);
         }
     }

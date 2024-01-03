@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\User_wallets as UserWallerModel;
+use App\Models\User_wallets as UserWalletModel;
 use Throwable;
 
 class UserWallet
@@ -10,12 +10,12 @@ class UserWallet
     public function updateOrCreate($userId, $blance)
     {
         try {
-            return UserWallerModel::updateOrCreate(
+            return UserWalletModel::updateOrCreate(
                 ['id' => $userId, 'balance' => $blance],
                 ['balance' => $blance, 'created_at' => now(), 'updated_at' => now()]
             );
         } catch (Throwable $e) {
-            throw new \Exception("user_service_err:" . 500);
+            throw new \Exception("user_wallet_service_err:" . 500);
         }
 
     }

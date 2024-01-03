@@ -24,15 +24,15 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::group(['middleware' => 'Maintenance'], function () {
     // UserController routes
-    Route::post('/login', [UserController::class, 'Login']);
-    Route::get('/logout', [UserController::class, 'LogOut']);
-    Route::post('/user', [UserController::class, 'CreateUser']);
-    Route::get('/user', [UserController::class, 'GetProfile'])->middleware('token');
-    Route::get('/user/record', [UserController::class, 'GetRecord'])->middleware('token');
-    Route::post('/user/favorite', [UserController::class, 'AddFavorite'])->middleware('token');
-    Route::get('/user/favorite', [UserController::class, 'GetFavorite'])->middleware('token');
-    Route::delete('/user/favorite', [UserController::class, 'DeleteFavorite'])->middleware('token');
-    Route::get('/user/history', [UserController::class, 'GetHistory'])->middleware('token');
+    Route::post('/login', [UserController::class, 'login']);
+    Route::get('/logout', [UserController::class, 'logout']);
+    Route::post('/user', [UserController::class, 'createUser']);
+    Route::get('/user', [UserController::class, 'getProfile'])->middleware('token');
+    Route::get('/user/record', [UserController::class, 'getRecord'])->middleware('token');
+    Route::post('/user/favorite', [UserController::class, 'addFavorite'])->middleware('token');
+    Route::get('/user/favorite', [UserController::class, 'getFavorite'])->middleware('token');
+    Route::delete('/user/favorite', [UserController::class, 'deleteFavorite'])->middleware('token');
+    Route::get('/user/history', [UserController::class, 'getHistory'])->middleware('token');
 
     // RestaurantController routes
     Route::get('/restaurant', [RestaurantController::class, 'GetRestaurant']);

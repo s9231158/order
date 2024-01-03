@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use App\ErrorCodeService;
 use Exception;
 use Illuminate\Http\Request;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -17,12 +18,13 @@ class TokenSessionValid
      * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
      * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
      */
-    private $Err = [
-        //系統錯誤,請重新登入
-        '5' => 5,
-        //請重新登入
-        '29' => 29,
-    ];
+    private $err = [];
+    private $keys = [];
+    public function __construct(ErrorCodeService $errorCodeService)
+    {
+        $this->err = $errorCodeService->GetErrCode();
+        $this->keys = $errorCodeService->GetErrKey();
+    }
     public function handle(Request $Request, Closure $next)
     {
         try {
@@ -32,14 +34,23 @@ class TokenSessionValid
             $RedisToken = 'Bearer ' . Cache::get($Email);
             if (Cache::has($Email) && $ClientToken !== $RedisToken) {
                 Cache::forget($Email);
-                return response()->json(['err' => $this->Err['29']]);
+                return response()->json([
+                    'err' => $this->keys[29],
+                    'message' => $this->err[29],
+                ]);
             }
             // JWTAuth::parseToken()->authenticate();
             if (!Cache::has($Email)) {
-                return response()->json(['err' => $this->Err['29']]);
+                return response()->json([
+                    'err' => $this->keys[29],
+                    'message' => $this->err[29],
+                ]);
             }
         } catch (Exception) {
-            return response()->json(['err' => $this->Err['5']]);
+            return response()->json([
+                'err' => $this->keys[29],
+                'message' => $this->err[29],
+            ]);
         }
         return $next($Request);
     }
