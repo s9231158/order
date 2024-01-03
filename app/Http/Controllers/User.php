@@ -3,37 +3,39 @@
 namespace App\Http\Controllers;
 
 use App\Services\Restaurant;
-use App\Services\User as userService;
+use App\Services\User as UserService;
 use App\Services\UserWallet;
 use App\Services\Token;
 use App\Services\UserRecord;
 use App\Services\UserFavorite;
 use App\Services\RestaurantHistory;
-use App\ErrorCodeService;
+use App\Services\ErrorCodeService;
 use Exception;
+use Throwable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use Throwable;
-use Tymon\JWTAuth\Facades\JWTAuth;
 
 class User extends Controller
 {
     private $userService;
     private $err = [];
     private $keys = [];
+    private $tokenService;
     public function __construct(
-        userService $userService,
+        Token $tokenService,
+        UserService $userService,
         ErrorCodeService $errorCodeService,
     ) {
+        $this->tokenService = $tokenService;
         $this->userService = $userService;
-        $this->keys = $errorCodeService->GetErrKey();
-        $this->err = $errorCodeService->GetErrCode();
+        $this->keys = $errorCodeService->getErrKey();
+        $this->err = $errorCodeService->getErrCode();
     }
-    public function createUser(Request $request)
+    public function createUser(Request $request, UserWallet $userWalletService)
     {
         try {
             //規則
@@ -117,7 +119,6 @@ class User extends Controller
             // 將使用者資訊存入UserWallet
             $balance = 0;
             $userId = $response->id;
-            $userWalletService = new UserWallet;
             $walletResponse = $userWalletService->updateOrCreate($userId, $balance);
             if (!$walletResponse) {
                 return response()->json([
@@ -144,7 +145,7 @@ class User extends Controller
         }
     }
 
-    public function login(Request $request)
+    public function login(Request $request, UserRecord $userRecordService)
     {
         try {
             //規則
@@ -174,9 +175,8 @@ class User extends Controller
             //檢查是否重複登入
             $token = $request->header('Authorization');
             $email = $request['email'];
-            $tokenService = new Token;
-            if ($token !== null) {
-                $alreadyLogin = $tokenService->checkToken($token, $email);
+            if ($token) {
+                $alreadyLogin = $this->tokenService->checkToken($email);
                 if ($alreadyLogin) {
                     return response()->json([
                         'err' => $this->keys[$alreadyLogin],
@@ -208,10 +208,9 @@ class User extends Controller
                 'device' => $device,
                 'email' => $email,
             ];
-            $userRecordService = new UserRecord;
             $userRecordService->create($recordInfo);
             //製做token
-            $token = $tokenService->create($user);
+            $token = $this->tokenService->create($user);
             return response()->json([
                 'err' => $this->keys[0],
                 'message' => $this->err[0],
@@ -235,11 +234,8 @@ class User extends Controller
     public function logout(Request $request)
     {
         try {
-            $tokenService = new Token;
-            $token = $request->header('Authorization');
-            $payload = JWTAuth::parseToken($token)->getPayload();
-            $email = $payload['email'];
-            $logout = $tokenService->forget($email);
+            $email = $this->tokenService->getEamil();
+            $logout = $this->tokenService->forget($email);
             if (!$logout) {
                 return response()->json([
                     'err' => $this->keys[10],
@@ -262,9 +258,7 @@ class User extends Controller
     public function getProfile(Request $request)
     {
         try {
-            $token = $request->header('Authorization');
-            $payload = JWTAuth::parseToken($token)->getPayload();
-            $email = $payload['email'];
+            $email = $this->tokenService->getEamil();
             $UserInfo = $this->userService->getObjByEamil($email)->only(['email', 'name', 'address', 'phone', 'age']);
             return response()->json([
                 'err' => $this->keys[0],
@@ -286,7 +280,7 @@ class User extends Controller
         }
     }
 
-    public function getRecord(Request $request)
+    public function getRecord(Request $request, UserRecord $userRecordService)
     {
         try {
             //規則
@@ -307,14 +301,11 @@ class User extends Controller
                 ]);
             }
             //取得offset&limit預設
-            $offset = $request['offset'] === null ? 0 : $request['offset'];
-            $limit = $request['limit'] === null ? 20 : $request['limit'];
+            $offset = $request['offset'] ?? 0;
+            $limit = $request['limit'] ?? 20;
             $option = ['offset' => $offset, 'limit' => $limit];
             //取得登入紀錄
-            $token = $request->header('Authorization');
-            $payload = JWTAuth::parseToken($token)->getPayload();
-            $userId = $payload['id'];
-            $userRecordService = new UserRecord;
+            $userId = $this->tokenService->getUserId();
             $recordList = $userRecordService->getListByUserIdOnRange($userId, $option);
             $count = count($recordList);
             return response()->json([
@@ -338,8 +329,11 @@ class User extends Controller
         }
     }
 
-    public function addFavorite(Request $request)
-    {
+    public function addFavorite(
+        Request $request,
+        Restaurant $restaurantService,
+        UserFavorite $userFavoriteService
+    ) {
         try {
             //規則
             $ruls = [
@@ -358,7 +352,6 @@ class User extends Controller
                     'message' => $validator->Errors()->first()
                 ]);
             }
-            $restaurantService = new Restaurant;
             //餐廳是否存在且啟用
             $rid = $request['rid'];
             $restaurant = $restaurantService->getObjByRid($rid);
@@ -369,10 +362,7 @@ class User extends Controller
                 ]);
             }
             //檢查使用者我的最愛資料表內是否超過20筆
-            $userFavoriteService = new UserFavorite;
-            $token = $request->header('Authorization');
-            $payload = JWTAuth::parseToken($token)->getPayload();
-            $userId = $payload['id'];
+            $userId = $this->tokenService->getUserId();
             $userFavorite = $userFavoriteService->getListByUser($userId);
             $count = count($userFavorite);
             if ($count > 20) {
@@ -390,7 +380,6 @@ class User extends Controller
                 ]);
             }
             //新增至我得最愛
-            $userFavoriteService = new UserFavorite;
             $favoriteInfo = ['uid' => $userId, 'rid' => $rid];
             $response = $userFavoriteService->create($favoriteInfo);
             if ($response) {
@@ -418,34 +407,16 @@ class User extends Controller
         }
     }
 
-    public function getFavorite(Request $request)
-    {
+    public function getFavorite(
+        Request $request,
+        UserFavorite $userFavoriteService,
+        Restaurant $reataurantService
+    ) {
         try {
-            //規則
-            $ruls = [
-                'limit' => ['integer'],
-                'offset' => ['integer'],
-            ];
-            //什麼錯誤報什麼錯誤訊息
-            $rulsMessage = [
-                'limit.integer' => '無效的範圍',
-                'offset.integer' => '無效的範圍',
-            ];
-            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
-            if ($validator->fails()) {
-                return response()->json([
-                    'err' => array_search($validator->Errors()->first(), $this->err),
-                    'message' => $validator->Errors()->first()
-                ]);
-            }
             //取的我的最愛
-            $userFavoriteService = new UserFavorite;
-            $token = $request->header('Authorization');
-            $payload = JWTAuth::parseToken($token)->getPayload();
-            $userId = $payload['id'];
+            $userId = $this->tokenService->getUserId();
             $userFavorite = $userFavoriteService->getListByUser($userId);
             $favoriteRid = array_column($userFavorite, 'rid');
-            $reataurantService = new Restaurant;
             $userFavorite = $reataurantService->getListByRid($favoriteRid);
             $count = count($userFavorite);
             $response = array_map(function ($item) {
@@ -478,8 +449,10 @@ class User extends Controller
         }
     }
 
-    public function deleteFavorite(Request $request)
-    {
+    public function deleteFavorite(
+        UserFavorite $userFavoriteService,
+        Request $request
+    ) {
         try {
             //規則
             $ruls = [
@@ -500,10 +473,7 @@ class User extends Controller
             }
             //檢查此餐廳是否存在我的最愛內
             $rid = $request['rid'];
-            $userFavoriteService = new UserFavorite;
-            $token = $request->header('Authorization');
-            $payload = JWTAuth::parseToken($token)->getPayload();
-            $userId = $payload['id'];
+            $userId = $this->tokenService->getUserId();
             $userFavorite = $userFavoriteService->getListByUser($userId);
             $favoriteRid = array_column($userFavorite, 'rid');
             if (!in_array($rid, $favoriteRid)) {
@@ -539,34 +509,16 @@ class User extends Controller
         }
     }
 
-    public function getHistory(Request $request)
-    {
+    public function getHistory(
+        Restaurant $restaurantService,
+        Request $request,
+        RestaurantHistory $restaurantHistoryService
+    ) {
         try {
-            //規則
-            $ruls = [
-                'limit' => ['integer'],
-                'offset' => ['integer'],
-            ];
-            //什麼錯誤報什麼錯誤訊息
-            $rulsMessage = [
-                'limit.integer' => '無效的範圍',
-                'offset.integer' => '無效的範圍',
-            ];
-            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
-            if ($validator->fails()) {
-                return response()->json([
-                    'err' => array_search($validator->Errors()->first(), $this->err),
-                    'message' => $validator->Errors()->first()
-                ]);
-            }
             //取出歷史紀錄餐廳的資訊
-            $token = $request->header('Authorization');
-            $payload = JWTAuth::parseToken($token)->getPayload();
-            $userId = $payload['id'];
-            $restaurantHistoryService = new RestaurantHistory;
+            $userId = $this->tokenService->getUserId();
             $restaurantHistory = $restaurantHistoryService->getListByUser($userId);
             $restaurantHistoryRid = array_column($restaurantHistory, 'rid');
-            $restaurantService = new Restaurant;
             $restaurantInfo = $restaurantService->getListByRid($restaurantHistoryRid);
             $response = array_map(function ($item) {
                 return [

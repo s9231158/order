@@ -35,10 +35,10 @@ Route::group(['middleware' => 'Maintenance'], function () {
     Route::get('/user/history', [UserController::class, 'getHistory'])->middleware('token');
 
     // RestaurantController routes
-    Route::get('/restaurant', [RestaurantController::class, 'GetRestaurant']);
-    Route::post('/restaurant/comment', [RestaurantController::class, 'AddComment'])->middleware('token');
-    Route::get('/restaurant/comment', [RestaurantController::class, 'GetComment']);
-    Route::get('/menu', [RestaurantController::class, 'GetMenu']);
+    Route::get('/restaurant', [RestaurantController::class, 'getRestaurant']);
+    Route::post('/restaurant/comment', [RestaurantController::class, 'addComment'])->middleware('token');
+    Route::get('/restaurant/comment', [RestaurantController::class, 'getComment']);
+    Route::get('/menu', [RestaurantController::class, 'getMenu']);
 
     //PayController
     Route::post('/order', [PayController::class, 'CreateOrder'])->middleware('token');

@@ -17,10 +17,28 @@ class Restaurant
     }
     public function getListByRid($rid)
     {
-        return RestaurantModel::
-            wherein('id', $rid)
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->toArray();
+        try {
+            return RestaurantModel::
+                wherein('id', $rid)
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->toArray();
+        } catch (Throwable $e) {
+            throw new \Exception("restaurant_service_err:" . 500);
+        }
+
+    }
+    public function getListByRange($option)
+    {
+        try {
+            return RestaurantModel::join('restaurant_open_days', 'restaurant_open_days.id', '=', 'restaurants.id')
+                ->where('restaurant_open_days.' . date('l'), '=', '1')
+                ->limit($option['limit'])
+                ->offset($option['offset'])
+                ->get()
+                ->toArray();
+        } catch (Throwable $e) {
+            throw new \Exception("restaurant_service_err:" . 500);
+        }
     }
 }
