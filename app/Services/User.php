@@ -4,33 +4,66 @@ namespace App\Services;
 
 use App\Models\User as UserModel;
 use Throwable;
+use Exception;
 
 class User
 {
-    public function getObjByEamil($email)
+    public function getList($where, $option)
     {
-        try {
-            return UserModel::where('email', '=', $email)->first();
-        } catch (Throwable $e) {
-            throw new \Exception("user_service_err:" . 500);
+        //select
+        $stmt = null;
+        if (isset($option['column'])) {
+            $stmt = UserModel::select($option['column']);
+        } else {
+            $stmt = UserModel::select('*');
         }
-    }
-
-    public function phoneExist($phone)
-    {
-        try {
-            return UserModel::Where('phone', '=', $phone)->exists();
-        } catch (Throwable $e) {
-            throw new \Exception("user_service_err:" . 500);
+        //where
+        $chunks = array_chunk($where, 3);
+        if (!empty($where)) {
+            foreach ($chunks as $chunk) {
+                $stmt->where($chunk[0], $chunk[1], $chunk[2]);
+            }
         }
+        //orderBy
+        if (isset($option['orderby'])) {
+            $stmt->orderby($option['orderby'][0], $option['orderby'][1]);
+        }
+        //limit
+        if (isset($option['limit'])) {
+            $stmt->limit($option['limit']);
+        }
+        if (isset($option['offset'])) {
+            $stmt->offset($option['offset']);
+        }
+        $response = $stmt->get()->toArray();
+        if (count($response) === 1) {
+            return $response[0];
+        }
+        return $response;
     }
 
     public function create($userInfo)
     {
         try {
-            return UserModel::create($userInfo);
+            $needColumn = ['email', 'name', 'password', 'address', 'phone', 'age'];
+            foreach ($needColumn as $colunm) {
+                if (!isset($recordInfo[$colunm]) || empty($recordInfo[$colunm])) {
+                    throw new Exception('資料缺失');
+                }
+            }
+            $goodInfo = [
+                'email' => $userInfo['email'],
+                'name' => $userInfo['name'],
+                'password' => $userInfo['password'],
+                'address' => $userInfo['address'],
+                'phone' => $userInfo['phone'],
+                'age' => $userInfo['age'],
+            ];
+            return UserModel::create($goodInfo);
+        } catch (Exception $e) {
+            throw new Exception($e->getMessage());
         } catch (Throwable $e) {
-            throw new \Exception("user_service_err:" . 500);
+            throw new Exception("user_record_service_err:" . 500);
         }
     }
 }

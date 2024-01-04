@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-class ErrorCodeService
+class ErrorCode
 {
     private $err = [
         0 => '成功',

@@ -4,31 +4,41 @@ namespace App\Services;
 
 use App\Models\User_favorite;
 use Throwable;
+use Exception;
 
 class UserFavorite
 {
     public function create($favoriteInfo)
     {
         try {
-            return User_favorite::create($favoriteInfo);
+            if (!isset($favoriteInfo['uid']) || !isset($favoriteInfo['rid'])) {
+                throw new Exception('資料缺失');
+            }
+            $goodInfo = [
+                'uid' => $favoriteInfo['uid'],
+                'rid' => $favoriteInfo['rid'],
+            ];
+            return User_favorite::create($goodInfo);
+        } catch (Exception $e) {
+            throw new Exception($e->getMessage());
         } catch (Throwable $e) {
-            throw new \Exception("user_favorite_service_err:" . 500 . $e);
+            throw new Exception("user_favorite_service_err:" . 500 . $e);
         }
     }
-    public function getListByUser($userId)
+    public function get($userId)
     {
         try {
             return User_favorite::where('uid', '=', $userId)->get()->toArray();
         } catch (Throwable $e) {
-            throw new \Exception("user_favorite_service_err:" . 500);
+            throw new Exception("user_favorite_service_err:" . 500);
         }
     }
-    public function delByUserIdAndRid($userId, $rid)
+    public function delete($userId, $rid)
     {
         try {
             return User_favorite::where('uid', '=', $userId)->where('rid', '=', $rid)->delete();
         } catch (Throwable $e) {
-            throw new \Exception("user_favorite_service_err:" . 500);
+            throw new Exception("user_favorite_service_err:" . 500);
         }
     }
 }

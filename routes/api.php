@@ -32,7 +32,7 @@ Route::group(['middleware' => 'Maintenance'], function () {
     Route::post('/user/favorite', [UserController::class, 'addFavorite'])->middleware('token');
     Route::get('/user/favorite', [UserController::class, 'getFavorite'])->middleware('token');
     Route::delete('/user/favorite', [UserController::class, 'deleteFavorite'])->middleware('token');
-    Route::get('/user/history', [UserController::class, 'getHistory'])->middleware('token');
+    Route::get('/user/history', [UserController::class, 'getResaturantHistory'])->middleware('token');
 
     // RestaurantController routes
     Route::get('/restaurant', [RestaurantController::class, 'getRestaurant']);

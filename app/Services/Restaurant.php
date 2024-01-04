@@ -7,12 +7,17 @@ use Throwable;
 
 class Restaurant
 {
-    public function getObjByRid($rid)
+    public function get($rid)
     {
         try {
-            return RestaurantModel::find($rid);
+            $restaurant = RestaurantModel::find($rid);
+            if ($restaurant) {
+                $restaurant->toArray();
+                return $restaurant;
+            }
+            return null;
         } catch (Throwable $e) {
-            throw new \Exception("restaurant_service_err:" . 500);
+            throw new \Exception("restaurant_service_err:" . 500 . $e);
         }
     }
     public function getListByRid($rid)
@@ -26,8 +31,8 @@ class Restaurant
         } catch (Throwable $e) {
             throw new \Exception("restaurant_service_err:" . 500);
         }
-
     }
+    
     public function getListByRange($option)
     {
         try {

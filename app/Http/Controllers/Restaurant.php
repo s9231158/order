@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\ErrorCodeService;
+use App\Factorise;
+use App\Services\ErrorCode;
+use App\Services\Order;
 use App\Services\Restaurant as RestaurantService;
 
 
 
 // use App\ErrorCodeService;
+use App\Services\RestaurantHistory;
+use App\Services\Token;
 use App\ServiceV2\Restaurant as RestaurantServiceV2;
 use App\TotalService;
 use Illuminate\Http\Request;
@@ -22,6 +26,7 @@ class Restaurant extends Controller
     private $err;
     private $keys;
     private $restaurantService;
+
     //new
 
 
@@ -36,7 +41,7 @@ class Restaurant extends Controller
 
         //new
         RestaurantService $restaurantService,
-        ErrorCodeService $errorCodeService,
+        ErrorCode $errorCodeService,
         //new
     ) {
         $this->RestaurantServiceV2 = $RestaurantServiceV2;
@@ -111,8 +116,12 @@ class Restaurant extends Controller
         }
     }
 
-    public function getMenu(Request $request)
-    {
+    public function getMenu(
+        Request $request,
+        Factorise $factorise,
+        Token $tokenService,
+        RestaurantHistory $restaurantHistoryService
+    ) {
         //規則
         $ruls = [
             'limit' => ['integer'],
@@ -135,46 +144,58 @@ class Restaurant extends Controller
                     'message' => $validator->Errors()->first()
                 ]);
             }
-
             //取得OffsetLimit
-            $OffsetLimit = ['limit' => $request['limit'], 'offset' => $request['offset']];
-            $OffsetLimit = $this->TotalService->GetOffsetLimit($OffsetLimit);
-
+            $option['offset'] = $request['offset'] === null ? 0 : $request['offset'];
+            $option['limit'] = $request['limit'] === null ? 20 : $request['limit'];
             //是否有該餐廳
-            $Rid = $request['rid'];
-            $HasRestraunt = $this->RestaurantServiceV2->CheckRestaurantInDatabase($Rid);
-            if (!$HasRestraunt) {
+            $rid = $request['rid'];
+            $restaurantInfo = $this->restaurantService->get($rid);
+            if (!$restaurantInfo) {
                 return response()->json([
-                    'err' => $this->keys[16],
-                    'message' => $this->err[16]
+                    'message' => $this->keys[16],
+                    'err' => $this->err[16],
+                ]);
+            }
+            //取得菜單
+            $restaurant = $factorise->Setmenu($rid);
+            $Menu = $restaurant->GetMenu($option['offset'], $option['limit']);
+            //檢查是否有登入
+            try {
+                $token = $request->header('Authorization');
+                if ($token) {
+                    $email = $tokenService->getEamil();
+                    $userId = $tokenService->getUserId();
+                    $tokenCheck = $tokenService->checkToken($email);
+                    if (!$tokenCheck) {
+                        return response()->json([
+                            'err' => $this->keys[26],
+                            'message' => $this->err[26]
+                        ]);
+                    }
+                    //是否已存在資料庫,有的話更新時間,沒有則建立紀錄
+                    $restaurantHistoryService->updateOrCreate($userId, $rid);
+                }
+            } catch (Exception $e) {
+                return response()->json([
+                    'err' => $this->keys[26],
+                    'message' => $e->getMessage(),
                 ]);
             }
 
-            //取得菜單
-            $Menu = $this->RestaurantServiceV2->GetMenu($Rid, $OffsetLimit);
-            $RestaurantInfo = $this->RestaurantServiceV2->GetRestaurantinfo($Rid);
-
-            //檢查是否有登入
-            $Token = $request->header('Authorization');
-            if ($Token) {
-                $TokenCheck = $this->TotalService->CheckToken($Token);
-                //檢查是否Token正確
-                if ($TokenCheck === false) {
-                    return response()->json([
-                        'err' => $this->keys[5],
-                        'message' => $this->err[5]
-                    ]);
-                }
-                //是否已存在資料庫,有的話更新時間,沒有則建立紀錄
-                $this->RestaurantServiceV2->UpdateOrCreateHistory($Rid);
-            }
+            $response = [
+                'id' => $restaurantInfo['id'],
+                'total_point' => $restaurantInfo['totalpoint'],
+                'count_point' => $restaurantInfo['countpoint'],
+                'title' => $restaurantInfo['title'],
+                'img' => $restaurantInfo['img']
+            ];
             return response()->json([
                 'err' => $this->keys[0],
                 'message' => $this->err[0],
-                'data' => $RestaurantInfo,
+                'restaurant_info' => $response,
                 'menu' => $Menu
             ]);
-        } catch (TokenInvalidException $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'err' => $this->keys[26],
                 'message' => $this->err[26],
@@ -188,7 +209,8 @@ class Restaurant extends Controller
             ]);
         }
     }
-    public function addComment(Request $request)
+
+    public function addComment(Request $request, Order $orderService, Token $tokenService)
     {
         //規則
         $ruls = [
@@ -214,25 +236,33 @@ class Restaurant extends Controller
                     'message' => $validator->Errors()->first()
                 ]);
             }
-
             //是否有該餐廳
-            $Rid = $request['rid'];
-            $HasRestaurant = $this->RestaurantServiceV2->CheckRestaurantInDatabase($Rid);
-            if (!$HasRestaurant) {
+            $rid = $request['rid'];
+            $restaurantInfo = $this->restaurantService->get($rid);
+            if (!$restaurantInfo) {
                 return response()->json([
                     'err' => $this->keys[16],
                     'message' => $this->err[16]
                 ]);
             }
-
             //評論者是否在此訂餐廳訂過餐且訂單狀態是成功且記錄在24小時內
-            $OrderIn24Hour = $this->RestaurantServiceV2->CheckOrderIn24Hour($Rid);
-            if (!$OrderIn24Hour) {
+            $userId = $tokenService->getUserId();
+            $lastOrder = $orderService->getLastObjByUser($userId);
+            $yesterday = date("Y-m-d H:i:s", strtotime('-1 day'));
+            if ($lastOrder['ordertime'] < $yesterday) {
                 return response()->json([
                     'err' => $this->keys[12],
                     'message' => $this->err[12]
                 ]);
             }
+            //是否第一次評論該餐廳
+
+
+
+
+            return 2;
+
+
 
             //是否第一次評論該餐廳
             $UserFirstComment = $this->RestaurantServiceV2->CheckUserFirstComment($Rid);

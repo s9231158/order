@@ -9,7 +9,7 @@ use App\Services\Token;
 use App\Services\UserRecord;
 use App\Services\UserFavorite;
 use App\Services\RestaurantHistory;
-use App\Services\ErrorCodeService;
+use App\Services\ErrorCode;
 use Exception;
 use Throwable;
 use Illuminate\Http\Request;
@@ -28,14 +28,14 @@ class User extends Controller
     public function __construct(
         Token $tokenService,
         UserService $userService,
-        ErrorCodeService $errorCodeService,
+        ErrorCode $errorCodeService,
     ) {
         $this->tokenService = $tokenService;
         $this->userService = $userService;
         $this->keys = $errorCodeService->getErrKey();
         $this->err = $errorCodeService->getErrCode();
     }
-    public function createUser(Request $request, UserWallet $userWalletService)
+    public function createUser(Request $request)
     {
         try {
             //規則
@@ -84,7 +84,9 @@ class User extends Controller
             }
             //檢查email是否重複
             $email = $request['email'];
-            $eamilRepeat = $this->userService->getObjByEamil($email);
+            $where = ['email', '=', $email];
+            $option = ['column' => ['email']];
+            $eamilRepeat = $this->userService->getList($where, $option);
             if ($eamilRepeat) {
                 return response()->json([
                     'err' => $this->keys[3],
@@ -93,7 +95,9 @@ class User extends Controller
             }
             //檢查電話是否重複
             $phone = $request['phone'];
-            $phoneRepeat = $this->userService->phoneExist($phone);
+            $where = ['phone', '=', $phone];
+            $option = ['column' => ['phone']];
+            $phoneRepeat = $this->userService->getList($where, $option);
             if ($phoneRepeat) {
                 return response()->json([
                     'err' => $this->keys[4],
@@ -119,6 +123,7 @@ class User extends Controller
             // 將使用者資訊存入UserWallet
             $balance = 0;
             $userId = $response->id;
+            $userWalletService = new UserWallet;
             $walletResponse = $userWalletService->updateOrCreate($userId, $balance);
             if (!$walletResponse) {
                 return response()->json([
@@ -145,7 +150,7 @@ class User extends Controller
         }
     }
 
-    public function login(Request $request, UserRecord $userRecordService)
+    public function login(Request $request)
     {
         try {
             //規則
@@ -175,14 +180,21 @@ class User extends Controller
             //檢查是否重複登入
             $token = $request->header('Authorization');
             $email = $request['email'];
-            if ($token) {
-                $alreadyLogin = $this->tokenService->checkToken($email);
-                if ($alreadyLogin) {
-                    return response()->json([
-                        'err' => $this->keys[$alreadyLogin],
-                        'message' => $this->err[$alreadyLogin]
-                    ]);
+            try {
+                if ($token) {
+                    $alreadyLogin = $this->tokenService->checkToken($email);
+                    if (!$alreadyLogin) {
+                        return response()->json([
+                            'err' => $this->keys[26],
+                            'message' => $this->err[26]
+                        ]);
+                    }
                 }
+            } catch (Exception $e) {
+                return response()->json([
+                    'err' => $this->keys[26],
+                    'message' => $e->getMessage(),
+                ]);
             }
             //檢查此組Key是否一定時間內登入多次            
             $ip = $request->ip();
@@ -190,15 +202,21 @@ class User extends Controller
                 return response()->json(['err' => $this->err['7']]);
             }
             //驗證帳號密碼
-            $user = $this->userService->getObjByEamil($email);
-            if (!$user or !password_verify($request['password'], $user['password'])) {
+            $where = [
+                'email', '=', $email,
+            ];
+            $option = [
+                'column' => ['password', 'id', 'name', 'email']
+            ];
+            $user = $this->userService->getList($where, $option);
+            if (!$user || !password_verify($request['password'], $user['password'])) {
                 return response()->json([
                     'err' => $this->keys[8],
                     'message' => $this->err[8]
                 ]);
             }
             //將登入記入存入資料庫
-            $userId = $user->id;
+            $userId = $user['id'];
             $device = $request->header('User-Agent');
             $time = date('Y-m-d H:i:s', time());
             $recordInfo = [
@@ -208,6 +226,7 @@ class User extends Controller
                 'device' => $device,
                 'email' => $email,
             ];
+            $userRecordService = new UserRecord;
             $userRecordService->create($recordInfo);
             //製做token
             $token = $this->tokenService->create($user);
@@ -231,7 +250,7 @@ class User extends Controller
         }
     }
 
-    public function logout(Request $request)
+    public function logout()
     {
         try {
             $email = $this->tokenService->getEamil();
@@ -259,7 +278,13 @@ class User extends Controller
     {
         try {
             $email = $this->tokenService->getEamil();
-            $UserInfo = $this->userService->getObjByEamil($email)->only(['email', 'name', 'address', 'phone', 'age']);
+            $where = [
+                'email', '=', $email,
+            ];
+            $option = [
+                'column' => ['email', 'name', 'address', 'phone', 'age']
+            ];
+            $UserInfo = $this->userService->getList($where, $option);
             return response()->json([
                 'err' => $this->keys[0],
                 'message' => $this->err[0],
@@ -280,7 +305,7 @@ class User extends Controller
         }
     }
 
-    public function getRecord(Request $request, UserRecord $userRecordService)
+    public function getRecord(Request $request)
     {
         try {
             //規則
@@ -306,7 +331,17 @@ class User extends Controller
             $option = ['offset' => $offset, 'limit' => $limit];
             //取得登入紀錄
             $userId = $this->tokenService->getUserId();
-            $recordList = $userRecordService->getListByUserIdOnRange($userId, $option);
+            $userRecordService = new UserRecord;
+            $where = [
+                'uid', '=', $userId,
+            ];
+            $option = [
+                'column' => ['ip', 'device', 'login'],
+                'orderby' => ['login', 'desc'],
+                'offset' => $offset,
+                'limit' => $limit
+            ];
+            $recordList = $userRecordService->getList($where, $option);
             $count = count($recordList);
             return response()->json([
                 'err' => $this->keys[0],
@@ -329,11 +364,8 @@ class User extends Controller
         }
     }
 
-    public function addFavorite(
-        Request $request,
-        Restaurant $restaurantService,
-        UserFavorite $userFavoriteService
-    ) {
+    public function addFavorite(Request $request)
+    {
         try {
             //規則
             $ruls = [
@@ -354,8 +386,9 @@ class User extends Controller
             }
             //餐廳是否存在且啟用
             $rid = $request['rid'];
-            $restaurant = $restaurantService->getObjByRid($rid);
-            if (!$restaurant or $restaurant->enable != 1) {
+            $restaurantService = new Restaurant;
+            $restaurant = $restaurantService->get($rid);
+            if (!$restaurant or $restaurant['enable'] != 1) {
                 return response()->json([
                     'err' => $this->keys[16],
                     'message' => $this->err[16],
@@ -363,17 +396,18 @@ class User extends Controller
             }
             //檢查使用者我的最愛資料表內是否超過20筆
             $userId = $this->tokenService->getUserId();
-            $userFavorite = $userFavoriteService->getListByUser($userId);
+            $userFavoriteService = new UserFavorite;
+            $userFavorite = $userFavoriteService->get($userId);
             $count = count($userFavorite);
-            if ($count > 20) {
+            if ($count >= 20) {
                 return response()->json([
                     'err' => $this->keys[28],
                     'message' => $this->err[28],
                 ]);
             }
             //檢查是否重複新增我的最愛
-            $favoriteRid = array_column($userFavorite, 'rid');
-            if (in_array($rid, $favoriteRid)) {
+            $favoriteRids = array_column($userFavorite, 'rid');
+            if (in_array($rid, $favoriteRids)) {
                 return response()->json([
                     'err' => $this->keys[15],
                     'message' => $this->err[15],
@@ -407,17 +441,16 @@ class User extends Controller
         }
     }
 
-    public function getFavorite(
-        Request $request,
-        UserFavorite $userFavoriteService,
-        Restaurant $reataurantService
-    ) {
+    public function getFavorite()
+    {
         try {
             //取的我的最愛
             $userId = $this->tokenService->getUserId();
-            $userFavorite = $userFavoriteService->getListByUser($userId);
-            $favoriteRid = array_column($userFavorite, 'rid');
-            $userFavorite = $reataurantService->getListByRid($favoriteRid);
+            $userFavoriteService = new UserFavorite;
+            $userFavorite = $userFavoriteService->get($userId);
+            $favoriteRids = array_column($userFavorite, 'rid');
+            $reataurantService = new Restaurant;
+            $userFavorite = $reataurantService->getListByRid($favoriteRids);
             $count = count($userFavorite);
             $response = array_map(function ($item) {
                 return [
@@ -449,10 +482,8 @@ class User extends Controller
         }
     }
 
-    public function deleteFavorite(
-        UserFavorite $userFavoriteService,
-        Request $request
-    ) {
+    public function deleteFavorite(Request $request)
+    {
         try {
             //規則
             $ruls = [
@@ -474,16 +505,17 @@ class User extends Controller
             //檢查此餐廳是否存在我的最愛內
             $rid = $request['rid'];
             $userId = $this->tokenService->getUserId();
-            $userFavorite = $userFavoriteService->getListByUser($userId);
-            $favoriteRid = array_column($userFavorite, 'rid');
-            if (!in_array($rid, $favoriteRid)) {
+            $userFavoriteService = new UserFavorite;
+            $userFavorite = $userFavoriteService->get($userId);
+            $favoriteRids = array_column($userFavorite, 'rid');
+            if (!in_array($rid, $favoriteRids)) {
                 return response()->json([
                     'err' => $this->keys[16],
                     'message' => $this->err[16]
                 ]);
             }
             //將此餐廳從我的最愛內刪除
-            $response = $userFavoriteService->delByUserIdAndRid($userId, $rid);
+            $response = $userFavoriteService->delete($userId, $rid);
             if ($response) {
                 return response()->json([
                     'err' => $this->keys[0],
@@ -509,17 +541,16 @@ class User extends Controller
         }
     }
 
-    public function getHistory(
-        Restaurant $restaurantService,
-        Request $request,
-        RestaurantHistory $restaurantHistoryService
-    ) {
+    public function getResaturantHistory()
+    {
         try {
             //取出歷史紀錄餐廳的資訊
             $userId = $this->tokenService->getUserId();
+            $restaurantHistoryService = new RestaurantHistory;
             $restaurantHistory = $restaurantHistoryService->getListByUser($userId);
-            $restaurantHistoryRid = array_column($restaurantHistory, 'rid');
-            $restaurantInfo = $restaurantService->getListByRid($restaurantHistoryRid);
+            $rIds = array_column($restaurantHistory, 'rid');
+            $restaurantService = new Restaurant;
+            $restaurantInfo = $restaurantService->getListByRid($rIds);
             $response = array_map(function ($item) {
                 return [
                     'id' => $item['id'],
