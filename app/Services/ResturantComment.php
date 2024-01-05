@@ -2,45 +2,49 @@
 
 namespace App\Services;
 
-use App\Models\Restaurant as RestaurantModel;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Redis;
-use Throwable;
+use App\Models\RestaurantComment as RestaurantCommentModel;
 use Exception;
+use Illuminate\Support\Facades\Cache;
+use Throwable;
 
-class Restaurant
+class ResturantComment
 {
-    public function getListByRid($rids)
+    public function create($commentIfo)
     {
         try {
-            if (!isset($rids)) {
-                throw new Exception('資料缺失');
+            $needColumn = ['uid', 'rid', 'comment', 'point'];
+            foreach ($needColumn as $colunm) {
+                if (!isset($commentIfo[$colunm]) || empty($commentIfo[$colunm])) {
+                    throw new Exception('資料缺失');
+                }
             }
-            return RestaurantModel::
-                wherein('id', $rids)
-                ->orderBy('created_at', 'desc')
-                ->get()
-                ->toArray();
+            $goodInfo = [
+                'uid' => $commentIfo['uid'],
+                'rid' => $commentIfo['rid'],
+                'comment' => $commentIfo['comment'],
+                'point' => $commentIfo['point'],
+            ];
+            return RestaurantCommentModel::create($goodInfo);
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
         } catch (Throwable $e) {
-            throw new Exception("restaurant_service_err:" . 500);
+            throw new Exception("user_record_service_err:" . 500);
         }
     }
 
     public function get($where, $option)
     {
         //check Redis
-        $redisKey = $this->cacheKey($where, $option);
+        $redisKey = $this->generateCacheKey($where, $option);
         if (Cache::get($redisKey)) {
             return Cache::get($redisKey);
         }
         //select
         $stmt = null;
         if (isset($option['column'])) {
-            $stmt = RestaurantModel::select($option['column']);
+            $stmt = RestaurantCommentModel::select($option['column']);
         } else {
-            $stmt = RestaurantModel::select('*');
+            $stmt = RestaurantCommentModel::select('*');
         }
         //join
         if (isset($option['join'])) {
@@ -50,10 +54,10 @@ class Restaurant
             }
         }
         //where
-        $whereChunks = array_chunk($where, 3);
+        $chunks = array_chunk($where, 3);
         if (!empty($where)) {
-            foreach ($whereChunks as $whereChunk) {
-                $stmt->where($whereChunk[0], $whereChunk[1], $whereChunk[2]);
+            foreach ($chunks as $chunk) {
+                $stmt->where($chunk[0], $chunk[1], $chunk[2]);
             }
         }
         //orderBy
@@ -70,7 +74,7 @@ class Restaurant
         //get
         if (isset($option['get'])) {
             $response = $stmt->get()->toArray();
-            Cache::set($redisKey, $response);
+            Cache::put($redisKey, $response);
             return $response;
         } else {
             $response = $stmt->first();
@@ -78,31 +82,13 @@ class Restaurant
                 return [];
             } else {
                 $response->toArray();
-                Cache::set($redisKey, $response);
+                Cache::put($redisKey, $response);
                 return $response;
             }
         }
     }
-    private function cacheKey($where, $option)
+    private function generateCacheKey($where, $option)
     {
-        $where = $this->sort($where);
-        $option = $this->sort($option);
         return md5(serialize([$where, $option]));
-    }
-    public static function sort($soure)
-    {
-        ksort($soure);
-        foreach ($soure as &$value) {
-            if (is_array($value)) {
-                usort($value, function ($a, $b) {
-                    $comparison = strcasecmp(preg_replace('/[=<>]/', '', $a), preg_replace('/[=<>]/', '', $b));
-                    if (strpos($a, '=') !== false) {
-                        return ($comparison === 0) ? 1 : $comparison;
-                    }
-                    return $comparison;
-                });
-            }
-        }
-        return $soure;
     }
 }

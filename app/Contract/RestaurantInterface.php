@@ -4,8 +4,8 @@ namespace App\Contract;
 
 interface RestaurantInterface
 {
-    public function GetMenu(int $Offset, int $Limit): array;
-    public function MenuEnable(array $Order): bool;
-    public function SendApi(array $OrderInfo, array $Order): bool;
-    public function MenuCorrect(array $Order): bool;
+    public function getMenu(int $Offset, int $Limit): array;
+    public function menuEnable(array $Order): bool;
+    public function sendApi(array $OrderInfo, array $Order): bool;
+    public function menuCorrect(array $Order): bool;
 }

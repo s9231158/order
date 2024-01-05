@@ -58,7 +58,7 @@ class CreateOrder
     public function MenuCorrect(int $Rid, array $RequestOrder): bool
     {
         try {
-            $this->Restaurant = $this->Factorise->Setmenu($Rid);
+            $this->Restaurant = $this->Factorise->setMenu($Rid);
             return $this->Restaurant->MenuCorrect($RequestOrder);
         } catch (Throwable $e) {
             throw new \Exception("ServiceErr:" . 500);

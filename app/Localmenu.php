@@ -5,17 +5,22 @@ namespace App;
 use App\Contract\RestaurantInterface;
 use App\Models\LocalMenu as Local_menu;
 use Throwable;
+use Illuminate\Support\Facades\Cache;
 
 class Localmenu implements RestaurantInterface
 {
     public function GetMenu(int $Offset, int $Limit): array
     {
         try {
+            if (Cache::get('Menu_4')) {
+                return Cache::get('Menu_4');
+            }
             $Menu = Local_menu::select('rid', 'id', 'info', 'name', 'price', 'img')
                 ->limit($Limit)
                 ->offset($Offset)
                 ->get()
                 ->toArray();
+            Cache::put('Menu_4', $Menu);
             return $Menu;
         } catch (\GuzzleHttp\Exception\BadResponseException $e) {
             return $Menu;

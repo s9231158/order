@@ -31,7 +31,7 @@ class UserRecord
             throw new Exception("user_record_service_err:" . 500);
         }
     }
-    public function getList($where, $option)
+    public function get($where, $option)
     {
         try {
             //select
@@ -60,7 +60,16 @@ class UserRecord
             if (isset($option['offset'])) {
                 $stmt->offset($option['offset']);
             }
-            return $stmt->get()->toArray();
+            if (isset($option['get'])) {
+                return $stmt->get()->toArray();
+            } else {
+                $response = $stmt->first();
+                if (!$response) {
+                    return [];
+                } else {
+                    return $response->toArray();
+                }
+            }
 
         } catch (Throwable $e) {
             throw new Exception("user_record_service_err:" . 500);

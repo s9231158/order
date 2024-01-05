@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
+use Exception;
 use \Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
@@ -23,25 +24,31 @@ class Token
             //有emial 有token 但token錯誤 系統錯誤
             if (Cache::has($email) && $this->token && $this->token !== $RedisToken) {
                 Cache::forget($email);
-                throw new \Exception('系統錯誤請重新登入');
+                throw new Exception('系統錯誤請重新登入');
             }
             //有email 沒token 重別的裝置登入
             if (Cache::has($email) && $this->token === null) {
                 Cache::forget($email);
-                throw new \Exception('已重其他裝置登入');
+                throw new Exception('已重其他裝置登入');
             }
             if (!Cache::has($email)) {
                 Cache::forget($email);
-                throw new \Exception('請先登入');
+                throw new Exception('請先登入');
             }
             return true;
         } catch (Throwable $e) {
-            throw new \Exception($e->getMessage());
+            throw new Exception($e->getMessage());
         }
     }
     public function create($userInfo)
     {
         try {
+            $needColumn = ['id', 'name', 'email'];
+            foreach ($needColumn as $colunm) {
+                if (!isset($userInfo[$colunm]) || empty($userInfo[$colunm])) {
+                    throw new Exception('資料缺失');
+                }
+            }
             $time = Carbon::now()->addDay();
             $payload = [
                 'id' => $userInfo['id'],
@@ -52,8 +59,10 @@ class Token
             $token = JWT::encode($payload, env('JWT_SECRET'), 'HS256');
             Cache::put($userInfo['email'], $token, 60 * 60 * 24);
             return $token;
+        } catch (Exception $e) {
+            throw new Exception($e->getMessage());
         } catch (Throwable $e) {
-            throw new \Exception("token_service_err:" . 500 . $e);
+            throw new Exception("token_service_err:" . 500 . $e);
         }
     }
     public function forget($email)
@@ -66,7 +75,7 @@ class Token
             return false;
 
         } catch (Throwable $e) {
-            throw new \Exception("token_service_err:" . 500);
+            throw new Exception("token_service_err:" . 500);
         }
     }
     public function getEamil()
@@ -76,7 +85,7 @@ class Token
             $email = $payload->email;
             return $email;
         } catch (Throwable $e) {
-            throw new \Exception('系統錯誤請重新登入');
+            throw new Exception('系統錯誤請重新登入');
         }
     }
     public function getUserId()
@@ -86,7 +95,7 @@ class Token
             $userId = $payload->id;
             return $userId;
         } catch (Throwable $e) {
-            throw new \Exception('系統錯誤請重新登入');
+            throw new Exception('系統錯誤請重新登入');
         }
     }
 }

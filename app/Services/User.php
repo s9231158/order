@@ -8,7 +8,7 @@ use Exception;
 
 class User
 {
-    public function getList($where, $option)
+    public function get($where, $option)
     {
         //select
         $stmt = null;
@@ -35,11 +35,16 @@ class User
         if (isset($option['offset'])) {
             $stmt->offset($option['offset']);
         }
-        $response = $stmt->get()->toArray();
-        if (count($response) === 1) {
-            return $response[0];
+        if (isset($option['get'])) {
+            return $stmt->get()->toArray();
+        } else {
+            $response = $stmt->first();
+            if (!$response) {
+                return [];
+            } else {
+                return $response->toArray();
+            }
         }
-        return $response;
     }
 
     public function create($userInfo)

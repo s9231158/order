@@ -58,7 +58,7 @@ class Restaurant
     public function GetMenu($Rid, $OffsetLimit)
     {
         try {
-            $this->Restaurant = $this->Factorise->Setmenu($Rid);
+            $this->Restaurant = $this->Factorise->setMenu($Rid);
             return $this->Restaurant->Getmenu($OffsetLimit['offset'], $OffsetLimit['limit']);
         } catch (Throwable $e) {
             throw new \Exception("ServiceErr:" . 500);

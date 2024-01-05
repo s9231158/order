@@ -85,8 +85,8 @@ class User extends Controller
             //檢查email是否重複
             $email = $request['email'];
             $where = ['email', '=', $email];
-            $option = ['column' => ['email']];
-            $eamilRepeat = $this->userService->getList($where, $option);
+            $option = ['column' => ['email'], 'first' => 1];
+            $eamilRepeat = $this->userService->get($where, $option);
             if ($eamilRepeat) {
                 return response()->json([
                     'err' => $this->keys[3],
@@ -96,8 +96,8 @@ class User extends Controller
             //檢查電話是否重複
             $phone = $request['phone'];
             $where = ['phone', '=', $phone];
-            $option = ['column' => ['phone']];
-            $phoneRepeat = $this->userService->getList($where, $option);
+            $option = ['column' => ['phone'], 'first' => 1];
+            $phoneRepeat = $this->userService->get($where, $option);
             if ($phoneRepeat) {
                 return response()->json([
                     'err' => $this->keys[4],
@@ -206,9 +206,10 @@ class User extends Controller
                 'email', '=', $email,
             ];
             $option = [
-                'column' => ['password', 'id', 'name', 'email']
+                'column' => ['password', 'id', 'name', 'email'],
+                'first' => 1,
             ];
-            $user = $this->userService->getList($where, $option);
+            $user = $this->userService->get($where, $option);
             if (!$user || !password_verify($request['password'], $user['password'])) {
                 return response()->json([
                     'err' => $this->keys[8],
@@ -229,7 +230,8 @@ class User extends Controller
             $userRecordService = new UserRecord;
             $userRecordService->create($recordInfo);
             //製做token
-            $token = $this->tokenService->create($user);
+            $tokenInfo = ['id' => $user['id'], 'name' => $user['name'], 'email' => $user['email']];
+            $token = $this->tokenService->create($tokenInfo);
             return response()->json([
                 'err' => $this->keys[0],
                 'message' => $this->err[0],
@@ -282,9 +284,10 @@ class User extends Controller
                 'email', '=', $email,
             ];
             $option = [
-                'column' => ['email', 'name', 'address', 'phone', 'age']
+                'column' => ['email', 'name', 'address', 'phone', 'age'],
+                'first' => 1
             ];
-            $UserInfo = $this->userService->getList($where, $option);
+            $UserInfo = $this->userService->get($where, $option);
             return response()->json([
                 'err' => $this->keys[0],
                 'message' => $this->err[0],
@@ -339,9 +342,10 @@ class User extends Controller
                 'column' => ['ip', 'device', 'login'],
                 'orderby' => ['login', 'desc'],
                 'offset' => $offset,
-                'limit' => $limit
+                'limit' => $limit,
+                'get' => 1,
             ];
-            $recordList = $userRecordService->getList($where, $option);
+            $recordList = $userRecordService->get($where, $option);
             $count = count($recordList);
             return response()->json([
                 'err' => $this->keys[0],
@@ -386,9 +390,11 @@ class User extends Controller
             }
             //餐廳是否存在且啟用
             $rid = $request['rid'];
+            $where = ['id', '=', $rid];
+            $option = ['first' => 1];
             $restaurantService = new Restaurant;
-            $restaurant = $restaurantService->get($rid);
-            if (!$restaurant or $restaurant['enable'] != 1) {
+            $restaurant = $restaurantService->get($where, $option);
+            if (!$restaurant || $restaurant['enable'] != 1) {
                 return response()->json([
                     'err' => $this->keys[16],
                     'message' => $this->err[16],

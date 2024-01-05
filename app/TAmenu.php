@@ -41,7 +41,7 @@ class TAmenu implements RestaurantInterface
             }
             return $TargetData;
         } catch (Throwable $e) {
-            return $TargetData;
+            return ['取得菜單錯誤:500'];
         }
     }
     public function MenuEnable(array $MenuId): bool
@@ -86,7 +86,7 @@ class TAmenu implements RestaurantInterface
             $Client = new Client();
             $Response = $Client->request('POST', $this->OrderUrl, ['json' => $TargetData]);
             $GoodResponse = $Response->getBody();
-             $ArrayGoodResponse = json_decode($GoodResponse);
+            $ArrayGoodResponse = json_decode($GoodResponse);
             //取得結果
             if ($ArrayGoodResponse->error_code === 0) {
                 return true;

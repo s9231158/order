@@ -36,7 +36,7 @@ class SHmenu implements RestaurantInterface
             }
             return $TargetData;
         } catch (Throwable $e) {
-            return $TargetData;
+            return ['取得菜單錯誤:500'];
         }
     }
     public function MenuEnable(array $MenuId): bool

@@ -8,16 +8,17 @@ use App\Services\Order;
 use App\Services\Restaurant as RestaurantService;
 
 
-
 // use App\ErrorCodeService;
 use App\Services\RestaurantHistory;
+use App\Services\ResturantComment;
 use App\Services\Token;
 use App\ServiceV2\Restaurant as RestaurantServiceV2;
 use App\TotalService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Validator;
 use Exception;
-use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 use Throwable;
 
 class Restaurant extends Controller
@@ -56,6 +57,7 @@ class Restaurant extends Controller
     public function getRestaurant(Request $request)
     {
         //規則
+
         $ruls = [
             'limit' => ['integer'],
             'offset' => ['integer']
@@ -79,7 +81,23 @@ class Restaurant extends Controller
             $option['offset'] = $request['offset'] === null ? 0 : $request['offset'];
             $option['limit'] = $request['limit'] === null ? 20 : $request['limit'];
             //取得餐廳info並打亂順序
-            $restaurantInfo = $this->restaurantService->getListByRange($option);
+            $where = [
+            ];
+            $option = [
+                'column' => [
+                    'restaurant_open_days.' . date('l'),
+                    'restaurants.id',
+                    'restaurants.title',
+                    'restaurants.img',
+                    'restaurants.totalpoint',
+                    'restaurants.countpoint'
+                ],
+                'join' => ['restaurant_open_days', 'restaurant_open_days.id', '=', 'restaurants.id'],
+                'get' => 1,
+                'limit' => $option['limit'],
+                'offset' => $option['offset'],
+            ];
+            $restaurantInfo = $this->restaurantService->get($where, $option);
             $count = count($restaurantInfo);
             $keys = array_keys($restaurantInfo);
             shuffle($keys);
@@ -93,7 +111,9 @@ class Restaurant extends Controller
                     'title' => $item['title'],
                     'img' => $item['img'],
                     'total_point' => $item['totalpoint'],
-                    'count_point' => $item['countpoint']];
+                    'count_point' => $item['countpoint'],
+                    'open' => $item[date('l')]
+                ];
             }, $shuffle);
             return response()->json([
                 'message' => $this->keys[0],
@@ -116,12 +136,8 @@ class Restaurant extends Controller
         }
     }
 
-    public function getMenu(
-        Request $request,
-        Factorise $factorise,
-        Token $tokenService,
-        RestaurantHistory $restaurantHistoryService
-    ) {
+    public function getMenu(Request $request)
+    {
         //規則
         $ruls = [
             'limit' => ['integer'],
@@ -145,22 +161,26 @@ class Restaurant extends Controller
                 ]);
             }
             //取得OffsetLimit
-            $option['offset'] = $request['offset'] === null ? 0 : $request['offset'];
-            $option['limit'] = $request['limit'] === null ? 20 : $request['limit'];
+            $offset = $request['offset'] ?? 0;
+            $limit = $request['limit'] ?? 20;
             //是否有該餐廳
             $rid = $request['rid'];
-            $restaurantInfo = $this->restaurantService->get($rid);
-            if (!$restaurantInfo) {
+            $where = ['id', '=', $rid];
+            $option = ['first' => 1];
+            $restaurantInfo = $this->restaurantService->get($where, $option);
+            if (!$restaurantInfo || $restaurantInfo['enable'] != 1) {
                 return response()->json([
                     'message' => $this->keys[16],
                     'err' => $this->err[16],
                 ]);
             }
             //取得菜單
-            $restaurant = $factorise->Setmenu($rid);
-            $Menu = $restaurant->GetMenu($option['offset'], $option['limit']);
+            $factorise = new Factorise;
+            $restaurant = $factorise->setMenu($rid);
+            $Menu = $restaurant->getMenu($offset, $limit);
             //檢查是否有登入
             try {
+                $tokenService = new Token;
                 $token = $request->header('Authorization');
                 if ($token) {
                     $email = $tokenService->getEamil();
@@ -173,6 +193,7 @@ class Restaurant extends Controller
                         ]);
                     }
                     //是否已存在資料庫,有的話更新時間,沒有則建立紀錄
+                    $restaurantHistoryService = new RestaurantHistory;
                     $restaurantHistoryService->updateOrCreate($userId, $rid);
                 }
             } catch (Exception $e) {
@@ -210,7 +231,7 @@ class Restaurant extends Controller
         }
     }
 
-    public function addComment(Request $request, Order $orderService, Token $tokenService)
+    public function addComment(Request $request)
     {
         //規則
         $ruls = [
@@ -238,16 +259,27 @@ class Restaurant extends Controller
             }
             //是否有該餐廳
             $rid = $request['rid'];
-            $restaurantInfo = $this->restaurantService->get($rid);
-            if (!$restaurantInfo) {
+            $where = ['id', '=', $rid];
+            $option = ['first' => 1];
+            $restaurantInfo = $this->restaurantService->get($where, $option);
+            if (!$restaurantInfo || $restaurantInfo['enable'] != 1) {
                 return response()->json([
                     'err' => $this->keys[16],
                     'message' => $this->err[16]
                 ]);
             }
             //評論者是否在此訂餐廳訂過餐且訂單狀態是成功且記錄在24小時內
+            $tokenService = new Token;
             $userId = $tokenService->getUserId();
-            $lastOrder = $orderService->getLastObjByUser($userId);
+            $orderData = [
+                'where' => ['uid', '=', $userId],
+                'option' => [
+                    'column' => ['ordertime'],
+                    'orderby' => ['ordertime', 'desc'],
+                ]
+            ];
+            $orderService = new Order;
+            $lastOrder = $orderService->get($orderData['where'], $orderData['option']);
             $yesterday = date("Y-m-d H:i:s", strtotime('-1 day'));
             if ($lastOrder['ordertime'] < $yesterday) {
                 return response()->json([
@@ -256,25 +288,27 @@ class Restaurant extends Controller
                 ]);
             }
             //是否第一次評論該餐廳
-
-
-
-
-            return 2;
-
-
-
-            //是否第一次評論該餐廳
-            $UserFirstComment = $this->RestaurantServiceV2->CheckUserFirstComment($Rid);
-            if ($UserFirstComment) {
+            $restaurantCommentService = new ResturantComment;
+            $restaurantCommentData = [
+                'where' => ['uid', '=', $userId, 'rid', '=', $rid],
+                'option' => ['first' => 1]
+            ];
+            $restaurantComment = $restaurantCommentService->get($restaurantCommentData['where'], $restaurantCommentData['option']);
+            if ($restaurantComment) {
                 return response()->json([
                     'err' => $this->keys[14],
                     'message' => $this->err[14]
                 ]);
             }
             //將評論存入資料庫
-            $Comment = ['rid' => $request['rid'], 'comment' => $request['comment'], 'point' => $request['point']];
-            $this->RestaurantServiceV2->SaveComment($Comment);
+            $commentInfo = ['uid' => $userId, 'rid' => $rid, 'comment' => $request['comment'], 'point' => $request['point']];
+            $response = $restaurantCommentService->create($commentInfo);
+            if (!$response) {
+                return response()->json([
+                    'err' => $this->keys[26],
+                    'message' => $this->err[26],
+                ]);
+            }
             return response()->json([
                 'err' => $this->keys[0],
                 'message' => $this->err[0]
@@ -316,34 +350,47 @@ class Restaurant extends Controller
                     'message' => $validator->Errors()->first()
                 ]);
             }
-
             //取得OffsetLimit
-            $OffsetLimit = ['limit' => $request['limit'], 'offset' => $request['offset']];
-            $OffsetLimit = $this->TotalService->GetOffsetLimit($OffsetLimit);
-
+            $offset = $request['offset'] ?? 0;
+            $limit = $request['limit'] ?? 20;
             //是否有該餐廳 
-            $Rid = $request['rid'];
-            $RestaurantExist = $this->RestaurantServiceV2->CheckRestaurantInDatabase($Rid);
-            if (!$RestaurantExist) {
+            $rid = $request['rid'];
+            $restaurantData = [
+                'where' => ['id', '=', $rid],
+                'option' => ['first' => 1]
+            ];
+            $restaurantInfo = $this->restaurantService->get($restaurantData['where'], $restaurantData['option']);
+            if (!$restaurantInfo || $restaurantInfo['enable'] != 1) {
                 return response()->json([
                     'err' => $this->keys[16],
                     'message' => $this->err[16]
                 ]);
             }
-
             //取出評論
-            $RestaurantComment = $this->RestaurantServiceV2->GetRestaurantComment($Rid, $OffsetLimit);
-
-            //計算評論數量
-            $RestaurantCommentCount = $RestaurantComment->count();
-
-            //排序取出評論
-            $RestaurantComment = $RestaurantComment->sortByDesc('created_at')->values()->all();
+            $restaurantCommentService = new ResturantComment;
+            $restaurantCommentData = [
+                'where' => ['rid', '=', $rid],
+                'option' => [
+                    'column' => [
+                        'users.name',
+                        'restaurant_comments.point',
+                        'restaurant_comments.comment',
+                        'restaurant_comments.created_at'
+                    ],
+                    'join' => ['users', 'users.id', '=', 'restaurant_comments.uid'],
+                    'orderby' => ['restaurant_comments.created_at', 'desc'],
+                    'get' => 1,
+                    'limit' => $limit,
+                    'offset' => $offset
+                ]
+            ];
+            $restaurantComment = $restaurantCommentService->get($restaurantCommentData['where'], $restaurantCommentData['option']);
+            $count = count($restaurantComment);
             return response()->json([
                 'err' => $this->keys[0],
                 'message' => $this->err[0],
-                'count' => $RestaurantCommentCount,
-                'Comment' => $RestaurantComment
+                'count' => $count,
+                'Comment' => $restaurantComment
             ]);
         } catch (Exception $e) {
             return response()->json([
