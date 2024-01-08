@@ -8,56 +8,30 @@ use App\Services\Order;
 use App\Services\Restaurant as RestaurantService;
 
 
-// use App\ErrorCodeService;
 use App\Services\RestaurantHistory;
 use App\Services\ResturantComment;
 use App\Services\Token;
-use App\ServiceV2\Restaurant as RestaurantServiceV2;
-use App\TotalService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Validator;
 use Exception;
 use Throwable;
 
 class Restaurant extends Controller
 {
-    //new
     private $err;
     private $keys;
     private $restaurantService;
-
-    //new
-
-
-
-
-    private $TotalService;
-    private $RestaurantServiceV2;
     public function __construct(
-        RestaurantServiceV2 $RestaurantServiceV2,
-        TotalService $TotalService,
-
-
-        //new
         RestaurantService $restaurantService,
         ErrorCode $errorCodeService,
-        //new
     ) {
-        $this->RestaurantServiceV2 = $RestaurantServiceV2;
-        $this->TotalService = $TotalService;
-
-        //new
         $this->restaurantService = $restaurantService;
         $this->err = $errorCodeService->getErrCode();
         $this->keys = $errorCodeService->getErrKey();
-        //new
     }
     public function getRestaurant(Request $request)
     {
         //規則
-
         $ruls = [
             'limit' => ['integer'],
             'offset' => ['integer']

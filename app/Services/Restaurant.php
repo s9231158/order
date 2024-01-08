@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Restaurant as RestaurantModel;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Redis;
 use Throwable;
 use Exception;
 
@@ -30,7 +29,7 @@ class Restaurant
 
     public function get($where, $option)
     {
-        //check Redis
+        // //check Redis
         $redisKey = $this->cacheKey($where, $option);
         if (Cache::get($redisKey)) {
             return Cache::get($redisKey);

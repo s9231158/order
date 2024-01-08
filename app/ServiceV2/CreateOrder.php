@@ -39,27 +39,27 @@ class CreateOrder
         $this->UserWalletRepositoryV2 = $UserWalletRepositoryV2;
         $this->WalletRecordRepositoryV2 = $WalletRecordRepositoryV2;
     }
-    public function CheckRestaurantInDatabase(int $Rid): bool
+    public function CheckRestaurantInDatabase(int $rid): bool
     {
         try {
-            return $this->RestaurantRepositoryV2->CheckRestaurantInDatabase($Rid);
+            return $this->RestaurantRepositoryV2->CheckRestaurantInDatabase($rid);
         } catch (Throwable $e) {
             throw new \Exception("ServiceErr:" . 500);
         }
     }
-    public function CheckRestaurantOpen(int $Rid, string $Date): bool
+    public function CheckRestaurantOpen(int $rid, string $Date): bool
     {
         try {
-            return $this->RestaurantRepositoryV2->CheckRestaurantOpen($Rid, $Date);
+            return $this->RestaurantRepositoryV2->CheckRestaurantOpen($rid, $Date);
         } catch (Throwable $e) {
             throw new \Exception("ServiceErr:" . 500);
         }
     }
-    public function MenuCorrect(int $Rid, array $RequestOrder): bool
+    public function menuCorrect(int $rid, array $requestOrder): bool
     {
         try {
-            $this->Restaurant = $this->Factorise->setMenu($Rid);
-            return $this->Restaurant->MenuCorrect($RequestOrder);
+            $this->Restaurant = $this->Factorise->setMenu($rid);
+            return $this->Restaurant->MenuCorrect($requestOrder);
         } catch (Throwable $e) {
             throw new \Exception("ServiceErr:" . 500);
         }

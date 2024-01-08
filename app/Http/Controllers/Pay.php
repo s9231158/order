@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\ErrorCodeService;
 use App\RepositoryV2\User;
 use App\TotalService;
 use Exception;
@@ -13,6 +12,19 @@ use Illuminate\Support\Str;
 use Throwable;
 use App\ServiceV2\CreateOrder as CreateOrderServiceV2;
 
+//new
+use App\Services\ErrorCode;
+use App\Services\Token;
+use App\Services\Restaurant;
+use App\Factorise;
+use App\Services\Order;
+use App\Services\OrderInfo;
+
+//new
+
+
+
+
 class Pay extends Controller
 {
     private $TotalService;
@@ -20,26 +32,51 @@ class Pay extends Controller
         'ecpay' => 2,
         'local' => 1,
     ];
-    private $Err;
-    private $Keys;
     private $CreateOrderServiceV2;
     private $User;
+
+    //new
+    private $err;
+    private $keys;
+    private $tokenService;
+    private $restaurantService;
+    private $orderService;
+    //new
     public function __construct(
         CreateOrderServiceV2 $CreateOrderServiceV2,
-        ErrorCodeService $ErrorCodeService,
         TotalService $TotalService,
-        User $User
+        User $User,
+
+        //new
+        ErrorCode $errorCodeService,
+        Token $tokenService,
+        Restaurant $restaurantService,
+        Order $orderService,
+        //new
     ) {
         $this->User = $User;
         $this->CreateOrderServiceV2 = $CreateOrderServiceV2;
         $this->TotalService = $TotalService;
-        $this->Err = $ErrorCodeService->GetErrCode();
-        $this->Keys = $ErrorCodeService->GetErrKey();
+
+        //new
+        $this->tokenService = $tokenService;
+        $this->err = $errorCodeService->getErrCode();
+        $this->keys = $errorCodeService->getErrKey();
+        $this->restaurantService = $restaurantService;
+        $this->orderService = $orderService;
+        //new 
     }
-    public function CreateOrder(Request $Request)
+    public function CreateOrder(Request $request)
     {
+        $aa = [
+            '全錯' => 11111, 'b' => 222222,
+            111111 => 'a', 2222222 => 'b'
+        ];
+        return array_keys($aa);
+
+
         //規則
-        $Ruls = [
+        $ruls = [
             'payment' => ['required', 'string', 'in:ecpay,local'],
             'name' => ['required', 'string', 'max:25', 'min:3'],
             'address' => ['required', 'string', 'min:10', 'max:25'],
@@ -53,7 +90,7 @@ class Pay extends Controller
             'orders.*.price' => ['required', 'integer'],
         ];
         //什麼錯誤報什麼錯誤訊息
-        $RulsMessage = [
+        $rulsMessage = [
             'payment.required' => '資料填寫與規格不符',
             'payment.string' => '資料填寫與規格不符',
             'payment.in' => '請填入正確付款方式',
@@ -89,208 +126,205 @@ class Pay extends Controller
 
         try {
             //如果有錯回報錯誤訊息
-            $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
-            if ($Validator->fails()) {
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            if ($validator->fails()) {
                 return response()->json([
-                    'Err' => array_search($Validator->Errors()->first(), $this->Err),
-                    'Message' => $Validator->Errors()->first()
+                    'Err' => array_search($validator->Errors()->first(), $this->err),
+                    'Message' => $validator->Errors()->first()
                 ]);
             }
-
-            try {
-                $User = GetUserInfo();
-            } catch (\Throwable $e) {
-                return response()->json([
-                    'Err' => $this->Keys[22],
-                    'Message' => $this->Err[22]
-                ]);
-            }
-
             //取出Request內Order         
-            $RequestOrder = $Request['orders'];
+            $order = $request['orders'];
+
             //訂單內餐廳是否都一致
-            $AllOrderRid = array_column($RequestOrder, 'rid');
-            $ReataurantIdUnique = collect($AllOrderRid)->unique()->toArray();
-            $CheckSameRestaurantIdInOrders = $this->CheckSameArray($AllOrderRid, $ReataurantIdUnique);
-            if (!$CheckSameRestaurantIdInOrders) {
+            $orderRids = array_column($order, 'rid');
+            if (count(array_unique($orderRids)) !== 1) {
                 return response()->json([
-                    'Err' => $this->Keys[22],
-                    'Message' => $this->Err[22]
+                    'Err' => $this->keys[22],
+                    'Message' => $this->err[22]
                 ]);
             }
-
             //檢查Order內是否有一樣的菜單,有的話將一樣的菜單合併
-            $AllOrderMealId = array_column($RequestOrder, 'id');
-            $MealIdUnique = collect($AllOrderMealId)->unique()->toArray();
-            $CheckSameMenuIdInOrders = $this->CheckSameArray($AllOrderMealId, $MealIdUnique);
-            if ($CheckSameMenuIdInOrders) {
-                $RequestOrder = $this->MergeOrdersBySameId($RequestOrder);
+            $goodOrder = [];
+            foreach ($order as $item) {
+                $description = $item['description'] ?? null;
+                $key = $item['id'] . $description;
+                if (array_key_exists($key, $goodOrder)) {
+                    $goodOrder[$key]['quanlity'] += $item['quanlity'];
+                } else {
+                    $goodOrder[$key] = $item;
+                }
             }
-
+            $goodOrder = array_values($goodOrder);
             //餐廳是否存在且啟用
-            $Rid = $RequestOrder[0]['rid'];
-            $HasRestaurant = $this->CreateOrderServiceV2->CheckRestaurantInDatabase($Rid);
-            if (!$HasRestaurant) {
+            $rid = $order[0]['rid'];
+            $where = ['restaurants.id', '=', $rid];
+            $option = [
+                'first' => 1,
+                'join' => ['restaurant_open_days', 'restaurant_open_days.id', '=', 'restaurants.id'],
+            ];
+            $restaurantInfo = $this->restaurantService->get($where, $option);
+            if (!$restaurantInfo || $restaurantInfo['enable'] != 1) {
                 return response()->json([
-                    'Err' => $this->Keys[16],
-                    'Message' => $this->Err[16]
+                    'err' => $this->keys[16],
+                    'message' => $this->err[16]
                 ]);
             }
-
             //訂單總金額是否正確
-            $TotalPrice = $Request['total_price'];
-            $CheckTotalPrice = $this->CheckTotalPrice($RequestOrder, $TotalPrice);
-            if (!$CheckTotalPrice) {
+            $orderCollection = collect($order);
+            $realTotalPrice = $orderCollection->sum('price');
+            if ($realTotalPrice !== $request['total_price']) {
                 return response()->json([
-                    'Err' => $this->Keys[20],
-                    'Message' => $this->Err[20]
+                    'err' => $this->keys[20],
+                    'message' => $this->err[20]
                 ]);
             }
-
             //餐廳今天是否有營業
-            $Today = date('l');
-            $RestaurantOpen = $this->CreateOrderServiceV2->CheckRestaurantOpen($Rid, $Today);
-            if (!$RestaurantOpen) {
+            if ($restaurantInfo[date('l')] !== 1) {
                 return response()->json([
-                    'Err' => $this->Keys[17],
-                    'Message' => $this->Err[17]
+                    'err' => $this->keys[17],
+                    'message' => $this->err[17]
                 ]);
             }
-
-            //檢查菜單金額名稱id是否與店家一致
-            $MenuCorrect = $this->CreateOrderServiceV2->MenuCorrect($Rid, $RequestOrder);
-            if (!$MenuCorrect) {
-                return response()->json([
-                    'Err' => $this->Keys[30],
-                    'Message' => $this->Err[30]
-                ]);
-            }
-
-            // 餐點是否停用
-            $AllMenuId = array_column($RequestOrder, 'id');
-            $MenuEnable = $this->CreateOrderServiceV2->MenuEnable($AllMenuId);
-            if (!$MenuEnable) {
-                return response()->json([
-                    'Err' => $this->Keys[25],
-                    'Message' => $this->Err[25]
-                ]);
-            }
-            $Money = $Request['total_price'];
-            $Now = now();
-            $TakeTime = $Request['take_time'];
-            $Address = $Request['address'];
-            $Phone = $Request['phone'];
-            $UserInfo = $this->User->GetUserInfo();
-            $UserId = $UserInfo->id;
-            if ($Rid !== 4) {
-                $OrderInfo = [
-                    'name' => $Request['name'],
-                    'phone' => $Request['phone'],
-                    'taketime' => $Request['take_time'],
-                    'total_price' => $Request['total_price']
+            // //檢查菜單金額名稱id是否與店家一致
+            $factorise = new Factorise;
+            $restaurant = $factorise->setMenu($rid);
+            // $menuCorrect = $restaurant->menuCorrect($order);
+            // if (!$menuCorrect) {
+            //     return response()->json([
+            //         'err' => $this->keys[30],
+            //         'message' => $this->err[30]
+            //     ]);
+            // }
+            // // 餐點是否停用
+            // $menuIds = array_column($order, 'id');
+            // $menuEnable = $this->CreateOrderServiceV2->MenuEnable($menuIds);
+            // if (!$menuEnable) {
+            //     return response()->json([
+            //         'Err' => $this->keys[25],
+            //         'Message' => $this->err[25]
+            //     ]);
+            // }
+            $money = $request['total_price'];
+            $now = now();
+            $takeTime = $request['take_time'];
+            $address = $request['address'];
+            $phone = $request['phone'];
+            $tokenService = new Token;
+            $UserId = $tokenService->getUserId();
+            $uuid = Str::uuid();
+            $orderInfoService = new OrderInfo;
+            //非本地餐廳訂餐
+            if ($restaurantInfo['api']) {
+                $apiOrderInfo = [
+                    'uuid' => $uuid,
+                    'name' => $request['name'],
+                    'phone' => $request['phone'],
+                    'taketime' => $request['take_time'],
+                    'total_price' => $request['total_price']
                 ];
-                //如果非本地廠商需打Api傳送訂單      
-                $Response = $this->CreateOrderServiceV2->SendApi($OrderInfo, $RequestOrder);
-                if ($Response) {
+                //將訂餐資訊傳至供應商     
+                $response = $restaurant->SendApi($apiOrderInfo, $order);
+                if ($response) {
                     //訂單傳送成功將訂單存至資料庫
                     $SaveOrderInfo = [
-                        'ordertime' => $Now,
-                        'taketime' => $TakeTime,
-                        'total' => $TotalPrice,
-                        'phone' => $Phone,
-                        'address' => $Address,
+                        'ordertime' => $now,
+                        'taketime' => $takeTime,
+                        'total' => $realTotalPrice,
+                        'phone' => $phone,
+                        'address' => $address,
                         'status' => 0,
-                        'rid' => $Rid,
+                        'rid' => $rid,
                         'uid' => $UserId,
                     ];
                     //儲存訂單
-                    $Oid = $this->CreateOrderServiceV2->SaveOrder($SaveOrderInfo);
+                    $response = $this->orderService->create($SaveOrderInfo);
+                    $oid = $response['id'];
                     //整理訂單詳情資料
-                    $CreateOrderInfo = $this->FixOrderInfo($RequestOrder, $Oid);
+                    $CreateOrderInfo = $this->FixOrderInfo($order, $oid);
                     //儲存訂單詳情
-                    $this->CreateOrderServiceV2->SaveOrderInfo($CreateOrderInfo);
+                    $orderInfoService->create($CreateOrderInfo);
                 } else {
                     //訂單傳送失敗 將失敗訂單存置資料庫
                     $SaveOrderInfo = [
-                        'ordertime' => $Now,
-                        'taketime' => $TakeTime,
-                        'total' => $TotalPrice,
-                        'phone' => $Phone,
-                        'address' => $Address,
-                        'status' => 10, //變常數 寫近service 額外一個errstatusFile
-                        'rid' => $Rid,
+                        'ordertime' => $now,
+                        'taketime' => $takeTime,
+                        'total' => $realTotalPrice,
+                        'phone' => $phone,
+                        'address' => $address,
+                        'status' => 10,
+                        'rid' => $rid,
                         'uid' => $UserId,
                     ];
-                    //儲存訂單
-                    $this->CreateOrderServiceV2->SaveOrder($SaveOrderInfo);
+                    $response = $this->orderService->create($SaveOrderInfo);
                     return response()->json([
-                        'Err' => $this->Keys[34],
-                        'Message' => $this->Err[34]
+                        'err' => $this->keys[34],
+                        'message' => $this->err[34]
                     ]);
-
                 }
             } else {
                 //本地餐廳訂單
                 $SaveOrderInfo = [
-                    'ordertime' => $Now,
-                    'taketime' => $TakeTime,
-                    'total' => $TotalPrice,
-                    'phone' => $Phone,
-                    'address' => $Address,
+                    'ordertime' => $now,
+                    'taketime' => $takeTime,
+                    'total' => $realTotalPrice,
+                    'phone' => $phone,
+                    'address' => $address,
                     'status' => 0,
-                    'rid' => $Rid,
+                    'rid' => $rid,
                     'uid' => $UserId,
                 ];
                 //儲存訂單
-                $Oid = $this->CreateOrderServiceV2->SaveOrder($SaveOrderInfo);
+                $response = $this->orderService->create($SaveOrderInfo);
+                $oid = $response['id'];
                 //整理本地訂單詳情資料
-                $CreateOrderInfo = $this->FixOrderInfo($RequestOrder, $Oid);
+                $CreateOrderInfo = $this->FixOrderInfo($order, $oid);
                 //儲存訂單詳情
-                $this->CreateOrderServiceV2->SaveOrderInfo($CreateOrderInfo);
+                $orderInfoService->create($CreateOrderInfo);
             }
 
             //如果是本地付款
-            if ($Request['payment'] === 'local') {
+            if ($request['payment'] === 'local') {
                 //檢查User錢包是否足夠付款
-                $Money = $Request['total_price'];
-                $WalletMoney = $this->CreateOrderServiceV2->GetWalletMoney($UserId, $Money);
-                if ($WalletMoney->balance < $Money) {
+                $money = $request['total_price'];
+                $WalletMoney = $this->CreateOrderServiceV2->GetWalletMoney($UserId, $money);
+                if ($WalletMoney->balance < $money) {
                     return response()->json([
-                        'Err' => $this->Keys[18],
-                        'Message' => $this->Err[18]
+                        'Err' => $this->keys[18],
+                        'Message' => $this->err[18]
                     ]);
                 }
                 //將user錢包扣款
-                $Balance = $WalletMoney->balance - $Money;
+                $Balance = $WalletMoney->balance - $money;
                 $this->CreateOrderServiceV2->DeductMoney($UserId, $Balance);
                 // 存入wallet record
                 $WalletRecordInfo = [
                     'oid' => $Oid,
-                    'out' => $Money,
+                    'out' => $money,
                     'status' => 0,
-                    'pid' => $this->Payment[$Request['payment']],
+                    'pid' => $this->Payment[$request['payment']],
                     'uid' => $UserId,
                 ];
                 $this->CreateOrderServiceV2->SaveWalletRecord($WalletRecordInfo);
                 return response()->json([
-                    'name' => $Request['name'],
-                    'phone' => $Request['phone'],
-                    'take_time' => $Request['take_time'],
-                    'total_price' => $Request['total_price'],
-                    'orders' => $RequestOrder
+                    'name' => $request['name'],
+                    'phone' => $request['phone'],
+                    'take_time' => $request['take_time'],
+                    'total_price' => $request['total_price'],
+                    'orders' => $order
                 ]);
             }
             //如果是金流付款
-            if ($Request['payment'] === 'ecpay') {
+            if ($request['payment'] === 'ecpay') {
                 //將Ecpay資料存置資料庫
                 $Uuid = substr(Str::uuid(), 0, 20);
                 $Date = Carbon::now()->format('Y/m/d H:i:s');
-                $AllOrderMenuName = array_column($RequestOrder, 'name');
+                $AllOrderMenuName = array_column($order, 'name');
                 $Itemstring = implode(",", $AllOrderMenuName);
                 $EcpayInfo = [
                     "merchant_trade_no" => $Uuid,
                     "merchant_trade_date" => $Date,
-                    "amount" => $Money,
+                    "amount" => $money,
                     "item_name" => $Itemstring,
                     'trade_desc' => $UserId . '訂餐',
                 ];
@@ -302,9 +336,9 @@ class Pay extends Controller
                 $WalletRecordInfo = [
                     'eid' => $Uuid,
                     'oid' => $Oid,
-                    'out' => $Money,
+                    'out' => $money,
                     'status' => 11,
-                    'pid' => $this->Payment[$Request['payment']],
+                    'pid' => $this->Payment[$request['payment']],
                     'uid' => $UserId,
                 ];
                 $this->CreateOrderServiceV2->SaveWalletRecord($WalletRecordInfo);
@@ -320,141 +354,141 @@ class Pay extends Controller
             }
         } catch (Exception $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
+                'Err' => $this->keys[26],
+                'Message' => $this->err[26],
                 'OtherErr' => $e->getMessage()
             ]);
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
+                'Err' => $this->keys[26],
+                'Message' => $this->err[26],
                 'OtherErr' => $e->getMessage()
             ]);
         }
     }
 
-    public function EcpayCallBack(Request $Request)
+    public function EcpayCallBack(Request $request)
     {
         try {
-            $Tradedate = Carbon::createFromFormat('d/M/y H:m:s', $Request['trade_date']);
-            $Paymentdate = Carbon::createFromFormat('d/M/y H:m:s', $Request['payment_date']); //大小寫
+            $Tradedate = Carbon::createFromFormat('d/M/y H:m:s', $request['trade_date']);
+            $Paymentdate = Carbon::createFromFormat('d/M/y H:m:s', $request['payment_date']); //大小寫
             $EcpayBackInfo = [
-                'merchant_id' => $Request['merchant_id'],
+                'merchant_id' => $request['merchant_id'],
                 'trade_date' => $Tradedate,
-                'check_mac_value' => $Request['check_mac_value'],
-                'rtn_code' => $Request['rtn_code'],
-                'rtn_msg' => $Request['rtn_msg'],
-                'amount' => $Request['amount'],
+                'check_mac_value' => $request['check_mac_value'],
+                'rtn_code' => $request['rtn_code'],
+                'rtn_msg' => $request['rtn_msg'],
+                'amount' => $request['amount'],
                 'payment_date' => $Paymentdate,
-                'merchant_trade_no' => $Request['merchant_trade_no']
+                'merchant_trade_no' => $request['merchant_trade_no']
             ];
             $this->CreateOrderServiceV2->SaveEcpayBack($EcpayBackInfo);
-            $Oid = $this->CreateOrderServiceV2->GetOidByUuid($Request['merchant_trade_no'])->oid;
-            if ($Request['rtn_code'] == 0) {
+            $Oid = $this->CreateOrderServiceV2->GetOidByUuid($request['merchant_trade_no'])->oid;
+            if ($request['rtn_code'] == 0) {
                 //將WalletRecord的status改為false
-                $this->CreateOrderServiceV2->UpdateWalletRecordFail($Request['merchant_trade_no']);
+                $this->CreateOrderServiceV2->UpdateWalletRecordFail($request['merchant_trade_no']);
                 //將order的status改為false
                 $this->CreateOrderServiceV2->UpdateOrederFail($Oid);
             } else {
-                $this->CreateOrderServiceV2->UpdateWalletRecordsuccess($Request['merchant_trade_no']);
+                $this->CreateOrderServiceV2->UpdateWalletRecordsuccess($request['merchant_trade_no']);
                 $this->CreateOrderServiceV2->UpdateOrederSuccess($Oid);
             }
         } catch (Exception $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
+                'Err' => $this->keys[26],
+                'Message' => $this->err[26],
                 'OtherErr' => $e->getMessage()
             ]);
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
+                'Err' => $this->keys[26],
+                'Message' => $this->err[26],
                 'OtherErr' => $e->getMessage()
             ]);
         }
     }
 
-    public function GetOrder(Request $Request)
+    public function GetOrder(Request $request)
     {
         //規則
-        $Ruls = [
+        $ruls = [
             'limit' => ['integer'],
             'offset' => ['integer'],
             'oid' => ['integer'],
         ];
         //什麼錯誤報什麼錯誤訊息
-        $RulsMessage = [
+        $rulsMessage = [
             'limit.integer' => '無效的範圍',
             'offset.integer' => '無效的範圍',
             'oid.integer' => '無效的範圍',
         ];
         try {
             //驗證參輸入數
-            $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
-            if ($Validator->fails()) {
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            if ($validator->fails()) {
                 return response()->json([
-                    'Err' => array_search($Validator->Errors()->first(), $this->Err),
-                    'Message' => $Validator->Errors()->first()
+                    'Err' => array_search($validator->Errors()->first(), $this->err),
+                    'Message' => $validator->Errors()->first()
                 ]);
             }
             //取得offset limit
-            $OffsetLimit = ['limit' => $Request['limit'], 'offset' => $Request['offset']];
+            $OffsetLimit = ['limit' => $request['limit'], 'offset' => $request['offset']];
             $OffsetLimit = $this->TotalService->GetOffsetLimit($OffsetLimit);
-            $Oid = $Request['oid'];
+            $Oid = $request['oid'];
             //取出訂單
-            $UserInfo = $this->User->GetUserInfo();
-            $UserId = $UserInfo->id;
+            $userInfo = $this->User->GetUserInfo();
+            $UserId = $userInfo->id;
             $Order = $this->CreateOrderServiceV2->GetOrder($UserId, $Oid, $OffsetLimit);
             $OrderCount = $Order->count();
             return response()->json([
-                'Err' => $this->Keys[0],
-                'Message' => $this->Err[0],
+                'Err' => $this->keys[0],
+                'Message' => $this->err[0],
                 'Count' => $OrderCount,
                 'Order' => $Order
             ]);
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
+                'Err' => $this->keys[26],
+                'Message' => $this->err[26],
                 'OtherErr' => $e->getMessage()
             ]);
         }
     }
-    public function GetOrderInfo(Request $Request)
+    public function GetOrderInfo(Request $request)
     {
         //規則
-        $Ruls = [
+        $ruls = [
             'oid' => ['integer']
         ];
         //什麼錯誤報什麼錯誤訊息
-        $RulsMessage = [
+        $rulsMessage = [
             'oid.integer' => '資料填寫與規格不符'
         ];
         try {
             //驗證參輸入數
-            $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
-            if ($Validator->fails()) {
-                return response()->json(['Err' => array_search($Validator->Errors()->first(), $this->Err), 'Message' => $Validator->Errors()->first()]);
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            if ($validator->fails()) {
+                return response()->json(['Err' => array_search($validator->Errors()->first(), $this->err), 'Message' => $validator->Errors()->first()]);
             }
-            $Oid = $Request['oid'];
-            $UserInfo = $this->User->GetUserInfo();
-            $UserId = $UserInfo->id;
-            $OrderInfo = $this->CreateOrderServiceV2->GetOrderInfo($UserId, $Oid);
-            if (!isset($OrderInfo[0])) {
+            $Oid = $request['oid'];
+            $userInfo = $this->User->GetUserInfo();
+            $UserId = $userInfo->id;
+            $orderInfo = $this->CreateOrderServiceV2->GetOrderInfo($UserId, $Oid);
+            if (!isset($orderInfo[0])) {
                 return response()->json([
-                    'Err' => $this->Keys[19],
-                    'Message' => $this->Err[19]
+                    'Err' => $this->keys[19],
+                    'Message' => $this->err[19]
                 ]);
             }
             return response()->json([
-                'Err' => $this->Keys[0],
-                'Message' => $this->Err[0],
-                'ordersinfo' => $OrderInfo
+                'Err' => $this->keys[0],
+                'Message' => $this->err[0],
+                'ordersinfo' => $orderInfo
             ]);
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
+                'Err' => $this->keys[26],
+                'Message' => $this->err[26],
                 'OtherErr' => $e->getMessage()
             ]);
         }
@@ -468,8 +502,8 @@ class Pay extends Controller
             return true;
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
+                'Err' => $this->keys[26],
+                'Message' => $this->err[26],
                 'OtherErr' => $e->getMessage()
             ]);
         }
@@ -509,8 +543,8 @@ class Pay extends Controller
             return $GoodOrder;
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
+                'Err' => $this->keys[26],
+                'Message' => $this->err[26],
                 'OtherErr' => $e->getMessage()
             ]);
         }
@@ -526,21 +560,22 @@ class Pay extends Controller
             return true;
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
+                'Err' => $this->keys[26],
+                'Message' => $this->err[26],
                 'OtherErr' => $e->getMessage()
             ]);
         }
     }
 
-    public function FixOrderInfo($RequestOrder, $Oid)
+    public function FixOrderInfo($order, $oid)
     {
         try {
-            $OrderInfoInfo = array_map(function ($Item) use ($Oid) {
+            $orderInfoInfo = array_map(function ($Item) use ($oid) {
                 if (isset($Item['description'])) {
                     return [
                         'description' => $Item['description'],
-                        'oid' => $Oid, 'name' => $Item['name'],
+                        'name' => $Item['name'],
+                        'oid' => $oid,
                         'price' => $Item['price'],
                         'quanlity' => $Item['quanlity'],
                         'created_at' => now(),
@@ -549,19 +584,19 @@ class Pay extends Controller
                 }
                 return [
                     'description' => null,
-                    'oid' => $Oid,
+                    'oid' => $oid,
                     'name' => $Item['name'],
                     'price' => $Item['price'],
                     'quanlity' => $Item['quanlity'],
                     'created_at' => now(),
                     'updated_at' => now()
                 ];
-            }, $RequestOrder);
-            return $OrderInfoInfo;
+            }, $order);
+            return $orderInfoInfo;
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
+                'Err' => $this->keys[26],
+                'Message' => $this->err[26],
                 'OtherErr' => $e->getMessage()
             ]);
         }

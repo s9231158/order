@@ -11,9 +11,6 @@ class UserWallet
     public function updateOrCreate($userId, $blance)
     {
         try {
-            if (!isset($userId) || !isset($blance)) {
-                throw new Exception('資料缺失');
-            }
             return UserWalletModel::updateOrCreate(
                 ['id' => $userId, 'balance' => $blance],
                 ['balance' => $blance, 'created_at' => now(), 'updated_at' => now()]

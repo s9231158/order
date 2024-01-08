@@ -6,6 +6,7 @@ use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Date;
 use App\Models\OishiiMenu as Oishii_menu;
 use App\Contract\RestaurantInterface;
+use Illuminate\Support\Str;
 use Throwable;
 
 class OSmenu implements RestaurantInterface
@@ -57,7 +58,7 @@ class OSmenu implements RestaurantInterface
             $dateTime = Date::createFromFormat('Y-m-d H:i:s', $orderInfo['taketime']);
             $iso8601String = $dateTime->format('c');
             $targetData = [
-                'id' => $orderInfo['uid'],
+                'id' => $orderInfo['uuid'],
                 'name' => $orderInfo['name'],
                 'phone_number' => '0' . $orderInfo['phone'],
                 'pickup_time' => $iso8601String,

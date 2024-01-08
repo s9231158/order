@@ -11,12 +11,6 @@ class UserRecord
     public function create($recordInfo)
     {
         try {
-            $needColumn = ['uid', 'login', 'ip', 'device', 'email'];
-            foreach ($needColumn as $colunm) {
-                if (!isset($recordInfo[$colunm]) || empty($recordInfo[$colunm])) {
-                    throw new Exception('資料缺失');
-                }
-            }
             $goodInfo = [
                 'uid' => $recordInfo['uid'],
                 'login' => $recordInfo['login'],
@@ -56,21 +50,11 @@ class UserRecord
             if (isset($option['limit'])) {
                 $stmt->limit($option['limit']);
             }
-
+            //offset
             if (isset($option['offset'])) {
                 $stmt->offset($option['offset']);
             }
-            if (isset($option['get'])) {
-                return $stmt->get()->toArray();
-            } else {
-                $response = $stmt->first();
-                if (!$response) {
-                    return [];
-                } else {
-                    return $response->toArray();
-                }
-            }
-
+            return $stmt->get()->toArray();
         } catch (Throwable $e) {
             throw new Exception("user_record_service_err:" . 500);
         }

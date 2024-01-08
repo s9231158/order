@@ -180,21 +180,14 @@ class User extends Controller
             //檢查是否重複登入
             $token = $request->header('Authorization');
             $email = $request['email'];
-            try {
-                if ($token) {
-                    $alreadyLogin = $this->tokenService->checkToken($email);
-                    if (!$alreadyLogin) {
-                        return response()->json([
-                            'err' => $this->keys[26],
-                            'message' => $this->err[26]
-                        ]);
-                    }
+            if ($token) {
+                $alreadyLogin = $this->tokenService->checkToken($email);
+                if (!$alreadyLogin) {
+                    return response()->json([
+                        'err' => $this->keys[26],
+                        'message' => $this->err[26]
+                    ]);
                 }
-            } catch (Exception $e) {
-                return response()->json([
-                    'err' => $this->keys[26],
-                    'message' => $e->getMessage(),
-                ]);
             }
             //檢查此組Key是否一定時間內登入多次            
             $ip = $request->ip();
@@ -276,7 +269,7 @@ class User extends Controller
         }
     }
 
-    public function getProfile(Request $request)
+    public function getProfile()
     {
         try {
             $email = $this->tokenService->getEamil();
@@ -343,7 +336,6 @@ class User extends Controller
                 'orderby' => ['login', 'desc'],
                 'offset' => $offset,
                 'limit' => $limit,
-                'get' => 1,
             ];
             $recordList = $userRecordService->get($where, $option);
             $count = count($recordList);

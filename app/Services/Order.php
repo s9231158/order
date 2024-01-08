@@ -3,9 +3,50 @@
 namespace App\Services;
 
 use App\Models\Order as OrderModel;
+use Exception;
+use Throwable;
 
 class Order
 {
+    public function create($orderInfo)
+    {
+        try {
+            $needColumn = [
+                'ordertime',
+                'taketime',
+                'total',
+                'phone',
+                'status',
+                'address',
+                'rid',
+                'uid',
+            ];
+            foreach ($needColumn as $column) {
+                if ($column === 'status') {
+                    if (!isset($orderInfo['status'])) {
+                        throw new Exception('資料缺失');
+                    }
+                } elseif (!isset($orderInfo[$column]) || empty($orderInfo[$column])) {
+                    throw new Exception('資料缺失');
+                }
+            }
+            $goodInfo = [
+                'ordertime' => $orderInfo['ordertime'],
+                'taketime' => $orderInfo['taketime'],
+                'total' => $orderInfo['total'],
+                'phone' => $orderInfo['phone'],
+                'address' => $orderInfo['address'],
+                'status' => $orderInfo['status'],
+                'rid' => $orderInfo['rid'],
+                'uid' => $orderInfo['uid'],
+            ];
+            return OrderModel::create($goodInfo);
+        } catch (Exception $e) {
+            throw new Exception($e->getMessage());
+        } catch (Throwable $e) {
+            throw new Exception("order_service_err:" . 500 . $e);
+        }
+    }
     public function get($where, $option)
     {
         //select
