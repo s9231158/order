@@ -8,37 +8,33 @@ use Throwable;
 
 class Order
 {
-    public function create($orderInfo)
+    public function update($oid, $info)
+    {
+        $goodInfo = array_filter([
+            'ordertime' => $info['ordertime'] ?? null,
+            'taketime' => $info['taketime'] ?? null,
+            'total' => $info['total'] ?? null,
+            'phone' => $info['phone'] ?? null,
+            'address' => $info['address'] ?? null,
+            'status' => $info['status'] ?? null,
+            'rid' => $info['rid'] ?? null,
+            'uid' => $info['uid'] ?? null,
+        ]);
+        return OrderModel::find($oid)->update($goodInfo);
+    }
+
+    public function create($info)
     {
         try {
-            $needColumn = [
-                'ordertime',
-                'taketime',
-                'total',
-                'phone',
-                'status',
-                'address',
-                'rid',
-                'uid',
-            ];
-            foreach ($needColumn as $column) {
-                if ($column === 'status') {
-                    if (!isset($orderInfo['status'])) {
-                        throw new Exception('資料缺失');
-                    }
-                } elseif (!isset($orderInfo[$column]) || empty($orderInfo[$column])) {
-                    throw new Exception('資料缺失');
-                }
-            }
             $goodInfo = [
-                'ordertime' => $orderInfo['ordertime'],
-                'taketime' => $orderInfo['taketime'],
-                'total' => $orderInfo['total'],
-                'phone' => $orderInfo['phone'],
-                'address' => $orderInfo['address'],
-                'status' => $orderInfo['status'],
-                'rid' => $orderInfo['rid'],
-                'uid' => $orderInfo['uid'],
+                'ordertime' => $info['ordertime'],
+                'taketime' => $info['taketime'],
+                'total' => $info['total'],
+                'phone' => $info['phone'],
+                'address' => $info['address'],
+                'status' => $info['status'],
+                'rid' => $info['rid'],
+                'uid' => $info['uid'],
             ];
             return OrderModel::create($goodInfo);
         } catch (Exception $e) {
@@ -47,7 +43,7 @@ class Order
             throw new Exception("order_service_err:" . 500 . $e);
         }
     }
-    public function get($where, $option)
+    public function getList($where, $option)
     {
         //select
         $stmt = null;
@@ -75,15 +71,6 @@ class Order
             $stmt->offset($option['offset']);
         }
         //get
-        if (isset($option['get'])) {
-            return $stmt->get()->toArray();
-        } else {
-            $response = $stmt->first();
-            if (!$response) {
-                return [];
-            } else {
-                return $response->toArray();
-            }
-        }
+        return $stmt->get()->toArray();
     }
 }

@@ -8,15 +8,15 @@ use Exception;
 
 class UserRecord
 {
-    public function create($recordInfo)
+    public function create($info)
     {
         try {
             $goodInfo = [
-                'uid' => $recordInfo['uid'],
-                'login' => $recordInfo['login'],
-                'ip' => $recordInfo['ip'],
-                'device' => $recordInfo['device'],
-                'email' => $recordInfo['email'],
+                'uid' => $info['uid'],
+                'login' => $info['login'],
+                'ip' => $info['ip'],
+                'device' => $info['device'],
+                'email' => $info['email'],
             ];
             return User_recode::create($goodInfo);
         } catch (Exception $e) {
@@ -25,7 +25,8 @@ class UserRecord
             throw new Exception("user_record_service_err:" . 500);
         }
     }
-    public function get($where, $option)
+
+    public function getList($where, $option)
     {
         try {
             //select
@@ -42,15 +43,15 @@ class UserRecord
                     $stmt->where($chunk[0], $chunk[1], $chunk[2]);
                 }
             }
-            //orderBy
+            //orderBy 
             if (isset($option['orderby'])) {
                 $stmt->orderby($option['orderby'][0], $option['orderby'][1]);
             }
-            //limit
+            //limit 
             if (isset($option['limit'])) {
                 $stmt->limit($option['limit']);
             }
-            //offset
+            //offset 
             if (isset($option['offset'])) {
                 $stmt->offset($option['offset']);
             }

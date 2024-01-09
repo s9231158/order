@@ -9,12 +9,9 @@ use Exception;
 
 class Restaurant
 {
-    public function getListByRid($rids)
+    public function getListByRids($rids)
     {
         try {
-            if (!isset($rids)) {
-                throw new Exception('資料缺失');
-            }
             return RestaurantModel::
                 wherein('id', $rids)
                 ->orderBy('created_at', 'desc')
@@ -29,11 +26,25 @@ class Restaurant
 
     public function get($where, $option)
     {
-        // //check Redis
-        $redisKey = $this->cacheKey($where, $option);
-        if (Cache::get($redisKey)) {
-            return Cache::get($redisKey);
+        //select
+        $stmt = null;
+        if (isset($option['column'])) {
+            $stmt = RestaurantModel::select($option['column']);
+        } else {
+            $stmt = RestaurantModel::select('*');
         }
+        //where
+        if (!empty($where)) {
+            $response = $stmt->find($where)->first();
+        }
+        if (!$response) {
+            return $response;
+        }
+        return $response->toArray();
+    }
+
+    public function getList($where, $option)
+    {
         //select
         $stmt = null;
         if (isset($option['column'])) {
@@ -42,12 +53,7 @@ class Restaurant
             $stmt = RestaurantModel::select('*');
         }
         //join
-        if (isset($option['join'])) {
-            $joinChunks = array_chunk($option['join'], 4);
-            foreach ($joinChunks as $joinChunk) {
-                $stmt->join($joinChunk[0], $joinChunk[1], $joinChunk[2], $joinChunk[3]);
-            }
-        }
+        $stmt->join('restaurant_open_days', 'restaurant_open_days.id', '=', 'restaurants.id');
         //where
         $whereChunks = array_chunk($where, 3);
         if (!empty($where)) {
@@ -66,42 +72,6 @@ class Restaurant
         if (isset($option['offset'])) {
             $stmt->offset($option['offset']);
         }
-        //get
-        if (isset($option['get'])) {
-            $response = $stmt->get()->toArray();
-            Cache::set($redisKey, $response);
-            return $response;
-        } else {
-            $response = $stmt->first();
-            if (!$response) {
-                return [];
-            } else {
-                $response->toArray();
-                Cache::set($redisKey, $response);
-                return $response;
-            }
-        }
-    }
-    private function cacheKey($where, $option)
-    {
-        $where = $this->sort($where);
-        $option = $this->sort($option);
-        return md5(serialize([$where, $option]));
-    }
-    public static function sort($soure)
-    {
-        ksort($soure);
-        foreach ($soure as &$value) {
-            if (is_array($value)) {
-                usort($value, function ($a, $b) {
-                    $comparison = strcasecmp(preg_replace('/[=<>]/', '', $a), preg_replace('/[=<>]/', '', $b));
-                    if (strpos($a, '=') !== false) {
-                        return ($comparison === 0) ? 1 : $comparison;
-                    }
-                    return $comparison;
-                });
-            }
-        }
-        return $soure;
+        return $stmt->get()->toArray();
     }
 }

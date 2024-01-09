@@ -17,4 +17,6 @@ class Wallet_Record extends Model
         'status',
         'pid',
     ];
+    protected $primaryKey = 'eid';
+
 }

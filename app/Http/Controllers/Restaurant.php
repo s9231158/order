@@ -6,8 +6,6 @@ use App\Factorise;
 use App\Services\ErrorCode;
 use App\Services\Order;
 use App\Services\Restaurant as RestaurantService;
-
-
 use App\Services\RestaurantHistory;
 use App\Services\ResturantComment;
 use App\Services\Token;
@@ -29,6 +27,7 @@ class Restaurant extends Controller
         $this->err = $errorCodeService->getErrCode();
         $this->keys = $errorCodeService->getErrKey();
     }
+
     public function getRestaurant(Request $request)
     {
         //規則
@@ -66,12 +65,10 @@ class Restaurant extends Controller
                     'restaurants.totalpoint',
                     'restaurants.countpoint'
                 ],
-                'join' => ['restaurant_open_days', 'restaurant_open_days.id', '=', 'restaurants.id'],
-                'get' => 1,
                 'limit' => $option['limit'],
                 'offset' => $option['offset'],
             ];
-            $restaurantInfo = $this->restaurantService->get($where, $option);
+            $restaurantInfo = $this->restaurantService->getList($where, $option);
             $count = count($restaurantInfo);
             $keys = array_keys($restaurantInfo);
             shuffle($keys);
@@ -139,9 +136,8 @@ class Restaurant extends Controller
             $limit = $request['limit'] ?? 20;
             //是否有該餐廳
             $rid = $request['rid'];
-            $where = ['id', '=', $rid];
-            $option = ['first' => 1];
-            $restaurantInfo = $this->restaurantService->get($where, $option);
+            $option = [];
+            $restaurantInfo = $this->restaurantService->get($rid, $option);
             if (!$restaurantInfo || $restaurantInfo['enable'] != 1) {
                 return response()->json([
                     'message' => $this->keys[16],
@@ -233,9 +229,8 @@ class Restaurant extends Controller
             }
             //是否有該餐廳
             $rid = $request['rid'];
-            $where = ['id', '=', $rid];
-            $option = ['first' => 1];
-            $restaurantInfo = $this->restaurantService->get($where, $option);
+            $option = [];
+            $restaurantInfo = $this->restaurantService->get($rid, $option);
             if (!$restaurantInfo || $restaurantInfo['enable'] != 1) {
                 return response()->json([
                     'err' => $this->keys[16],
@@ -250,12 +245,13 @@ class Restaurant extends Controller
                 'option' => [
                     'column' => ['ordertime'],
                     'orderby' => ['ordertime', 'desc'],
+                    'limit' => 1
                 ]
             ];
             $orderService = new Order;
-            $lastOrder = $orderService->get($orderData['where'], $orderData['option']);
+            $lastOrder = $orderService->getList($orderData['where'], $orderData['option']);
             $yesterday = date("Y-m-d H:i:s", strtotime('-1 day'));
-            if ($lastOrder['ordertime'] < $yesterday) {
+            if ($lastOrder[0]['ordertime'] < $yesterday) {
                 return response()->json([
                     'err' => $this->keys[12],
                     'message' => $this->err[12]
@@ -264,8 +260,8 @@ class Restaurant extends Controller
             //是否第一次評論該餐廳
             $restaurantCommentService = new ResturantComment;
             $restaurantCommentData = [
-                'where' => ['uid', '=', $userId, 'rid', '=', $rid],
-                'option' => ['first' => 1]
+                'where' => ['uid', $userId, 'rid', $rid],
+                'option' => [],
             ];
             $restaurantComment = $restaurantCommentService->get($restaurantCommentData['where'], $restaurantCommentData['option']);
             if ($restaurantComment) {
@@ -330,10 +326,9 @@ class Restaurant extends Controller
             //是否有該餐廳 
             $rid = $request['rid'];
             $restaurantData = [
-                'where' => ['id', '=', $rid],
-                'option' => ['first' => 1]
+                'option' => []
             ];
-            $restaurantInfo = $this->restaurantService->get($restaurantData['where'], $restaurantData['option']);
+            $restaurantInfo = $this->restaurantService->get($rid, $restaurantData['option']);
             if (!$restaurantInfo || $restaurantInfo['enable'] != 1) {
                 return response()->json([
                     'err' => $this->keys[16],
@@ -351,14 +346,12 @@ class Restaurant extends Controller
                         'restaurant_comments.comment',
                         'restaurant_comments.created_at'
                     ],
-                    'join' => ['users', 'users.id', '=', 'restaurant_comments.uid'],
                     'orderby' => ['restaurant_comments.created_at', 'desc'],
-                    'get' => 1,
                     'limit' => $limit,
                     'offset' => $offset
                 ]
             ];
-            $restaurantComment = $restaurantCommentService->get($restaurantCommentData['where'], $restaurantCommentData['option']);
+            $restaurantComment = $restaurantCommentService->getList($restaurantCommentData['where'], $restaurantCommentData['option']);
             $count = count($restaurantComment);
             return response()->json([
                 'err' => $this->keys[0],

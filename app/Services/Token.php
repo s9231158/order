@@ -17,7 +17,8 @@ class Token
         $authorizationHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? null;
         $this->token = str_replace('Bearer ', '', $authorizationHeader);
     }
-    public function checkToken($email) //邏輯問題
+    
+    public function checkToken($email)
     {
         try {
             $RedisToken = Cache::get($email);
@@ -40,21 +41,15 @@ class Token
             throw new Exception($e->getMessage());
         }
     }
+
     public function create($userInfo)
     {
         try {
-            $needColumn = ['id', 'name', 'email'];
-            foreach ($needColumn as $colunm) {
-                if (!isset($userInfo[$colunm]) || empty($userInfo[$colunm])) {
-                    throw new Exception('資料缺失');
-                }
-            }
-            $time = Carbon::now()->addDay();
             $payload = [
                 'id' => $userInfo['id'],
                 'name' => $userInfo['name'],
                 'email' => $userInfo['email'],
-                'exp' => $time
+                'exp' => $userInfo['time']
             ];
             $token = JWT::encode($payload, env('JWT_SECRET'), 'HS256');
             Cache::put($userInfo['email'], $token, 60 * 60 * 24);
@@ -65,6 +60,7 @@ class Token
             throw new Exception("token_service_err:" . 500 . $e);
         }
     }
+
     public function forget($email)
     {
         try {
@@ -78,6 +74,7 @@ class Token
             throw new Exception("token_service_err:" . 500);
         }
     }
+
     public function getEamil()
     {
         try {
@@ -88,6 +85,7 @@ class Token
             throw new Exception('系統錯誤請重新登入');
         }
     }
+
     public function getUserId()
     {
         try {

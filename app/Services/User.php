@@ -18,51 +18,29 @@ class User
             $stmt = UserModel::select('*');
         }
         //where
-        $chunks = array_chunk($where, 3);
         if (!empty($where)) {
-            foreach ($chunks as $chunk) {
-                $stmt->where($chunk[0], $chunk[1], $chunk[2]);
-            }
+            $response = $stmt->find($where);
         }
-        //orderBy
-        if (isset($option['orderby'])) {
-            $stmt->orderby($option['orderby'][0], $option['orderby'][1]);
+        if (!$response) {
+            return $response;
         }
-        //limit
-        if (isset($option['limit'])) {
-            $stmt->limit($option['limit']);
-        }
-        if (isset($option['offset'])) {
-            $stmt->offset($option['offset']);
-        }
-        if (isset($option['get'])) {
-            return $stmt->get()->toArray();
-        } else {
-            $response = $stmt->first();
-            if (!$response) {
-                return [];
-            } else {
-                return $response->toArray();
-            }
-        }
+        return $response->toArray();
+    }
+    public function getPhone($phone)
+    {
+        return UserModel::where('phone', $phone)->exists();
     }
 
-    public function create($userInfo)
+    public function create($info)
     {
         try {
-            $needColumn = ['email', 'name', 'password', 'address', 'phone', 'age'];
-            foreach ($needColumn as $colunm) {
-                if (!isset($recordInfo[$colunm]) || empty($recordInfo[$colunm])) {
-                    throw new Exception('資料缺失');
-                }
-            }
             $goodInfo = [
-                'email' => $userInfo['email'],
-                'name' => $userInfo['name'],
-                'password' => $userInfo['password'],
-                'address' => $userInfo['address'],
-                'phone' => $userInfo['phone'],
-                'age' => $userInfo['age'],
+                'email' => $info['email'],
+                'name' => $info['name'],
+                'password' => $info['password'],
+                'address' => $info['address'],
+                'phone' => $info['phone'],
+                'age' => $info['age'],
             ];
             return UserModel::create($goodInfo);
         } catch (Exception $e) {

@@ -46,10 +46,12 @@ class ErrorCode
     {
         $this->keys = array_keys($this->err);
     }
+
     public function getErrCode()
     {
         return $this->err;
     }
+    
     public function getErrKey()
     {
         return $this->keys;
