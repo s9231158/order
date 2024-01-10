@@ -33,68 +33,68 @@ class RestaruantMoneyTotal implements ShouldQueue
     public function handle()
     {
         //取出昨天00:00
-        $Start = Carbon::yesterday();
+        $start = Carbon::yesterday();
         //取出今天00:00
-        $End = Carbon::today();
+        $end = Carbon::today();
         //取出昨天至今天所有訂單資料
-        $RestaruantTotalOrder = Order::select('total', 'rid', 'created_at', 'status')
-            ->whereBetween('created_at', [$Start, $End])->get();
+        $restaruantTotalOrder = Order::select('total', 'rid', 'created_at', 'status')
+            ->whereBetween('created_at', [$start, $end])->get();
         //取出交易成功訂單資料
-        $OnlyGoodRestaruantTotalOrder = $RestaruantTotalOrder->where('status', '=', '0');
-        $Date = [];
-        $TotalOrder = [];
-        $Yesterday = Carbon::yesterday();
-        $YesterdayAddHour = Carbon::yesterday()->addHour();
-        for ($I = 0; $I < 24; $I++) {
+        $onlyGoodRestaruantTotalOrder = $restaruantTotalOrder->where('status', '=', '0');
+        $date = [];
+        $totalOrder = [];
+        $yesterday = Carbon::yesterday();
+        $yesterdayAddHour = Carbon::yesterday()->addHour();
+        for ($i = 0; $i < 24; $i++) {
             // //取得每小時的所有訂單
-            $EveryHourOnlyGoodRestaruantOrder = $OnlyGoodRestaruantTotalOrder
-                ->whereBetween('created_at', [$Yesterday, $YesterdayAddHour]);
+            $everyHourOnlyGoodRestaruantOrder = $onlyGoodRestaruantTotalOrder
+                ->whereBetween('created_at', [$yesterday, $yesterdayAddHour]);
             //計算每小時內所有訂單各間餐廳收入總額
             //取出昨天00:00
-            $Date[$I]['starttime'] = $Yesterday->copy();
+            $date[$i]['starttime'] = $yesterday->copy();
             //取出昨天01:00
-            $Date[$I]['endtime'] = $YesterdayAddHour->copy();
-            foreach ($EveryHourOnlyGoodRestaruantOrder as $Key => $Value) {
-                $TotalOrder[] = [
-                    'rid' => $Value['rid'],
-                    'money' => $Value['total'],
-                    'starttime' => $Date[$I]['starttime'],
-                    'endtime' => $Date[$I]['endtime']
+            $date[$i]['endtime'] = $yesterdayAddHour->copy();
+            foreach ($everyHourOnlyGoodRestaruantOrder as $key => $value) {
+                $totalOrder[] = [
+                    'rid' => $value['rid'],
+                    'money' => $value['total'],
+                    'starttime' => $date[$i]['starttime'],
+                    'endtime' => $date[$i]['endtime']
                 ];
             }
             //對起始時間加一小
-            $Yesterday = $Yesterday->addHour();
+            $yesterday = $yesterday->addHour();
             //對終止時間加一小
-            $YesterdayAddHour = $YesterdayAddHour->addHour();
+            $yesterdayAddHour = $yesterdayAddHour->addHour();
         }
         //將相同時間與相同餐廳金額加總
-        $Sums = [];
-        foreach ($TotalOrder as $Item) {
-            $Key = $Item['starttime'] . $Item['rid'];
-            if (array_key_exists($Key, $Sums)) {
-                $Sums[$Key]['money'] += $Item['money'];
+        $sums = [];
+        foreach ($totalOrder as $item) {
+            $key = $item['starttime'] . $item['rid'];
+            if (array_key_exists($key, $sums)) {
+                $sums[$key]['money'] += $item['money'];
             } else {
-                $Sums[$Key] = [
-                    'rid' => $Item['rid'],
-                    'money' => $Item['money'],
-                    'starttime' => $Item['starttime'],
-                    'endtime' => $Item['endtime']
+                $sums[$key] = [
+                    'rid' => $item['rid'],
+                    'money' => $item['money'],
+                    'starttime' => $item['starttime'],
+                    'endtime' => $item['endtime']
                 ];
             }
         }
         //將結果整理後存進資料庫
-        $Result = [];
-        foreach ($Sums as $Item) {
-            $Result[] = [
-                'rid' => $Item['rid'],
-                'money' => $Item['money'],
-                'starttime' => $Item['starttime'],
-                'endtime' => $Item['endtime'],
+        $result = [];
+        foreach ($sums as $item) {
+            $result[] = [
+                'rid' => $item['rid'],
+                'money' => $item['money'],
+                'starttime' => $item['starttime'],
+                'endtime' => $item['endtime'],
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
             ];
         }
         //存入資料庫
-        Restaruant_Total_Money::insert($Result);
+        Restaruant_Total_Money::insert($result);
     }
 }

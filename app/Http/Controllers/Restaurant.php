@@ -10,6 +10,7 @@ use App\Services\RestaurantHistory;
 use App\Services\ResturantComment;
 use App\Services\Token;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Validator;
 use Exception;
 use Throwable;
@@ -57,18 +58,10 @@ class Restaurant extends Controller
             $where = [
             ];
             $option = [
-                'column' => [
-                    'restaurant_open_days.' . date('l'),
-                    'restaurants.id',
-                    'restaurants.title',
-                    'restaurants.img',
-                    'restaurants.totalpoint',
-                    'restaurants.countpoint'
-                ],
                 'limit' => $option['limit'],
                 'offset' => $option['offset'],
             ];
-            $restaurantInfo = $this->restaurantService->getList($where, $option);
+           return $restaurantInfo = $this->restaurantService->getJoinist($where, $option);
             $count = count($restaurantInfo);
             $keys = array_keys($restaurantInfo);
             shuffle($keys);
@@ -147,7 +140,7 @@ class Restaurant extends Controller
             //取得菜單
             $factorise = new Factorise;
             $restaurant = $factorise->setMenu($rid);
-            $Menu = $restaurant->getMenu($offset, $limit);
+            $menu = $restaurant->getMenu($offset, $limit);
             //檢查是否有登入
             try {
                 $tokenService = new Token;
@@ -184,7 +177,7 @@ class Restaurant extends Controller
                 'err' => $this->keys[0],
                 'message' => $this->err[0],
                 'restaurant_info' => $response,
-                'menu' => $Menu
+                'menu' => $menu
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -263,7 +256,7 @@ class Restaurant extends Controller
                 'where' => ['uid', $userId, 'rid', $rid],
                 'option' => [],
             ];
-            $restaurantComment = $restaurantCommentService->get($restaurantCommentData['where'], $restaurantCommentData['option']);
+            $restaurantComment = $restaurantCommentService->getJoin($restaurantCommentData['where'], $restaurantCommentData['option']);
             if ($restaurantComment) {
                 return response()->json([
                     'err' => $this->keys[14],

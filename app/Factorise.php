@@ -9,9 +9,9 @@ use App\Localmenu;
 
 class Factorise
 {
-    public static function setMenu(int $Rid): object
+    public static function setMenu(int $rid): object
     {
-        return match ($Rid) {
+        return match ($rid) {
             1 => (function () {
                     return new OSmenu();
                 })(),

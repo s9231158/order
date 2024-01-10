@@ -33,35 +33,35 @@ class UserRecordCount implements ShouldQueue
     public function handle()
     {
         //取出昨天00:00
-        $Start = Carbon::yesterday();
+        $start = Carbon::yesterday();
         //取出今天00:00
-        $End = Carbon::today();
+        $end = Carbon::today();
         //取出昨天至今天所有資料
-        $UserRecodeInfo = User_recode::select('created_at')->whereBetween('login', [$Start, $End])->get();
+        $userRecodeInfo = User_recode::select('created_at')->whereBetween('login', [$start, $end])->get();
         //取出昨天00:00
-        $Go = Carbon::yesterday();
+        $go = Carbon::yesterday();
         //取出昨天01:00
-        $To = Carbon::yesterday()->addHour();
-        $I = 0;
-        $List = [];
-        for ($I = 0; $I < 24; $I++) {
-            $Count = $UserRecodeInfo->whereBetween('created_at', [$Go, $To])->count();
+        $to = Carbon::yesterday()->addHour();
+        $i = 0;
+        $list = [];
+        for ($i = 0; $i < 24; $i++) {
+            $count = $userRecodeInfo->whereBetween('created_at', [$go, $to])->count();
             //取出資料
-            if ($Count !== 0) {
-                $List[] = [
-                    'count' => $Count,
-                    'starttime' => $Go->copy(),
-                    'endtime' => $To->copy(),
+            if ($count !== 0) {
+                $list[] = [
+                    'count' => $count,
+                    'starttime' => $go->copy(),
+                    'endtime' => $to->copy(),
                     'created_at' => Carbon::now(),
                     'updated_at' => Carbon::now()
                 ];
             }
             //取出昨天00:00
-            $Go = $Go->addHour();
+            $go = $go->addHour();
             //取出昨天01:00
-            $To = $To->addHour();
+            $to = $to->addHour();
         }
         //存至資料庫
-        Login_Total::insert($List);
+        Login_Total::insert($list);
     }
 }

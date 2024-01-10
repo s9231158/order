@@ -33,37 +33,37 @@ class PaymentCount implements ShouldQueue
     public function handle()
     {
         //取出昨天00:00
-        $Start = Carbon::yesterday();
+        $start = Carbon::yesterday();
         //取出今天00:00
-        $End = Carbon::today();
+        $end = Carbon::today();
         //取出昨天至今天所有訂單資料
-        $WalletRecord = Wallet_Record::select('pid', 'created_at', 'out')
-            ->whereBetween('created_at', [$Start, $End])->get();
-        $Yesterday = Carbon::yesterday();
-        $YesterdayAddHour = Carbon::yesterday()->addHour();
-        $PaymentList = [];
-        for ($I = 0; $I < 24; $I++) {
+        $walletRecord = Wallet_Record::select('pid', 'created_at', 'out')
+            ->whereBetween('created_at', [$start, $end])->get();
+        $yesterday = Carbon::yesterday();
+        $yesterdayAddHour = Carbon::yesterday()->addHour();
+        $paymentList = [];
+        for ($i = 0; $i < 24; $i++) {
             //取得每小時的ecpay支付方式
-            $EveryHourEcpayCount = $WalletRecord->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])
+            $everyHourEcpayCount = $walletRecord->whereBetween('created_at', [$yesterday, $yesterdayAddHour])
                 ->wherenotnull('out')->where('pid', '=', 1)->count();
             //取得每小時的本地支付方式
-            $EveryHourLocalPayCount = $WalletRecord->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])
+            $everyHourLocalPayCount = $walletRecord->whereBetween('created_at', [$yesterday, $yesterdayAddHour])
                 ->wherenotnull('out')->where('pid', '=', 2)->count();
-            if ($EveryHourEcpayCount !== 0 or $EveryHourLocalPayCount !== 0) {
-                $PaymentList[] = ['starttime' => $Yesterday->copy(),
-                    'endtime' => $YesterdayAddHour->copy(),
-                    'ecpay' => $EveryHourEcpayCount,
-                    'local' => $EveryHourLocalPayCount,
+            if ($everyHourEcpayCount !== 0 or $everyHourLocalPayCount !== 0) {
+                $paymentList[] = ['starttime' => $yesterday->copy(),
+                    'endtime' => $yesterdayAddHour->copy(),
+                    'ecpay' => $everyHourEcpayCount,
+                    'local' => $everyHourLocalPayCount,
                     'created_at' => Carbon::now(),
                     'updated_at' => Carbon::now(),
                 ];
             }
             //對起始時間加一小
-            $Yesterday = $Yesterday->addHour();
+            $yesterday = $yesterday->addHour();
             //對終止時間加一小
-            $YesterdayAddHour = $YesterdayAddHour->addHour();
+            $yesterdayAddHour = $yesterdayAddHour->addHour();
         }
         //存入資料庫
-        ModelPaymentCount::insert($PaymentList);
+        ModelPaymentCount::insert($paymentList);
     }
 }

@@ -269,11 +269,11 @@ class User extends Controller
             $option = [
                 'column' => ['email', 'name', 'address', 'phone', 'age']
             ];
-            $UserInfo = $this->userService->get($email, $option);
+            $userInfo = $this->userService->get($email, $option);
             return response()->json([
                 'err' => $this->keys[0],
                 'message' => $this->err[0],
-                'user_info' => $UserInfo
+                'user_info' => $userInfo
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -303,11 +303,11 @@ class User extends Controller
                 'limit.integer' => '無效的範圍',
                 'offset.integer' => '無效的範圍',
             ];
-            $Validator = Validator::make($request->all(), $ruls, $rulsMessage);
-            if ($Validator->fails()) {
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
+            if ($validator->fails()) {
                 return response()->json([
-                    'err' => array_search($Validator->Errors()->first(), $this->err),
-                    'message' => $Validator->Errors()->first()
+                    'err' => array_search($validator->Errors()->first(), $this->err),
+                    'message' => $validator->Errors()->first()
                 ]);
             }
             //取得offset&limit預設

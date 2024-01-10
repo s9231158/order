@@ -10,85 +10,85 @@ use Throwable;
 
 class TAmenu implements RestaurantInterface
 {
-    private $GetMenuUrl = 'http://neil.xincity.xyz:9998/tasty/api/menu';
-    private $OrderUrl = 'http://neil.xincity.xyz:9998/tasty/api/order';
-    private $GetMenuOnMenuIdUrl = 'http://neil.xincity.xyz:9998/tasty/api/menu?id=';
-    public function GetMenu(int $Offset, int $Limit): array
+    private $getMenuUrl = 'http://neil.xincity.xyz:9998/tasty/api/menu';
+    private $orderUrl = 'http://neil.xincity.xyz:9998/tasty/api/order';
+    private $getMenuOnMenuIdUrl = 'http://neil.xincity.xyz:9998/tasty/api/menu?id=';
+    public function getMenu(int $offset, int $limit): array
     //修改為從api取得
     {
-        $Url = $this->GetMenuUrl . '?limit=' . $Limit . '&offset=' . $Offset;
+        $url = $this->getMenuUrl . '?limit=' . $limit . '&offset=' . $offset;
         try {
-            $Client = new Client();
-            $Response = $Client->request('GET', $Url);
-            $GoodResponse = $Response->getBody();
-            $ArrayGoodResponse = json_decode($GoodResponse, true);
-            $ApiMenu = $ArrayGoodResponse['data']['list'];
-            $TargetData = [];
-            foreach ($ApiMenu as $Item) {
-                if ($Item['enable'] != '0') {
-                    $Menu = [
+            $client = new Client();
+            $response = $client->request('GET', $url);
+            $goodResponse = $response->getBody();
+            $arrayGoodResponse = json_decode($goodResponse, true);
+            $apiMenu = $arrayGoodResponse['data']['list'];
+            $targetData = [];
+            foreach ($apiMenu as $item) {
+                if ($item['enable'] != '0') {
+                    $menu = [
                         'rid' => 2,
-                        'id' => $Item['id'],
+                        'id' => $item['id'],
                         'info' => '',
-                        'name' => $Item['name'],
-                        'price' => $Item['price'],
+                        'name' => $item['name'],
+                        'price' => $item['price'],
                         'img' => ''
                     ];
-                    $TargetData[] = $Menu;
+                    $targetData[] = $menu;
                 } else {
-                    return $TargetData;
+                    return $targetData;
                 }
             }
-            return $TargetData;
+            return $targetData;
         } catch (Throwable $e) {
             return ['取得菜單錯誤:500'];
         }
     }
-    public function MenuEnable(array $MenuId): bool
+    public function menuEnable(array $menuIds): bool
     {
-        $Menu = Tasty_menu::wherein('id', $MenuId)->get();
-        $OrderCount = count($MenuId);
-        $NotEnableCount = $Menu->where('enable', '=', 1)->count();
-        if ($OrderCount !== $NotEnableCount) {
+        $menu = Tasty_menu::wherein('id', $menuIds)->get();
+        $orderCount = count($menuIds);
+        $notEnableCount = $menu->where('enable', '=', 1)->count();
+        if ($orderCount !== $notEnableCount) {
             return false;
         }
         return true;
     }
-    public function SendApi(array $OrderInfo, array $Order): bool
+    public function sendApi(array $orderInfo, array $order): bool
     {
         try {
-            $DateTime = Date::createFromFormat('Y-m-d H:i:s', $OrderInfo['taketime']);
-            $Iso8601String = $DateTime->format('c');
-            $TargetData = [
-                'order_id' => $OrderInfo['uid'],
-                'name' => $OrderInfo['name'],
-                'phone_number' => '0' . $OrderInfo['phone'],
+            $dateTime = Date::createFromFormat('Y-m-d H:i:s', $orderInfo['taketime']);
+            $iso8601String = $dateTime->format('c');
+            $targetData = [
+                'order_id' => $orderInfo['uid'],
+                'name' => $orderInfo['name'],
+                'phone_number' => '0' . $orderInfo['phone'],
                 'pickup_time' => '2016-06-01T14:41:36+08:00',
-                'total_price' => $OrderInfo['total_price'],
+                'total_price' => $orderInfo['total_price'],
                 'order' => ['list' => []],
             ];
-            foreach ($Order as $Item) {
-                if (isset($Item['description'])) {
-                    $List = [
-                        'id' => $Item['id'],
-                        'count' => $Item['quanlity'],
-                        'description' => $Item['description'],
+            foreach ($order as $item) {
+                if (isset($item['description'])) {
+                    $list = [
+                        'id' => $item['id'],
+                        'count' => $item['quanlity'],
+                        'description' => $item['description'],
                     ];
                 } else {
-                    $List = [
-                        'id' => $Item['id'],
-                        'count' => $Item['quanlity'],
+                    $list = [
+                        'id' => $item['id'],
+                        'count' => $item['quanlity'],
                     ];
                 }
-                $TargetData['order']['list'][] = $List;
+                $targetData['order']['list'][] = $list;
             }
             //發送Api
-            $Client = new Client();
-            $Response = $Client->request('POST', $this->OrderUrl, ['json' => $TargetData]);
-            $GoodResponse = $Response->getBody();
-            $ArrayGoodResponse = json_decode($GoodResponse);
+            $client = new Client();
+            $response = $client->request('POST', $this->orderUrl, ['json' => $targetData]);
+            $goodResponse = $response->getBody();
+            $arrayGoodResponse = json_decode($goodResponse);
             //取得結果
-            if ($ArrayGoodResponse->error_code === 0) {
+            if ($arrayGoodResponse->error_code === 0) {
                 return true;
             }
             return false;
@@ -96,33 +96,33 @@ class TAmenu implements RestaurantInterface
             return false;
         }
     }
-    public function MenuCorrect(array $Order): bool
+    public function menuCorrect(array $order): bool
     {
         try {
-            foreach ($Order as $Item) {
-                $Client = new Client();
-                $Response = $Client->request('GET', $this->GetMenuOnMenuIdUrl . $Item['id']);
-                $GoodResponse = $Response->getBody();
-                $ArrayResponse = json_decode($GoodResponse, true);
-                if ($ArrayResponse['data']['list'] === []) {
+            foreach ($order as $item) {
+                $client = new Client();
+                $response = $client->request('GET', $this->getMenuOnMenuIdUrl . $item['id']);
+                $goodResponse = $response->getBody();
+                $arrayResponse = json_decode($goodResponse, true);
+                if ($arrayResponse['data']['list'] === []) {
                     return false;
                 }
                 //取出Order內價格.名稱,餐點Id
-                $OrderName = $Item['name'];
-                $OrderPrice = $Item['price'];
-                $OrderId = $Item['id'];
+                $orderName = $item['name'];
+                $orderPrice = $item['price'];
+                $orderId = $item['id'];
                 //取出店家回傳菜單價格.名稱,餐點Id
-                $ResponseName = $Item['data']['list'][0]['name'];
-                $ResponseId = $Item['data']['list'][0]['id'];
-                $ResponsePrice = $Item['data']['list'][0]['price'];
+                $responseName = $item['data']['list'][0]['name'];
+                $responseId = $item['data']['list'][0]['id'];
+                $responsePrice = $item['data']['list'][0]['price'];
                 //比對是否不一致
-                if ($OrderName != $ResponseName) {
+                if ($orderName != $responseName) {
                     return false;
                 }
-                if ($OrderPrice != $ResponsePrice) {
+                if ($orderPrice != $responsePrice) {
                     return false;
                 }
-                if ($OrderId != $ResponseId) {
+                if ($orderId != $responseId) {
                     return false;
                 }
             }

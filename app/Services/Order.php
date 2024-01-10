@@ -43,6 +43,29 @@ class Order
             throw new Exception("order_service_err:" . 500 . $e);
         }
     }
+
+    public function get($where, $option)
+    {
+        $stmt = null;
+        if (isset($option['column'])) {
+            $stmt = OrderModel::select($option['column']);
+        } else {
+            $stmt = OrderModel::select('*');
+        }
+        //where
+        $chunks = array_chunk($where, 2);
+        if (!empty($where)) {
+            foreach ($chunks as $chunk) {
+                $stmt->where($chunk[0], $chunk[1]);
+            }
+        }
+        $response = $stmt->first();
+        if (!$response) {
+            return $response;
+        }
+        return $response->toArray();
+    }
+
     public function getList($where, $option)
     {
         //select

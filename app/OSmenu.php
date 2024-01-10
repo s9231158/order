@@ -42,10 +42,10 @@ class OSmenu implements RestaurantInterface
             return ['取得菜單錯誤:500'];
         }
     }
-    public function menuEnable(array $menuId): bool
+    public function menuEnable(array $menuIds): bool
     {
-        $menu = Oishii_menu::wherein('id', $menuId)->get();
-        $orderCount = count($menuId);
+        $menu = Oishii_menu::wherein('id', $menuIds)->get();
+        $orderCount = count($menuIds);
         $notEnableCount = $menu->where('enable', '=', 1)->count();
         if ($orderCount !== $notEnableCount) {
             return false;

@@ -26,6 +26,24 @@ class OrderInfo
         } catch (Exception $e) {
             throw new Exception("order_info_service_err:" . 500 . $e);
         }
-
+    }
+    public function getJoinList($where, $option)
+    {
+        $stmt = null;
+        if (isset($option['column'])) {
+            $stmt = OrderInfoModel::select($option['column']);
+        } else {
+            $stmt = OrderInfoModel::select('*');
+        }
+        //where
+        $chunks = array_chunk($where, 2);
+        if (!empty($where)) {
+            foreach ($chunks as $chunk) {
+                $stmt->where($chunk[0], $chunk[1]);
+            }
+        }
+        $stmt->join('orders', 'orders.id', '=', 'order_infos.oid');
+        $response = $stmt->get();
+        return $response->toArray();
     }
 }

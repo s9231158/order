@@ -9,75 +9,75 @@ use Throwable;
 
 class SHmenu implements RestaurantInterface
 {
-    private $GetMenuUrl = 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls';
-    private $OrderUrl = 'http://neil.xincity.xyz:9998/steak_home/api/mk/order';
-    private $GetMenuOnMenuIdUrl = 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls?ID=';
-    public function GetMenu(int $Offset, int $Limit): array
+    private $getMenuUrl = 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls';
+    private $orderUrl = 'http://neil.xincity.xyz:9998/steak_home/api/mk/order';
+    private $getMenuOnMenuIdUrl = 'http://neil.xincity.xyz:9998/steak_home/api/menu/ls?ID=';
+    public function getMenu(int $offset, int $limit): array
     //修改為從api取得
     {
-        $Url = $this->GetMenuUrl . '?LT=' . $Limit . '&PG=' . $Offset;
+        $url = $this->getMenuUrl . '?LT=' . $limit . '&PG=' . $offset;
         try {
-            $Client = new Client();
-            $Response = $Client->request('GET', $Url);
-            $GoodResponse = $Response->getBody();
-            $ArrayGoodResponse = json_decode($GoodResponse, true);
-            $ApiMenu = $ArrayGoodResponse['LS'];
-            $TargetData = [];
-            foreach ($ApiMenu as $Item) {
-                $Menu = [
+            $client = new Client();
+            $response = $client->request('GET', $url);
+            $goodResponse = $response->getBody();
+            $arrayGoodResponse = json_decode($goodResponse, true);
+            $apiMenu = $arrayGoodResponse['LS'];
+            $targetData = [];
+            foreach ($apiMenu as $item) {
+                $menu = [
                     'rid' => 3,
-                    'id' => $Item['ID'],
+                    'id' => $item['ID'],
                     'info' => '',
-                    'name' => $Item['NA'],
-                    'price' => $Item['PRC'],
+                    'name' => $item['NA'],
+                    'price' => $item['PRC'],
                     'img' => ''
                 ];
-                $TargetData[] = $Menu;
+                $targetData[] = $menu;
             }
-            return $TargetData;
+            return $targetData;
         } catch (Throwable $e) {
             return ['取得菜單錯誤:500'];
         }
     }
-    public function MenuEnable(array $MenuId): bool
+    public function menuEnable(array $menuIds): bool
     {
-        $Menu = Steakhome_menu::wherein('id', $MenuId)->get();
-        $OrderCount = count($MenuId);
-        $NotEnableCount = $Menu->where('enable', '=', 1)->count();
-        if ($OrderCount !== $NotEnableCount) {
+        $menu = Steakhome_menu::wherein('id', $menuIds)->get();
+        $orderCount = count($menuIds);
+        $notEnableCount = $menu->where('enable', '=', 1)->count();
+        if ($orderCount !== $notEnableCount) {
             return false;
         }
         return true;
     }
-    public function SendApi(array $OrderInfo, array $Order): bool
+    public function sendApi(array $orderInfo, array $order): bool
     {
         try {
-            $TargetData = [
-                'OID' => $OrderInfo['uid'],
-                'NA' => $OrderInfo['name'],
-                'PH_NUM' => '0' . $OrderInfo['phone'],
-                'TOL_PRC' => $OrderInfo['total_price'],
+            $targetData = [
+                'OID' => $orderInfo['uid'],
+                'NA' => $orderInfo['name'],
+                'PH_NUM' => '0' . $orderInfo['phone'],
+                'TOL_PRC' => $orderInfo['total_price'],
                 'LS' => [],
             ];
 
-            foreach ($Order as $Item) {
-                if (isset($Item['description'])) {
-                    $LS = [
-                        'ID' => $Item['id'],
-                        'NOTE' => $Item['description'],
+            foreach ($order as $item) {
+                if (isset($item['description'])) {
+                    $ls = [
+                        'ID' => $item['id'],
+                        'NOTE' => $item['description'],
                     ];
                 } else {
                     return false;
                 }
-                $TargetData['LS'][] = $LS;
+                $targetData['LS'][] = $ls;
             }
             //發送Api
-            $Client = new Client();
-            $Response = $Client->request('POST', $this->OrderUrl, ['json' => $TargetData]);
-            $GoodResponse = $Response->getBody();
-            $ArrayGoodResponse = json_decode($GoodResponse);
+            $client = new Client();
+            $response = $client->request('POST', $this->orderUrl, ['json' => $targetData]);
+            $goodResponse = $response->getBody();
+            $arrayGoodResponse = json_decode($goodResponse);
             //取得結果
-            if ($ArrayGoodResponse->ERR === 0) {
+            if ($arrayGoodResponse->ERR === 0) {
                 return true;
             }
             return false;
@@ -85,33 +85,33 @@ class SHmenu implements RestaurantInterface
             return false;
         }
     }
-    public function MenuCorrect(array $Order): bool
+    public function menuCorrect(array $order): bool
     {
         try {
-            foreach ($Order as $Item) {
-                $Client = new Client();
-                $Response = $Client->request('GET', $this->GetMenuOnMenuIdUrl . $Item['id']);
-                $GoodResponse = $Response->getBody();
-                $ArrayResponse = json_decode($GoodResponse, true);
-                if ($ArrayResponse['LS'] === []) {
+            foreach ($order as $item) {
+                $client = new Client();
+                $response = $client->request('GET', $this->getMenuOnMenuIdUrl . $item['id']);
+                $goodResponse = $response->getBody();
+                $arrayResponse = json_decode($goodResponse, true);
+                if ($arrayResponse['LS'] === []) {
                     return false;
                 }
                 //取出Order內價格.名稱,餐點Id
-                $OrderName = $Item['name'];
-                $OrderPrice = $Item['price'];
-                $OrderId = $Item['id'];
+                $orderName = $item['name'];
+                $orderPrice = $item['price'];
+                $orderId = $item['id'];
                 //取出店家回傳菜單價格.名稱,餐點Id
-                $ResponseName = $Item['LS'][0]['NA'];
-                $ResponseId = $Item['LS'][0]['ID'];
-                $ResponsePrice = $Item['LS'][0]['PRC'];
+                $responseName = $item['LS'][0]['NA'];
+                $responseId = $item['LS'][0]['ID'];
+                $responsePrice = $item['LS'][0]['PRC'];
                 //比對是否不一致
-                if ($OrderName != $ResponseName) {
+                if ($orderName != $responseName) {
                     return false;
                 }
-                if ($OrderPrice != $ResponsePrice) {
+                if ($orderPrice != $responsePrice) {
                     return false;
                 }
-                if ($OrderId != $ResponseId) {
+                if ($orderId != $responseId) {
                     return false;
                 }
             }

@@ -14,14 +14,12 @@ use App\Models\Order;
 class FailOrderCount implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-    private $OrderService;
+    private $orderService;
     /**
      * Create a new job instance.
      *
      * @return void
      */
-    private $Order;
-    private $OrderRepositoryV2;
     public function __construct()
     {
     }
@@ -34,40 +32,40 @@ class FailOrderCount implements ShouldQueue
     public function handle()
     {
         //取出昨天00:00
-        $Start = Carbon::yesterday();
+        $start = Carbon::yesterday();
         //取出今天00:00
-        $End = Carbon::today();
+        $end = Carbon::today();
         //取出昨天至今天所有訂單資料
-        $Order = Order::select('status', 'created_at')->whereBetween('created_at', [$Start, $End])->get();
-        $Yesterday = Carbon::yesterday();
-        $YesterdayAddHour = Carbon::yesterday()->addHour();
-        $OrderList = [];
-        for ($I = 0; $I < 24; $I++) {
+        $order = Order::select('status', 'created_at')->whereBetween('created_at', [$start, $end])->get();
+        $yesterday = Carbon::yesterday();
+        $yesterdayAddHour = Carbon::yesterday()->addHour();
+        $orderList = [];
+        for ($i = 0; $i < 24; $i++) {
             //取得每小時失敗的所有訂單
-            $EveryHourFailOrder = $Order->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])
+            $everyHourFailOrder = $order->whereBetween('created_at', [$yesterday, $yesterdayAddHour])
                 ->where('status', '!=', 0);
             //取得每小時的所有訂單
-            $EveryHourOrder = $Order->whereBetween('created_at', [$Yesterday, $YesterdayAddHour])
+            $everyHourOrder = $order->whereBetween('created_at', [$yesterday, $yesterdayAddHour])
                 ->where('status', '=', 0);
             //取得每小時失敗訂單次數
-            $EveryHourFailOrderCount = $EveryHourFailOrder->count();
+            $everyHourFailOrderCount = $everyHourFailOrder->count();
             //取得每小時訂單次數
-            $EveryHourOrderCount = $EveryHourOrder->count();
-            if ($EveryHourFailOrderCount !== 0) {
-                $OrderList[] = ['starttime' => $Yesterday->copy(),
-                    'endtime' => $YesterdayAddHour->copy(),
-                    'failcount' => $EveryHourFailOrderCount,
-                    'totalcount' => $EveryHourOrderCount,
+            $everyHourOrderCount = $everyHourOrder->count();
+            if ($everyHourFailOrderCount !== 0) {
+                $orderList[] = ['starttime' => $yesterday->copy(),
+                    'endtime' => $yesterdayAddHour->copy(),
+                    'failcount' => $everyHourFailOrderCount,
+                    'totalcount' => $everyHourOrderCount,
                     'created_at' => Carbon::now(),
                     'updated_at' => Carbon::now(),
                 ];
             }
             //對起始時間加一小
-            $Yesterday = $Yesterday->addHour();
+            $yesterday = $yesterday->addHour();
             //對終止時間加一小
-            $YesterdayAddHour = $YesterdayAddHour->addHour();
+            $yesterdayAddHour = $yesterdayAddHour->addHour();
         }
         //存入資料庫
-        Fail_Order_Count::insert($OrderList);
+        Fail_Order_Count::insert($orderList);
     }
 }
