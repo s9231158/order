@@ -10,7 +10,8 @@ use App\Services\RestaurantHistory;
 use App\Services\ResturantComment;
 use App\Services\Token;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 use Exception;
 use Throwable;
@@ -61,7 +62,7 @@ class Restaurant extends Controller
                 'limit' => $option['limit'],
                 'offset' => $option['offset'],
             ];
-           return $restaurantInfo = $this->restaurantService->getJoinist($where, $option);
+            $restaurantInfo = $this->restaurantService->getJoinist($where, $option);
             $count = count($restaurantInfo);
             $keys = array_keys($restaurantInfo);
             shuffle($keys);
@@ -138,34 +139,25 @@ class Restaurant extends Controller
                 ]);
             }
             //取得菜單
-            $factorise = new Factorise;
-            $restaurant = $factorise->setMenu($rid);
+            $restaurant = Factorise::setMenu($rid);
             $menu = $restaurant->getMenu($offset, $limit);
             //檢查是否有登入
-            try {
-                $tokenService = new Token;
-                $token = $request->header('Authorization');
-                if ($token) {
-                    $email = $tokenService->getEamil();
-                    $userId = $tokenService->getUserId();
-                    $tokenCheck = $tokenService->checkToken($email);
-                    if (!$tokenCheck) {
-                        return response()->json([
-                            'err' => $this->keys[26],
-                            'message' => $this->err[26]
-                        ]);
-                    }
-                    //是否已存在資料庫,有的話更新時間,沒有則建立紀錄
-                    $restaurantHistoryService = new RestaurantHistory;
-                    $restaurantHistoryService->updateOrCreate($userId, $rid);
+            $tokenService = new Token;
+            $token = $request->header('Authorization');
+            if ($token) {
+                $email = $tokenService->getEamil();
+                $userId = $tokenService->getUserId();
+                $tokenCheck = $tokenService->checkToken($email);
+                if (!$tokenCheck) {
+                    return response()->json([
+                        'err' => $this->keys[26],
+                        'message' => $this->err[26]
+                    ]);
                 }
-            } catch (Exception $e) {
-                return response()->json([
-                    'err' => $this->keys[26],
-                    'message' => $e->getMessage(),
-                ]);
+                //是否已存在資料庫,有的話更新時間,沒有則建立紀錄
+                $restaurantHistoryService = new RestaurantHistory;
+                $restaurantHistoryService->updateOrCreate($userId, $rid);
             }
-
             $response = [
                 'id' => $restaurantInfo['id'],
                 'total_point' => $restaurantInfo['totalpoint'],
@@ -365,5 +357,27 @@ class Restaurant extends Controller
                 'other_err' => $e->getMessage()
             ]);
         }
+    }
+    public function apple()
+    {
+        $go = Carbon::today();
+        $to = Carbon::today()->addHour();
+        $list = [];
+        $count = Cache::get('login_record');
+        for ($i = 0; $i < 24; $i++) {
+            if (!$count[$i]) {
+                continue ;
+            }
+            $list[] = [
+                'count' => $count[$i],
+                'starttime' => $go->copy(),
+                'endtime' => $to->copy(),
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now()
+            ];
+            $go = $go->addHour();
+            $to = $to->addHour();
+        }
+        return $list;
     }
 }

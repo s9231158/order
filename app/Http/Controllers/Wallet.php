@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\ErrorCodeService;
-use App\RepositoryV2\User;
-use App\TotalService;
+use App\Services\Ecpay;
+use App\Services\EcpayBack;
+use App\Services\UserWallet;
+use App\Services\WalletRecord;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Exception;
@@ -12,119 +13,127 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Throwable;
-use App\ServiceV2\Wallet as WalletServiceV2;
+use App\Services\ErrorCode;
+use App\Services\Token;
+use App\Services\EcpayApi;
 
 class Wallet extends Controller
 {
-    private $TotalService;
-    private $Err;
-    private $Keys;
-    private $WalletServiceV2;
-    private $User;
+    private $err;
+    private $keys;
+    private $tokenService;
+    private $walletRecordService;
     public function __construct(
-        WalletServiceV2 $WalletServiceV2,
-        ErrorCodeService $ErrorCodeService,
-        TotalService $TotalService,
-        User $User
+        ErrorCode $errorCodeService,
+        Token $tokenService,
+        WalletRecord $walletRecordService,
     ) {
-        $this->User = $User;
-        $this->WalletServiceV2 = $WalletServiceV2;
-        $this->TotalService = $TotalService;
-        $this->Err = $ErrorCodeService->GetErrCode();
-        $this->Keys = $ErrorCodeService->GetErrKey();
+        $this->err = $errorCodeService->GeterrCode();
+        $this->keys = $errorCodeService->GeterrKey();
+        $this->tokenService = $tokenService;
+        $this->walletRecordService = $walletRecordService;
     }
-    public function AddWalletMoney(Request $Request)
+    public function addWalletMoney(Request $request)
     {
         //規則
-        $Ruls = [
+        $ruls = [
             'money' => ['required', 'numeric', 'min:0'],
         ];
         //什麼錯誤報什麼錯誤訊息
-        $RulsMessage = [
+        $rulsmessage = [
             'money.numeric' => '無效的範圍',
             'money.required' => '必填資料未填',
             'money.min' => '無效的範圍'
         ];
         try {
             //驗證參輸入數
-            $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
-            if ($Validator->fails()) {
+            $validator = Validator::make($request->all(), $ruls, $rulsmessage);
+            if ($validator->fails()) {
                 return response()->json([
-                    'Err' => array_search($Validator->Errors()->first(), $this->Err),
-                    'Message' => $Validator->Errors()->first()
+                    'err' => array_search($validator->errors()->first(), $this->err),
+                    'message' => $validator->errors()->first()
                 ]);
             }
-            $UserInfo = $this->User->GetUserInfo();
-            $UserId = $UserInfo->id;
-            $Uuid = substr(Str::uuid(), 0, 20);
-            $Date = Carbon::now()->format('Y/m/d H:i:s');
-            $Money = $Request['money'];
-            $EcpayInfo = [
+            $userId = $this->tokenService->getUserId();
+            $uuid = substr(Str::uuid(), 0, 20);
+            $date = Carbon::now()->format('Y/m/d H:i:s');
+            $money = $request['money'];
+            $ecpayInfo = [
                 "merchant_id" => 11,
-                "merchant_trade_no" => $Uuid,
-                "merchant_trade_date" => $Date,
+                "merchant_trade_no" => $uuid,
+                "merchant_trade_date" => $date,
                 "payment_type" => "aio",
-                "amount" => $Money,
+                "amount" => $money,
                 "item_name" => '加值',
-                'trade_desc' => $UserId . '訂餐',
+                'trade_desc' => $userId . '訂餐',
                 "return_url" => env('ADD_WALLET_MONEY_ECPAY_RETURNURL'),
                 "choose_payment" => "Credit",
                 "encrypt_type" => 1,
                 "lang" => "en"
             ];
-            $SendEcpayApi = $this->WalletServiceV2->SendEcpayApi($EcpayInfo);
-            $this->WalletServiceV2->SaveEcpay($SendEcpayApi[1]);
-            $WalletRecordInfo = ['uid' => $UserId, 'eid' => $Uuid, 'in' => $Money, 'status' => 11, 'pid' => 2];
-            $this->WalletServiceV2->SaveWalletRecord($WalletRecordInfo);
-            if (isset($SendEcpayApi[0]->transaction_url)) {
-                return $SendEcpayApi[0];
+            $ecpayApiService = new EcpayApi;
+            $sendEcpayResponse = $ecpayApiService->sendEcpayApi($ecpayInfo);
+            $ecpayService = new Ecpay;
+            $ecpayService->create($sendEcpayResponse[1]);
+            $walletRecordInfo = ['uid' => $userId, 'eid' => $uuid, 'in' => $money, 'status' => 11, 'pid' => 2];
+            $this->walletRecordService->create($walletRecordInfo);
+            if (isset($sendEcpayResponse[0]->transaction_url)) {
+                return $sendEcpayResponse[0];
             }
-            if (!isset($SendEcpayApi[0]->transaction_url)) {
+            if (!isset($sendEcpayResponse[0]->transaction_url)) {
                 return response()->json([
-                    'Err' => $SendEcpayApi[0]->error_code,
-                    'Message' => '第三方金流錯誤'
+                    'err' => $sendEcpayResponse[0]->error_code,
+                    'message' => '第三方金流錯誤'
                 ]);
             }
-
+        } catch (Exception $e) {
+            return response()->json([
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
+                'other_err' => $e->getMessage()
+            ]);
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
-                'OtherErr' => $e->getMessage()
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
+                'other_err' => $e->getMessage()
             ]);
         }
     }
-    public function AddWalletMoneyCallBack(Request $Request)
+
+    public function addWalletMoneyCallBack(Request $request)
     {
         try {
-            $Money = $Request['amount'];
-            $Tradedate = Carbon::createFromFormat('Y/m/d H:i:s', $Request['trade_date']);
-            $Paymentdate = Carbon::createFromFormat('Y/m/d H:i:s', $Request['payment_date']);
-            $EcpayBackInfo = [
-                'merchant_id' => $Request['merchant_id'],
-                'trade_date' => $Tradedate,
-                'check_mac_value' => $Request['check_mac_value'],
-                'rtn_code' => $Request['rtn_code'],
-                'rtn_msg' => $Request['rtn_msg'],
-                'amount' => $Request['amount'],
-                'payment_date' => $Paymentdate,
-                'merchant_trade_no' => $Request['merchant_trade_no']
+            $money = $request['amount'];
+            $tradeDate = Carbon::createFromFormat('Y/m/d H:i:s', $request['trade_date']);
+            $paymentDate = Carbon::createFromFormat('Y/m/d H:i:s', $request['payment_date']);
+            $ecpayBackInfo = [
+                'merchant_id' => $request['merchant_id'],
+                'trade_date' => $tradeDate,
+                'check_mac_value' => $request['check_mac_value'],
+                'rtn_code' => $request['rtn_code'],
+                'rtn_msg' => $request['rtn_msg'],
+                'amount' => $request['amount'],
+                'payment_date' => $paymentDate,
+                'merchant_trade_no' => $request['merchant_trade_no']
             ];
-
-            $this->WalletServiceV2->SaveEcpayBack($EcpayBackInfo);
-            if ($Request['rtn_code'] == 0) {
+            $ecpayBackService = new EcpayBack;
+            $ecpayBackService->create($ecpayBackInfo);
+            if ($request['rtn_code'] == 0) {
                 //將WalletRecord的 status改為false
-                $this->WalletServiceV2->UpdateWalletRecordFail($Request['merchant_trade_no']);
+                $status = ['status' => 10];
+                $this->walletRecordService->updateByUuid($request['merchant_id'], $status);
             } else {
-                $Yesterday = date('Y-m-d H:i:s', strtotime('-1 day'));
-                $Today = date('Y-m-d H:i:s');
-                $Option = [
-                    'Eid' => $Request['merchant_trade_no'],
-                    'StartTime' => $Yesterday,
-                    'EndTime' => $Today
-                ];
-                $this->WalletServiceV2->AddMoney($Money, $Option);
-                $this->WalletServiceV2->UpdateWalletRecordSuccess($Request['merchant_trade_no']);
+                //將WalletRecord的 status改為success
+                $status = ['status' => 0];
+                $this->walletRecordService->updateByOid($request['merchant_id'], $status);
+                $userId = $this->tokenService->getUserId();
+                //將金額加入使用者錢包
+                $userWalletService = new UserWallet;
+                $userWalletData = ['option' => ['column' => ['balance']]];
+                $walletMoney = $userWalletService->get($userId, $userWalletData['option']);
+                $balance = $walletMoney['balance'] + $money;
+                $userWalletService->updateOrCreate($userId, $balance);
             }
         } catch (Exception $e) {
             Cache::set('moneycallback', $e);
@@ -132,44 +141,52 @@ class Wallet extends Controller
             Cache::set('moneycallback', $e);
         }
     }
-    public function GetWallet(Request $Request)
+    public function getWallet(Request $request)
     {
         //規則
-        $Ruls = [
+        $ruls = [
             'limit' => ['integer'],
             'offset' => ['integer'],
         ];
         //什麼錯誤報什麼錯誤訊息
-        $RulsMessage = [
+        $rulsmessage = [
             'limit.integer' => '無效的範圍',
             'offset.integer' => '無效的範圍',
         ];
         try {
-            $Validator = Validator::make($Request->all(), $Ruls, $RulsMessage);
-            if ($Validator->fails()) {
+            $validator = Validator::make($request->all(), $ruls, $rulsmessage);
+            if ($validator->fails()) {
                 return response()->json([
-                    'Err' => array_search($Validator->Errors()->first(), $this->Err),
-                    'Message' => $Validator->Errors()->first()
+                    'err' => array_search($validator->errors()->first(), $this->err),
+                    'message' => $validator->errors()->first()
                 ]);
             }
             //取的抓取範圍&類型
-            $OffsetLimit = ['limit' => $Request['limit'], 'offset' => $Request['offset']];
-            $OffsetLimit = $this->TotalService->GetOffsetLimit($OffsetLimit);
-            $Type = $Request['type'];
-            $GetWalletRecord = $this->WalletServiceV2->GetWalletRecordOnRangeAndType($OffsetLimit, $Type);
+            $limit = $request['limit'] ?? 20;
+            $offset = $request['offset'] ?? 0;
+            $userId = $this->tokenService->getUserId();
+            $type = $request['type'];
+            $where = isset($request['type']) ? ["uid", '=', $userId, $type, '!=', $type] : ["uid", '=', $userId];
+            $option = [
+                'column' => isset($request['type']) ? ['type', $type, 'wallet__records.created_at'] : ['type', 'in', 'out', 'wallet__records.created_at'],
+                'limit' => $limit,
+                'offset' => $offset,
+                'orderby' => ['wallet__records.created_at', 'desc'],
+            ];
+            $walletRecord = $this->walletRecordService->getJoinList($where, $option);
+            $count = count($walletRecord);
             return response()->json([
-                'Err' => $this->Keys[0],
-                'Message' => $this->Err[0],
-                'count' => $GetWalletRecord['count'],
-                'data' => $GetWalletRecord['data']]);
+                'err' => $this->keys[0],
+                'message' => $this->err[0],
+                'count' => $count,
+                'data' => $walletRecord
+            ]);
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->Keys[26],
-                'Message' => $this->Err[26],
-                'OtherErr' => $e->getMessage()
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
+                'other_err' => $e->getmessage()
             ]);
         }
     }
-
-
 }

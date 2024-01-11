@@ -6,7 +6,7 @@ use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Date;
 use App\Models\OishiiMenu as Oishii_menu;
 use App\Contract\RestaurantInterface;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Redis;
 use Throwable;
 
 class OSmenu implements RestaurantInterface
@@ -16,32 +16,53 @@ class OSmenu implements RestaurantInterface
     private $getMenuOnMenuIdUrl = 'http://neil.xincity.xyz:9998/oishii/api/menu/all?meal_id=';
 
     public function getMenu(int $offset, int $limit): array
-    //修改為從api取得
     {
         try {
-            $url = $this->getMenuUrl . '?limit=' . $limit . '&offset=' . $offset;
-            $client = new Client();
-            $response = $client->request('GET', $url);
-            $goodResponse = $response->getBody();
-            $arrayGoodResponse = json_decode($goodResponse, true);
-            $apiMenu = $arrayGoodResponse['menu'];
-            $targetData = [];
-            foreach ($apiMenu as $item) {
-                $menu = [
-                    'rid' => 1,
-                    'id' => $item['meal_id'],
-                    'info' => $item['meal_type'],
-                    'name' => $item['meal_name'],
-                    'price' => $item['price'],
-                    'img' => ''
-                ];
-                $targetData[] = $menu;
+            /* 需要尋找的keys */$keys = range($offset + 1, $limit + $offset);
+            /* redis內已有的所有keys */$redisKeys = Redis::hkeys('1menus');
+            /* 扣除redis內已有的keys 還需要的keys */$needKeys = array_values(array_diff($keys, $redisKeys));
+            /* 需要尋找的keys 但redis內已有的keys */$redisKeys = array_values(array_intersect($redisKeys, $keys));
+            /* 如果還需要到database找資料 */$need = false;
+            $response = [];
+            if (empty($needKeys)) {
+                foreach (Redis::hmget('1menus', $keys) as $item) {
+                    $response[] = json_decode($item, true);
+                }
+                return $response;
             }
-            return $targetData;
+            if (!empty($redisKeys)) {
+                foreach (Redis::hmget('1menus', $redisKeys) as $item) {
+
+                    $response[] = json_decode($item, true);
+                }
+                $need = true;
+            }
+            if (!$need) {
+                $url = $this->getMenuUrl . '?limit=' . $limit . '&offset=' . $offset;
+                $client = new Client();
+                $response = $client->request('GET', $url);
+                $goodResponse = $response->getBody();
+                $arrayGoodResponse = json_decode($goodResponse, true);
+                $apiMenu = $arrayGoodResponse['menu'];
+                foreach ($apiMenu as $item) {
+                    $menu = [
+                        'rid' => 1,
+                        'id' => $item['meal_id'],
+                        'info' => $item['meal_type'],
+                        'name' => $item['meal_name'],
+                        'price' => $item['price'],
+                        'img' => ''
+                    ];
+                    Redis::hset('1menus', $item['id'], json_encode($menu));
+                    $response[] = $menu;
+                }
+            }
+            return $response;
         } catch (Throwable $e) {
             return ['取得菜單錯誤:500'];
         }
     }
+
     public function menuEnable(array $menuIds): bool
     {
         $menu = Oishii_menu::wherein('id', $menuIds)->get();
@@ -52,6 +73,7 @@ class OSmenu implements RestaurantInterface
         }
         return true;
     }
+
     public function sendApi(array $orderInfo, array $order): bool
     {
         try {
@@ -95,6 +117,7 @@ class OSmenu implements RestaurantInterface
             return false;
         }
     }
+
     public function menuCorrect(array $order): bool
     {
         try {

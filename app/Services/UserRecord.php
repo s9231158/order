@@ -3,11 +3,39 @@
 namespace App\Services;
 
 use App\Models\User_recode;
+use Illuminate\Support\Facades\Cache;
 use Throwable;
 use Exception;
 
 class UserRecord
 {
+    private $info = [
+        '0' => 0,
+        '1' => 0,
+        '2' => 0,
+        '3' => 0,
+        '4' => 0,
+        '5' => 0,
+        '6' => 0,
+        '7' => 0,
+        '8' => 0,
+        '9' => 0,
+        '10' => 0,
+        '11' => 0,
+        '12' => 0,
+        '13' => 0,
+        '14' => 0,
+        '15' => 0,
+        '16' => 0,
+        '17' => 0,
+        '18' => 0,
+        '19' => 0,
+        '20' => 0,
+        '21' => 0,
+        '22' => 0,
+        '23' => 0,
+        '24' => 0,
+    ];
     public function create($info)
     {
         try {
@@ -18,7 +46,13 @@ class UserRecord
                 'device' => $info['device'],
                 'email' => $info['email'],
             ];
-            return User_recode::create($goodInfo);
+            $response = User_recode::create($goodInfo);
+            //使用memcached來儲存
+            $hour = intval(date('H', strtotime($info['login'])));
+            $apple = Cache::get('login_record');
+            $apple[$hour] += 1;
+            Cache::put('login_record', $apple);
+            return $response;
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
         } catch (Throwable $e) {

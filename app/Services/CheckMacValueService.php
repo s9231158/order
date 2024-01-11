@@ -1,6 +1,6 @@
 <?php
 
-namespace App;
+namespace App\Services;
 
 use Exception;
 
@@ -42,7 +42,7 @@ class CheckMacValueService
             throw $e;
         }
     }
-   
+
     public function GenerateHash($Source)
     {
         $Hash = hash('sha256', $Source);

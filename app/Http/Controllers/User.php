@@ -11,6 +11,8 @@ use App\Services\UserFavorite;
 use App\Services\RestaurantHistory;
 use App\Services\ErrorCode;
 use Exception;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Date;
 use Throwable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -213,7 +215,7 @@ class User extends Controller
                 'email' => $email,
             ];
             $userRecordService = new UserRecord;
-            $userRecordService->create($recordInfo);
+           return $userRecordService->create($recordInfo);
             //製做token
             $time = Carbon::now()->addDay();
             $tokenInfo = ['id' => $user['id'], 'name' => $user['name'], 'email' => $user['email'], 'time' => $time];
@@ -318,7 +320,9 @@ class User extends Controller
             $userId = $this->tokenService->getUserId();
             $userRecordService = new UserRecord;
             $where = [
-                'uid', '=', $userId,
+                'uid',
+                '=',
+                $userId,
             ];
             $option = [
                 'column' => ['ip', 'device', 'login'],

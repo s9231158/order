@@ -4,8 +4,8 @@ namespace App\Http\Middleware;
 
 use App\Services\Token;
 use Closure;
-use App\ErrorCodeService;
 use Exception;
+use App\Services\ErrorCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use UnexpectedValueException;
@@ -26,7 +26,7 @@ class TokenSessionValid
     private $keys = [];
     private $token;
     private $authorizationHeader;
-    public function __construct(ErrorCodeService $errorCodeService)
+    public function __construct(ErrorCode $errorCodeService)
     {
         $this->authorizationHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? null;
         $this->token = str_replace('Bearer ', '', $this->authorizationHeader);

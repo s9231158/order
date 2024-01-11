@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Restaurant as RestaurantModel;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
 use Throwable;
 use Exception;
@@ -13,11 +12,36 @@ class Restaurant
     public function getListByRids($rids)
     {
         try {
-            return RestaurantModel::
-                wherein('id', $rids)
-                ->orderBy('created_at', 'desc')
-                ->get()
-                ->toArray();
+            /* redis內已有的所有keys */$redisKeys = redis::hkeys('restaurantjoinInfo');
+            /* 扣除redis內已有的keys 還需要的keys */$needKeys = array_values(array_diff($rids, $redisKeys));
+            /* 需要尋找的keys 但redis內已有的keys */$redisKeys = array_values(array_intersect($redisKeys, $rids));
+            /* 如果還需要到database找資料 */
+            $need = false;
+            $response = [];
+            if (empty($needKeys)) {
+                foreach (Redis::hmget('restaurantInfo', $rids) as $item) {
+                    $response[] = json_decode($item, true);
+                }
+                return $response;
+            }
+            if (!empty($redisKeys)) {
+                foreach (Redis::hmget('restaurantInfo', $redisKeys) as $item) {
+                    $response[] = json_decode($item, true);
+                }
+                $need = true;
+            }
+            if (!$need) {
+                $dataResponse = RestaurantModel::
+                    wherein('id', $needKeys)
+                    ->orderBy('created_at', 'desc')
+                    ->get()
+                    ->toArray();
+                foreach ($dataResponse as $item) {
+                    Redis::hset('restaurantInfo', $item['id'], json_encode($item));
+                    $response[] = $item;
+                }
+            }
+            return $response;
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
         } catch (Throwable $e) {
@@ -27,6 +51,10 @@ class Restaurant
 
     public function get($where, $option)
     {
+        //redis內是否有資料
+        if (Redis::HEXISTS('restaurantInfo', $where)) {
+            return json_decode(Redis::hget('restaurantInfo', $where), true);
+        }
         //select
         $stmt = null;
         if (isset($option['column'])) {
@@ -36,11 +64,13 @@ class Restaurant
         }
         //where
         if (!empty($where)) {
-            $response = $stmt->find($where)->first();
+            $response = $stmt->find($where);
         }
         if (!$response) {
             return $response;
         }
+        //將從database抓出的資料存入redis
+        Redis::hset('restaurantInfo', $where, json_encode($response));
         return $response->toArray();
     }
 
@@ -48,23 +78,19 @@ class Restaurant
     {
         //帶offset limit的
         /* 需要尋找的keys */$keys = range($option['offset'] + 1, $option['limit'] + $option['offset']);
-        /* redis內以有的所有keys */$redisKeys = redis::hkeys('restaurantInfo');
-        /* 扣除redis內以有的keys 還需要的keys */$needKeys = array_values(array_diff($keys, $redisKeys));
-        /* 需要尋找的keys 但redis內以有的keys */$redisKeys = array_values(array_intersect($redisKeys, $keys));
+        /* redis內已有的所有keys */$redisKeys = redis::hkeys('restaurantjoinInfo');
+        /* 扣除redis內已有的keys 還需要的keys */$needKeys = array_values(array_diff($keys, $redisKeys));
+        /* 需要尋找的keys 但redis內已有的keys */$redisKeys = array_values(array_intersect($redisKeys, $keys));
         /* 如果還需要到database找資料 */$need = false;
         $response = [];
         if (empty($needKeys)) {
-            foreach (Redis::hmget('restaurantInfo', $keys) as $item) {
-                $respones[] = json_decode($item, true);
+            foreach (Redis::hmget('restaurantjoinInfo', $keys) as $item) {
+                $response[] = json_decode($item, true);
             }
-            return $respones;
+            return $response;
         }
-        if (!empty($needKeys)) {
-            $need = true;
-        }
-        if (!empty($needKeys) || !empty($redisKeys)) {
-return 1;
-            foreach (Redis::hmget('restaurantInfo', $redisKeys) as $item) {        
+        if (!empty($redisKeys)) {
+            foreach (Redis::hmget('restaurantjoinInfo', $redisKeys) as $item) {
 
                 $response[] = json_decode($item, true);
             }
@@ -79,7 +105,6 @@ return 1;
         }
         //join
         $stmt->join('restaurant_open_days', 'restaurant_open_days.id', '=', 'restaurants.id');
-
         if ($need) {
             $stmt->whereIn('restaurants.id', $needKeys);
         } else {
@@ -91,7 +116,6 @@ return 1;
                 }
             }
         }
-
         //orderBy
         if (isset($option['orderby'])) {
             $stmt->orderby($option['orderby'][0], $option['orderby'][1]);
@@ -105,11 +129,10 @@ return 1;
                 $stmt->offset($option['offset']);
             }
         }
-
         $dataResponse = $stmt->get()->toArray();
-        foreach ($dataResponse as $result) {
-            Redis::hset('restaurantInfo', $result['id'], json_encode($result));
-            $response[] = $result;
+        foreach ($dataResponse as $item) {
+            Redis::hset('restaurantInfo', $item['id'], json_encode($item));
+            $response[] = $item;
         }
         return $response;
     }

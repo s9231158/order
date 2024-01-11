@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\CheckMacValueService;
+use App\Services\CheckMacValueService;
 use GuzzleHttp\Client;
 use Throwable;
 

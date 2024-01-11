@@ -157,8 +157,7 @@ class Pay extends Controller
                 ]);
             }
             // //檢查菜單金額名稱id是否與店家一致
-            $factorise = new Factorise;
-            $restaurant = $factorise->setMenu($rid);
+            $restaurant = Factorise::setMenu($rid);
             $menuCorrect = $restaurant->menuCorrect($order);
             if (!$menuCorrect) {
                 return response()->json([
@@ -368,12 +367,12 @@ class Pay extends Controller
             if ($request['rtn_code'] == 0) {
                 //將WalletRecord的status改為失敗代碼
                 $status = ['status' => 10];
-                $walletRecordService->update($oid, $status);
+                $walletRecordService->updateByOid($oid, $status);
                 //將order的status改為失敗代碼
                 $orderService->update($oid, $status);
             } else {
                 $status = ['status' => 0];
-                $walletRecordService->update($oid, $status);
+                $walletRecordService->updateByOid($oid, $status);
                 $orderService->update($oid, $status);
             }
         } catch (Exception $e) {
@@ -423,8 +422,10 @@ class Pay extends Controller
             $oid = $request['oid'] ?? null;
             if ($oid) {
                 $where = [
-                    'id', $oid,
-                    'uid', $userId
+                    'id',
+                    $oid,
+                    'uid',
+                    $userId
                 ];
                 $option = ['column' => ['id', 'ordertime', 'taketime', 'total', 'status']];
                 $order = $orderService->get($where, $option);
@@ -475,7 +476,8 @@ class Pay extends Controller
             if ($validator->fails()) {
                 return response()->json([
                     'err' => array_search($validator->Errors()->first(), $this->err),
-                    'message' => $validator->Errors()->first()]);
+                    'message' => $validator->Errors()->first()
+                ]);
             }
             $oid = $request['oid'];
             $userId = $this->tokenService->getUserId();

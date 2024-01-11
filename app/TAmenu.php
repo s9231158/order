@@ -6,6 +6,7 @@ use App\Contract\RestaurantInterface;
 use App\Models\Tasty_menu;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\Redis;
 use Throwable;
 
 class TAmenu implements RestaurantInterface
@@ -14,36 +15,56 @@ class TAmenu implements RestaurantInterface
     private $orderUrl = 'http://neil.xincity.xyz:9998/tasty/api/order';
     private $getMenuOnMenuIdUrl = 'http://neil.xincity.xyz:9998/tasty/api/menu?id=';
     public function getMenu(int $offset, int $limit): array
-    //修改為從api取得
     {
         $url = $this->getMenuUrl . '?limit=' . $limit . '&offset=' . $offset;
         try {
-            $client = new Client();
-            $response = $client->request('GET', $url);
-            $goodResponse = $response->getBody();
-            $arrayGoodResponse = json_decode($goodResponse, true);
-            $apiMenu = $arrayGoodResponse['data']['list'];
-            $targetData = [];
-            foreach ($apiMenu as $item) {
-                if ($item['enable'] != '0') {
-                    $menu = [
-                        'rid' => 2,
-                        'id' => $item['id'],
-                        'info' => '',
-                        'name' => $item['name'],
-                        'price' => $item['price'],
-                        'img' => ''
-                    ];
-                    $targetData[] = $menu;
-                } else {
-                    return $targetData;
+            /* 需要尋找的keys */$keys = range($offset + 1, $limit + $offset);
+            /* redis內已有的所有keys */$redisKeys = Redis::hkeys('2menus');
+            /* 扣除redis內已有的keys 還需要的keys */$needKeys = array_values(array_diff($keys, $redisKeys));
+            /* 需要尋找的keys 但redis內已有的keys */$redisKeys = array_values(array_intersect($redisKeys, $keys));
+            /* 如果還需要到database找資料 */
+            $need = false;
+            $response = [];
+            if (empty($needKeys)) {
+                foreach (Redis::hmget('2menus', $keys) as $item) {
+                    $response[] = json_decode($item, true);
+                }
+                return $response;
+            }
+            if (!empty($redisKeys)) {
+                foreach (Redis::hmget('2menus', $redisKeys) as $item) {
+
+                    $response[] = json_decode($item, true);
+                }
+                $need = true;
+            }
+            if (!$need) {
+                $client = new Client();
+                $response = $client->request('GET', $url);
+                $goodResponse = $response->getBody();
+                $arrayGoodResponse = json_decode($goodResponse, true);
+                $apiMenu = $arrayGoodResponse['data']['list'];
+                foreach ($apiMenu as $item) {
+                    if ($item['enable'] != '0') {
+                        $menu = [
+                            'rid' => 2,
+                            'id' => $item['id'],
+                            'info' => '',
+                            'name' => $item['name'],
+                            'price' => $item['price'],
+                            'img' => ''
+                        ];
+                        $response[] = $menu;
+                        Redis::hset('2menus', $item['id'], json_encode($menu));
+                    }
                 }
             }
-            return $targetData;
+            return $response;
         } catch (Throwable $e) {
             return ['取得菜單錯誤:500'];
         }
     }
+    
     public function menuEnable(array $menuIds): bool
     {
         $menu = Tasty_menu::wherein('id', $menuIds)->get();
@@ -54,6 +75,7 @@ class TAmenu implements RestaurantInterface
         }
         return true;
     }
+
     public function sendApi(array $orderInfo, array $order): bool
     {
         try {
@@ -96,6 +118,7 @@ class TAmenu implements RestaurantInterface
             return false;
         }
     }
+
     public function menuCorrect(array $order): bool
     {
         try {
