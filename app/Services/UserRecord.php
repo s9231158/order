@@ -49,9 +49,9 @@ class UserRecord
             $response = User_recode::create($goodInfo);
             //使用memcached來儲存
             $hour = intval(date('H', strtotime($info['login'])));
-            $apple = Cache::get('login_record');
-            $apple[$hour] += 1;
-            Cache::put('login_record', $apple);
+            $loginRecordTotal = Cache::get('login_record');
+            $loginRecordTotal[$hour] += 1;
+            Cache::put('login_record', $loginRecordTotal);
             return $response;
         } catch (Exception $e) {
             throw new Exception($e->getMessage());

@@ -9,7 +9,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
 use App\Models\FailOrderCount as Fail_Order_Count;
-use App\Models\Order;
+use Illuminate\Support\Facades\Cache;
 
 class FailOrderCount implements ShouldQueue
 {
@@ -29,43 +29,58 @@ class FailOrderCount implements ShouldQueue
      *
      * @return void
      */
+    private $time = [
+        '0' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '1' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '2' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '3' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '4' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '5' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '6' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '7' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '8' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '9' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '10' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '11' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '12' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '13' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '14' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '15' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '16' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '17' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '18' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '19' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '20' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '21' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '22' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '23' => ['order' => 0, 'fail' => 0, 'success' => 0],
+        '24' => ['order' => 0, 'fail' => 0, 'success' => 0],
+    ];
     public function handle()
     {
-        //取出昨天00:00
-        $start = Carbon::yesterday();
-        //取出今天00:00
-        $end = Carbon::today();
-        //取出昨天至今天所有訂單資料
-        $order = Order::select('status', 'created_at')->whereBetween('created_at', [$start, $end])->get();
-        $yesterday = Carbon::yesterday();
-        $yesterdayAddHour = Carbon::yesterday()->addHour();
-        $orderList = [];
-        for ($i = 0; $i < 24; $i++) {
-            //取得每小時失敗的所有訂單
-            $everyHourFailOrder = $order->whereBetween('created_at', [$yesterday, $yesterdayAddHour])
-                ->where('status', '!=', 0);
-            //取得每小時的所有訂單
-            $everyHourOrder = $order->whereBetween('created_at', [$yesterday, $yesterdayAddHour])
-                ->where('status', '=', 0);
-            //取得每小時失敗訂單次數
-            $everyHourFailOrderCount = $everyHourFailOrder->count();
-            //取得每小時訂單次數
-            $everyHourOrderCount = $everyHourOrder->count();
-            if ($everyHourFailOrderCount !== 0) {
-                $orderList[] = ['starttime' => $yesterday->copy(),
-                    'endtime' => $yesterdayAddHour->copy(),
-                    'failcount' => $everyHourFailOrderCount,
-                    'totalcount' => $everyHourOrderCount,
-                    'created_at' => Carbon::now(),
-                    'updated_at' => Carbon::now(),
-                ];
+        $orderTotal = Cache::get('order_total');
+        Cache::set('order_total', $this->time);
+        $go = Carbon::today();
+        $to = Carbon::today()->addHour();
+        $list = [];
+        for ($i = 0; $i < 25; $i++) {
+            if (!$orderTotal[$i]['order']) {
+                $go = $go->addHour();
+                $to = $to->addHour();
+                continue;
             }
-            //對起始時間加一小
-            $yesterday = $yesterday->addHour();
-            //對終止時間加一小
-            $yesterdayAddHour = $yesterdayAddHour->addHour();
+            $list[] = [
+                'totalcount' => $orderTotal[$i]['order'],
+                'failcount' => $orderTotal[$i]['fail'],
+                'success' => $orderTotal[$i]['success'],
+                'starttime' => $go->copy(),
+                'endtime' => $to->copy(),
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now()
+            ];
+            $go = $go->addHour();
+            $to = $to->addHour();
         }
-        //存入資料庫
-        Fail_Order_Count::insert($orderList);
+        Fail_Order_Count::insert($list);
     }
 }

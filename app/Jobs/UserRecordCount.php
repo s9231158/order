@@ -8,7 +8,6 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
-use App\Models\User_recode;
 use App\Models\LoginTotal as Login_Total;
 use Illuminate\Support\Facades\Cache;
 
@@ -67,6 +66,8 @@ class UserRecordCount implements ShouldQueue
         $list = [];
         for ($i = 0; $i < 25; $i++) {
             if (!$count[$i]) {
+                $go = $go->addHour();
+                $to = $to->addHour();
                 continue;
             }
             $list[] = [

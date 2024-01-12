@@ -215,7 +215,7 @@ class User extends Controller
                 'email' => $email,
             ];
             $userRecordService = new UserRecord;
-           return $userRecordService->create($recordInfo);
+            $userRecordService->create($recordInfo);
             //製做token
             $time = Carbon::now()->addDay();
             $tokenInfo = ['id' => $user['id'], 'name' => $user['name'], 'email' => $user['email'], 'time' => $time];

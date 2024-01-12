@@ -360,24 +360,6 @@ class Restaurant extends Controller
     }
     public function apple()
     {
-        $go = Carbon::today();
-        $to = Carbon::today()->addHour();
-        $list = [];
-        $count = Cache::get('login_record');
-        for ($i = 0; $i < 24; $i++) {
-            if (!$count[$i]) {
-                continue ;
-            }
-            $list[] = [
-                'count' => $count[$i],
-                'starttime' => $go->copy(),
-                'endtime' => $to->copy(),
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now()
-            ];
-            $go = $go->addHour();
-            $to = $to->addHour();
-        }
-        return $list;
+
     }
 }

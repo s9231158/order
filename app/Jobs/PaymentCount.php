@@ -10,6 +10,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
 use App\Models\Wallet_Record;
 use App\Models\PaymentCount as ModelPaymentCount;
+use Illuminate\Support\Facades\Cache;
 
 class PaymentCount implements ShouldQueue
 {
@@ -30,40 +31,59 @@ class PaymentCount implements ShouldQueue
      *
      * @return void
      */
+    private $time = [
+        '0' => ['local' => 0, 'ecpay' => 0],
+        '1' => ['local' => 0, 'ecpay' => 0],
+        '2' => ['local' => 0, 'ecpay' => 0],
+        '3' => ['local' => 0, 'ecpay' => 0],
+        '4' => ['local' => 0, 'ecpay' => 0],
+        '5' => ['local' => 0, 'ecpay' => 0],
+        '6' => ['local' => 0, 'ecpay' => 0],
+        '7' => ['local' => 0, 'ecpay' => 0],
+        '8' => ['local' => 0, 'ecpay' => 0],
+        '9' => ['local' => 0, 'ecpay' => 0],
+        '10' => ['local' => 0, 'ecpay' => 0],
+        '11' => ['local' => 0, 'ecpay' => 0],
+        '12' => ['local' => 0, 'ecpay' => 0],
+        '13' => ['local' => 0, 'ecpay' => 0],
+        '14' => ['local' => 0, 'ecpay' => 0],
+        '15' => ['local' => 0, 'ecpay' => 0],
+        '16' => ['local' => 0, 'ecpay' => 0],
+        '17' => ['local' => 0, 'ecpay' => 0],
+        '18' => ['local' => 0, 'ecpay' => 0],
+        '19' => ['local' => 0, 'ecpay' => 0],
+        '20' => ['local' => 0, 'ecpay' => 0],
+        '21' => ['local' => 0, 'ecpay' => 0],
+        '22' => ['local' => 0, 'ecpay' => 0],
+        '23' => ['local' => 0, 'ecpay' => 0],
+        '24' => ['local' => 0, 'ecpay' => 0],
+    ];
     public function handle()
     {
-        //取出昨天00:00
-        $start = Carbon::yesterday();
-        //取出今天00:00
-        $end = Carbon::today();
-        //取出昨天至今天所有訂單資料
-        $walletRecord = Wallet_Record::select('pid', 'created_at', 'out')
-            ->whereBetween('created_at', [$start, $end])->get();
-        $yesterday = Carbon::yesterday();
-        $yesterdayAddHour = Carbon::yesterday()->addHour();
-        $paymentList = [];
-        for ($i = 0; $i < 24; $i++) {
-            //取得每小時的ecpay支付方式
-            $everyHourEcpayCount = $walletRecord->whereBetween('created_at', [$yesterday, $yesterdayAddHour])
-                ->wherenotnull('out')->where('pid', '=', 1)->count();
-            //取得每小時的本地支付方式
-            $everyHourLocalPayCount = $walletRecord->whereBetween('created_at', [$yesterday, $yesterdayAddHour])
-                ->wherenotnull('out')->where('pid', '=', 2)->count();
-            if ($everyHourEcpayCount !== 0 or $everyHourLocalPayCount !== 0) {
-                $paymentList[] = ['starttime' => $yesterday->copy(),
-                    'endtime' => $yesterdayAddHour->copy(),
-                    'ecpay' => $everyHourEcpayCount,
-                    'local' => $everyHourLocalPayCount,
-                    'created_at' => Carbon::now(),
-                    'updated_at' => Carbon::now(),
-                ];
+        $paymentCount = Cache::get('payment_count');
+        Cache::set('payment_count', $this->time);
+        $go = Carbon::today();
+        $to = Carbon::today()->addHour();
+        $list = [];
+        for ($i = 0; $i < 25; $i++) {
+            if (!$paymentCount[$i]['local'] && !$paymentCount[$i]['ecpay']) {
+                $go = $go->addHour();
+                $to = $to->addHour();
+                continue;
             }
-            //對起始時間加一小
-            $yesterday = $yesterday->addHour();
-            //對終止時間加一小
-            $yesterdayAddHour = $yesterdayAddHour->addHour();
+
+            $list[] = [
+                'ecpay' => $paymentCount[$i]['ecpay'],
+                'local' => $paymentCount[$i]['local'],
+                'starttime' => $go->copy(),
+                'endtime' => $to->copy(),
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now()
+            ];
+
+            $go = $go->addHour();
+            $to = $to->addHour();
         }
-        //存入資料庫
-        ModelPaymentCount::insert($paymentList);
+        ModelPaymentCount::insert($list);
     }
 }
