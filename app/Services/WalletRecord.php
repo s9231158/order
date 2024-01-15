@@ -6,9 +6,9 @@ use App\Models\Wallet_Record;
 
 class WalletRecord
 {
-    public function updateByOid($oid, $info)
+    public function update($where, $info)
     {
-        $goodIndo = array_filter([
+        $goodInfo = array_filter([
             'oid' => $info['oid'] ?? null,
             'out' => $info['out'] ?? null,
             'eid' => $info['eid'] ?? null,
@@ -16,19 +16,7 @@ class WalletRecord
             'pid' => $info['pid'] ?? null,
             'uid' => $info['uid'] ?? null
         ]);
-        return Wallet_Record::where('oid', $oid)->update($goodIndo);
-    }
-    public function updateByUuid($uuid, $info)
-    {
-        $goodIndo = array_filter([
-            'oid' => $info['oid'] ?? null,
-            'out' => $info['out'] ?? null,
-            'eid' => $info['eid'] ?? null,
-            'status' => $info['status'] ?? null,
-            'pid' => $info['pid'] ?? null,
-            'uid' => $info['uid'] ?? null
-        ]);
-        return Wallet_Record::where('eid', $uuid)->update($goodIndo);
+        return Wallet_Record::where($where)->update($goodInfo);
     }
     public function create($info)
     {

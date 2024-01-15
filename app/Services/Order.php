@@ -21,14 +21,26 @@ class Order
             'rid' => $info['rid'] ?? null,
             'uid' => $info['uid'] ?? null,
         ]);
-        $response = OrderModel::find($oid)->update($goodInfo);
+        //Cache餐廳額營業額報表
+        $response = OrderModel::create($goodInfo);
+        $hour = intval(date('H', strtotime(now())));
+        $restaurantTotalMoney = Cache::get('restaurant_total_money');
+        $restaurantTotalMoney[$hour][$info['rid']] = isset($restaurantTotalMoney[$hour][$info['rid']])
+            ? $restaurantTotalMoney[$hour][$info['rid']] + $info['total']
+            : $info['total'];
+        Cache::put('restaurant_total_money', $restaurantTotalMoney);
+        //Cache訂單統計報表
         $hour = intval(date('H', strtotime($info['ordertime'])));
         $orderTotal = Cache::get('order_total');
-        $orderTotal[$hour]['order'] += 1;
+        $orderTotal[$hour]['order'] = isset($orderTotal[$hour]['order'])
+            ? $orderTotal[$hour]['order'] + 1
+            : 1;
         if ($info['status'] < 10) {
-            $orderTotal[$hour]['success'] += 1;
+            $orderTotal[$hour]['success'] = isset($orderTotal[$hour]['success'])
+                ? $orderTotal[$hour]['success'] + 1
+                : 1;
         }
-        $orderTotal[$hour]['fail'] += 1;
+        $orderTotal[$hour]['fail'] = isset($orderTotal[$hour]['fail']) ? $orderTotal[$hour]['fail'] + 1 : 1;
         Cache::put('order_total', $orderTotal);
         return $response;
     }

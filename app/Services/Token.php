@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 use Exception;

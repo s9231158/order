@@ -327,7 +327,7 @@ class Pay extends Controller
                 if (!isset($sendEcpayResponse[0]->transaction_url)) {
                     $walletRecordService = new WalletRecord;
                     $status = ['status' => $this->statusCode['ecpayFail']];
-                    $walletRecordService->updateByOid($oid, $status);
+                    $walletRecordService->update(['oid',$oid], $status);
                     return response()->json([
                         'err' => $sendEcpayResponse[0]->error_code,
                         'message' => '第三方金流錯誤'
@@ -374,12 +374,12 @@ class Pay extends Controller
             if ($request['rtn_code'] == 0) {
                 //將WalletRecord的status改為失敗代碼
                 $status = ['status' => $this->statusCode['ecpayFail']];
-                $walletRecordService->updateByOid($oid, $status);
+                $walletRecordService->update(['oid',$oid], $status);
                 //將order的status改為失敗代碼
                 $orderService->update($oid, $status);
             } else {
                 $status = ['status' => $this->statusCode['success']];
-                $walletRecordService->updateByOid($oid, $status);
+                $walletRecordService->update(['oid',$oid], $status);
                 $orderService->update($oid, $status);
             }
         } catch (Exception $e) {

@@ -10,8 +10,7 @@ use App\Services\RestaurantHistory;
 use App\Services\ResturantComment;
 use App\Services\Token;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Validator;
 use Exception;
 use Throwable;
@@ -360,6 +359,12 @@ class Restaurant extends Controller
     }
     public function apple()
     {
-
+        $apple = ['spld' => 123, 'apple' => 321];
+        // Redis::ZADD('Restaurant', 1111, $apple);
+        // Redis::ZADD('Restaurant', 3, 'apple2');
+        // Redis::ZADD('Restaurant', 2, 'apple3');
+        // Redis::ZADD('Restaurant', 1, 'apple4');
+        Redis::ZINCRBY('Restaurant', -2, 'apple4');
+        return Redis::ZRANGE('Restaurant', 0, -1);
     }
 }

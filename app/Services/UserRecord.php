@@ -50,7 +50,11 @@ class UserRecord
             //使用memcached來儲存
             $hour = intval(date('H', strtotime($info['login'])));
             $loginRecordTotal = Cache::get('login_record');
-            $loginRecordTotal[$hour] += 1;
+            if (!isset($loginRecordTotal[$hour])) {
+                $loginRecordTotal[$hour] = 1;
+            } else {
+                $loginRecordTotal[$hour] += 1;
+            }
             Cache::put('login_record', $loginRecordTotal);
             return $response;
         } catch (Exception $e) {

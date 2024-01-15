@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\RestaruantFavoritCount;
+use App\Models\RestaruantTotalMoney;
 use App\Models\User_favorite;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

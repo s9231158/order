@@ -34,10 +34,7 @@ class UserWallet
         //where
         if (!empty($where)) {
             $response = $stmt->find($where);
+            return $response ? $response->toArray() : null;
         }
-        if (!$response) {
-            return $response;
-        }
-        return $response->toArray();
     }
 }

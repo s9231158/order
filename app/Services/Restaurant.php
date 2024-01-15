@@ -129,10 +129,10 @@ class Restaurant
                 $stmt->offset($option['offset']);
             }
         }
-        $dataResponse = $stmt->get()->toArray();
+        $dataResponse = $stmt->get();
         foreach ($dataResponse as $item) {
-            Redis::hset('restaurantInfo', $item['id'], json_encode($item));
             $response[] = $item;
+            Redis::hset('restaurantjoinInfo', $item['id'], $item);
         }
         return $response;
     }

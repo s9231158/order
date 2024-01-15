@@ -122,11 +122,11 @@ class Wallet extends Controller
             if ($request['rtn_code'] == 0) {
                 //將WalletRecord的 status改為false
                 $status = ['status' => 10];
-                $this->walletRecordService->updateByUuid($request['merchant_id'], $status);
+                $this->walletRecordService->update(['eid' => $request['merchant_id']], $status);
             } else {
                 //將WalletRecord的 status改為success
                 $status = ['status' => 0];
-                $this->walletRecordService->updateByOid($request['merchant_id'], $status);
+                $this->walletRecordService->update(['oid' => $request['merchant_id']], $status);
                 $userId = $this->tokenService->getUserId();
                 //將金額加入使用者錢包
                 $userWalletService = new UserWallet;
