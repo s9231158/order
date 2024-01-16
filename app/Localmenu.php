@@ -12,11 +12,16 @@ class Localmenu implements RestaurantInterface
     public function getMenu(int $offset, int $limit): array
     {
         try {
-            /* 需要尋找的keys */$keys = range($offset + 1, $limit + $offset);
-            /* redis內已有的所有keys */$redisKeys = Redis::hkeys('4menus');
-            /* 扣除redis內已有的keys 還需要的keys */$needKeys = array_values(array_diff($keys, $redisKeys));
-            /* 需要尋找的keys 但redis內已有的keys */$redisKeys = array_values(array_intersect($redisKeys, $keys));
-            /* 如果還需要到database找資料 */$need = false;
+            /* 需要尋找的keys */
+            $keys = range($offset + 1, $limit + $offset);
+            /* redis內已有的所有keys */
+            $redisKeys = Redis::hkeys('4menus');
+            /* 扣除redis內已有的keys 還需要的keys */
+            $needKeys = array_values(array_diff($keys, $redisKeys));
+            /* 需要尋找的keys 但redis內已有的keys */
+            $redisKeys = array_values(array_intersect($redisKeys, $keys));
+            /* 如果還需要到database找資料 */
+            $need = false;
             $response = [];
             if (empty($needKeys)) {
                 foreach (Redis::hmget('4menus', $keys) as $item) {
@@ -24,13 +29,15 @@ class Localmenu implements RestaurantInterface
                 }
                 return $response;
             }
+            if (!empty($needKeys)) {
+                $need = true;
+            }
             if (!empty($redisKeys)) {
                 foreach (Redis::hmget('4menus', $redisKeys) as $item) {
                     $response[] = json_decode($item, true);
                 }
-                $need = true;
             }
-            if (!$need) {
+            if ($need) {
                 $menu = Local_menu::select('rid', 'id', 'info', 'name', 'price', 'img')
                     ->limit($limit)
                     ->offset($offset)
@@ -62,7 +69,7 @@ class Localmenu implements RestaurantInterface
     {
         return true;
     }
-    
+
     public function menuCorrect(array $order): bool
     {
         try {

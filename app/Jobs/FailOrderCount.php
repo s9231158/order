@@ -8,7 +8,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
-use App\Models\FailOrderCount as Fail_Order_Count;
+use App\Models\FailOrderCount as FailOrderCountModel;
 use Illuminate\Support\Facades\Cache;
 
 class FailOrderCount implements ShouldQueue
@@ -81,6 +81,6 @@ class FailOrderCount implements ShouldQueue
             $go = $go->addHour();
             $to = $to->addHour();
         }
-        Fail_Order_Count::insert($list);
+        FailOrderCountModel::insert($list);
     }
 }

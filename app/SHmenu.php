@@ -30,14 +30,16 @@ class SHmenu implements RestaurantInterface
                 }
                 return $response;
             }
+            if (!empty($needKeys)) {
+                $need = true;
+            }
             if (!empty($redisKeys)) {
                 foreach (Redis::hmget('3menus', $redisKeys) as $item) {
 
                     $response[] = json_decode($item, true);
                 }
-                $need = true;
             }
-            if (!$need) {
+            if ($need) {
                 $client = new Client();
                 $response = $client->request('GET', $url);
                 $goodResponse = $response->getBody();

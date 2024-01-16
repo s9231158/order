@@ -13,21 +13,26 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Throwable;
+use App\Services\StatusCode;
 use App\Services\ErrorCode;
 use App\Services\Token;
 use App\Services\EcpayApi;
 
+
 class Wallet extends Controller
 {
+    private $statusCode;
     private $err;
     private $keys;
     private $tokenService;
     private $walletRecordService;
     public function __construct(
+        StatusCode $statusCodeService,
         ErrorCode $errorCodeService,
         Token $tokenService,
         WalletRecord $walletRecordService,
     ) {
+        $this->statusCode = $statusCodeService->getStatus();
         $this->err = $errorCodeService->GeterrCode();
         $this->keys = $errorCodeService->GeterrKey();
         $this->tokenService = $tokenService;
@@ -121,11 +126,11 @@ class Wallet extends Controller
             $ecpayBackService->create($ecpayBackInfo);
             if ($request['rtn_code'] == 0) {
                 //將WalletRecord的 status改為false
-                $status = ['status' => 10];
+                $status = $this->statusCode['responseFail'];
                 $this->walletRecordService->update(['eid' => $request['merchant_id']], $status);
             } else {
                 //將WalletRecord的 status改為success
-                $status = ['status' => 0];
+                $status = $this->statusCode['success'];
                 $this->walletRecordService->update(['oid' => $request['merchant_id']], $status);
                 $userId = $this->tokenService->getUserId();
                 //將金額加入使用者錢包
@@ -145,11 +150,13 @@ class Wallet extends Controller
     {
         //規則
         $ruls = [
+            'type' => ['in:out,in'],
             'limit' => ['integer'],
             'offset' => ['integer'],
         ];
         //什麼錯誤報什麼錯誤訊息
         $rulsmessage = [
+            'type.in' => '請填入正確格式',
             'limit.integer' => '無效的範圍',
             'offset.integer' => '無效的範圍',
         ];
@@ -165,15 +172,18 @@ class Wallet extends Controller
             $limit = $request['limit'] ?? 20;
             $offset = $request['offset'] ?? 0;
             $userId = $this->tokenService->getUserId();
-            $type = $request['type'];
-            $where = isset($request['type']) ? ["uid", '=', $userId, $type, '!=', $type] : ["uid", '=', $userId];
+            $where = isset($request['type'])
+                ? ["uid", '=', $userId, $request['type'], '!=', null]
+                : ["uid", '=', $userId];
             $option = [
-                'column' => isset($request['type']) ? ['type', $type, 'wallet__records.created_at'] : ['type', 'in', 'out', 'wallet__records.created_at'],
+                'column' => isset($request['type'])
+                    ? [$request['type'], 'pid', 'created_at']
+                    : ['in', 'out', 'pid', 'created_at'],
                 'limit' => $limit,
                 'offset' => $offset,
-                'orderby' => ['wallet__records.created_at', 'desc'],
+                'orderby' => ['wallet__records.created_at', 'desc']
             ];
-            $walletRecord = $this->walletRecordService->getJoinList($where, $option);
+            $walletRecord = $this->walletRecordService->getList($where, $option);
             $count = count($walletRecord);
             return response()->json([
                 'err' => $this->keys[0],

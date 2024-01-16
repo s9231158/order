@@ -52,23 +52,22 @@ class Restaurant extends Controller
                 ]);
             }
             //取得OffsetLimit            
-            $option['offset'] = $request['offset'] === null ? 0 : $request['offset'];
-            $option['limit'] = $request['limit'] === null ? 20 : $request['limit'];
+            $offset = $request['offset'] ?? 0;
+            $limit = $request['limit'] ?? 20;
             //取得餐廳info並打亂順序
-            $where = [
-            ];
+            $where = [];
             $option = [
-                'limit' => $option['limit'],
-                'offset' => $option['offset'],
+                'limit' => $limit,
+                'offset' => $offset,
             ];
             $restaurantInfo = $this->restaurantService->getJoinist($where, $option);
             $count = count($restaurantInfo);
             $keys = array_keys($restaurantInfo);
             shuffle($keys);
             foreach ($keys as $key) {
-                $new[$key] = $restaurantInfo[$key];
+                $result[$key] = $restaurantInfo[$key];
             }
-            $shuffle = array_values($new);
+            $shuffle = array_values($result);
             $response = array_map(function ($item) {
                 return [
                     'id' => $item['id'],
@@ -147,7 +146,7 @@ class Restaurant extends Controller
                 $email = $tokenService->getEamil();
                 $userId = $tokenService->getUserId();
                 $tokenCheck = $tokenService->checkToken($email);
-                if (!$tokenCheck) {
+                if ($tokenCheck !== true) {
                     return response()->json([
                         'err' => $this->keys[26],
                         'message' => $this->err[26]
@@ -356,15 +355,5 @@ class Restaurant extends Controller
                 'other_err' => $e->getMessage()
             ]);
         }
-    }
-    public function apple()
-    {
-        $apple = ['spld' => 123, 'apple' => 321];
-        // Redis::ZADD('Restaurant', 1111, $apple);
-        // Redis::ZADD('Restaurant', 3, 'apple2');
-        // Redis::ZADD('Restaurant', 2, 'apple3');
-        // Redis::ZADD('Restaurant', 1, 'apple4');
-        Redis::ZINCRBY('Restaurant', -2, 'apple4');
-        return Redis::ZRANGE('Restaurant', 0, -1);
     }
 }

@@ -313,7 +313,6 @@ class User extends Controller
             //取得offset&limit預設
             $offset = $request['offset'] ?? 0;
             $limit = $request['limit'] ?? 20;
-            $option = ['offset' => $offset, 'limit' => $limit];
             //取得登入紀錄
             $userId = $this->tokenService->getUserId();
             $userRecordService = new UserRecord;

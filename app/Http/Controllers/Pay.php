@@ -99,8 +99,8 @@ class Pay extends Controller
             $validator = Validator::make($request->all(), $ruls, $rulsMessage);
             if ($validator->fails()) {
                 return response()->json([
-                    'Err' => array_search($validator->Errors()->first(), $this->err),
-                    'Message' => $validator->Errors()->first()
+                    'err' => array_search($validator->Errors()->first(), $this->err),
+                    'message' => $validator->Errors()->first()
                 ]);
             }
             //取出Request內Order         
@@ -109,8 +109,8 @@ class Pay extends Controller
             $orderRids = array_column($order, 'rid');
             if (count(array_unique($orderRids)) !== 1) {
                 return response()->json([
-                    'Err' => $this->keys[22],
-                    'Message' => $this->err[22]
+                    'err' => $this->keys[22],
+                    'message' => $this->err[22]
                 ]);
             }
             //檢查Order內是否有一樣的菜單,有的話將一樣的菜單合併
@@ -128,8 +128,7 @@ class Pay extends Controller
             //餐廳是否存在且啟用
             $rid = $order[0]['rid'];
             $where = ['restaurants.id', '=', $rid];
-            $option = [
-            ];
+            $option = [];
             $restaurantService = new Restaurant;
             $restaurantInfo = $restaurantService->getJoinist($where, $option)[0];
             if (!$restaurantInfo || $restaurantInfo['enable'] != 1) {
@@ -168,8 +167,8 @@ class Pay extends Controller
             $menuEnable = $restaurant->MenuEnable($menuIds);
             if (!$menuEnable) {
                 return response()->json([
-                    'Err' => $this->keys[25],
-                    'Message' => $this->err[25]
+                    'err' => $this->keys[25],
+                    'message' => $this->err[25]
                 ]);
             }
             $money = $request['total_price'];
@@ -264,8 +263,8 @@ class Pay extends Controller
                     $status = $this->statusCode['walletNoMoneyFail'];
                     $this->orderService->update($oid, $status);
                     return response()->json([
-                        'Err' => $this->keys[18],
-                        'Message' => $this->err[18]
+                        'err' => $this->keys[18],
+                        'message' => $this->err[18]
                     ]);
                 }
                 //將user錢包扣款
@@ -416,8 +415,8 @@ class Pay extends Controller
             $validator = Validator::make($request->all(), $ruls, $rulsMessage);
             if ($validator->fails()) {
                 return response()->json([
-                    'Err' => array_search($validator->Errors()->first(), $this->err),
-                    'Message' => $validator->Errors()->first()
+                    'err' => array_search($validator->Errors()->first(), $this->err),
+                    'message' => $validator->Errors()->first()
                 ]);
             }
             //取得offset limit
@@ -548,8 +547,8 @@ class Pay extends Controller
             return $orderInfoInfo;
         } catch (Throwable $e) {
             return response()->json([
-                'Err' => $this->keys[26],
-                'Message' => $this->err[26],
+                'err' => $this->keys[26],
+                'message' => $this->err[26],
                 'OtherErr' => $e->getMessage()
             ]);
         }

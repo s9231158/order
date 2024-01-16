@@ -50,7 +50,7 @@ class WalletRecord
         }
         return $response->toArray();
     }
-    public function getJoinList($where, $option)
+    public function getList($where, $option)
     {
         $stmt = null;
         if (isset($option['column'])) {
@@ -58,7 +58,6 @@ class WalletRecord
         } else {
             $stmt = Wallet_Record::select('*');
         }
-        $stmt->join('payments', 'wallet__records.pid', '=', 'payments.id');
         $chunks = array_chunk($where, 3);
         if (!empty($where)) {
             foreach ($chunks as $chunk) {

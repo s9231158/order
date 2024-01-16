@@ -12,9 +12,12 @@ class Restaurant
     public function getListByRids($rids)
     {
         try {
-            /* redis內已有的所有keys */$redisKeys = redis::hkeys('restaurantjoinInfo');
-            /* 扣除redis內已有的keys 還需要的keys */$needKeys = array_values(array_diff($rids, $redisKeys));
-            /* 需要尋找的keys 但redis內已有的keys */$redisKeys = array_values(array_intersect($redisKeys, $rids));
+            /* redis內已有的所有keys */
+            $redisKeys = redis::hkeys('restaurantInfo');
+            /* 扣除redis內已有的keys 還需要的keys */
+            $needKeys = array_values(array_diff($rids, $redisKeys));
+            /* 需要尋找的keys 但redis內已有的keys */
+            $redisKeys = array_values(array_intersect($redisKeys, $rids));
             /* 如果還需要到database找資料 */
             $need = false;
             $response = [];
@@ -24,13 +27,15 @@ class Restaurant
                 }
                 return $response;
             }
+            if (!empty($needKeys)) {
+                $need = true;
+            }
             if (!empty($redisKeys)) {
                 foreach (Redis::hmget('restaurantInfo', $redisKeys) as $item) {
                     $response[] = json_decode($item, true);
                 }
-                $need = true;
             }
-            if (!$need) {
+            if ($need) {
                 $dataResponse = RestaurantModel::
                     wherein('id', $needKeys)
                     ->orderBy('created_at', 'desc')
@@ -89,12 +94,14 @@ class Restaurant
             }
             return $response;
         }
+        if (!empty($needKeys)) {
+            $need = true;
+        }
         if (!empty($redisKeys)) {
             foreach (Redis::hmget('restaurantjoinInfo', $redisKeys) as $item) {
 
                 $response[] = json_decode($item, true);
             }
-            $need = true;
         }
         //select
         $stmt = null;
@@ -121,7 +128,7 @@ class Restaurant
             $stmt->orderby($option['orderby'][0], $option['orderby'][1]);
         }
         //limit
-        if (!$need) {
+        if ($need) {
             if (isset($option['limit'])) {
                 $stmt->limit($option['limit']);
             }

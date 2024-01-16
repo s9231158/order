@@ -30,14 +30,16 @@ class OSmenu implements RestaurantInterface
                 }
                 return $response;
             }
+            if (!empty($needKeys)) {
+                $need = true;
+            }
             if (!empty($redisKeys)) {
                 foreach (Redis::hmget('1menus', $redisKeys) as $item) {
 
                     $response[] = json_decode($item, true);
                 }
-                $need = true;
             }
-            if (!$need) {
+            if ($need) {
                 $url = $this->getMenuUrl . '?limit=' . $limit . '&offset=' . $offset;
                 $client = new Client();
                 $response = $client->request('GET', $url);

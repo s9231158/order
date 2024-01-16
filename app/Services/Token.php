@@ -20,9 +20,9 @@ class Token
     public function checkToken($email)
     {
         try {
-            $RedisToken = Cache::get($email);
+            $redisToken = Cache::get($email);
             //有emial 有token 但token錯誤 系統錯誤
-            if (Cache::has($email) && $this->token && $this->token !== $RedisToken) {
+            if (Cache::has($email) && $this->token && $this->token !== $redisToken) {
                 Cache::forget($email);
                 throw new Exception('系統錯誤請重新登入');
             }
