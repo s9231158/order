@@ -27,7 +27,7 @@ class OrderInfo
             throw new Exception("order_info_service_err:" . 500 . $e);
         }
     }
-    public function getJoinList($where, $option)
+    public function getList($where, $option)
     {
         $stmt = null;
         if (isset($option['column'])) {
@@ -36,13 +36,12 @@ class OrderInfo
             $stmt = OrderInfoModel::select('*');
         }
         //where
-        $chunks = array_chunk($where, 2);
+        $chunks = array_chunk($where, 3);
         if (!empty($where)) {
             foreach ($chunks as $chunk) {
-                $stmt->where($chunk[0], $chunk[1]);
+                $stmt->where($chunk[0], $chunk[1], $chunk[2]);
             }
         }
-        $stmt->join('orders', 'orders.id', '=', 'order_infos.oid');
         $response = $stmt->get();
         return $response->toArray();
     }

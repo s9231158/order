@@ -4,7 +4,7 @@ namespace App;
 
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Date;
-use App\Models\OishiiMenu as Oishii_menu;
+use App\Models\OishiiMenu as OishiiMenuModel;
 use App\Contract\RestaurantInterface;
 use Illuminate\Support\Facades\Redis;
 use Throwable;
@@ -67,7 +67,7 @@ class OSmenu implements RestaurantInterface
 
     public function menuEnable(array $menuIds): bool
     {
-        $menu = Oishii_menu::wherein('id', $menuIds)->get();
+        $menu = OishiiMenuModel::wherein('id', $menuIds)->get();
         $orderCount = count($menuIds);
         $notEnableCount = $menu->where('enable', '=', 1)->count();
         if ($orderCount !== $notEnableCount) {

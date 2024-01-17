@@ -4,7 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use App\Models\ServerMaintenance as ModelServerMaintenance;
+use App\Models\ServerMaintenance as ServerMaintenanceModel;
 
 class ServerMaintenance
 {
@@ -18,7 +18,7 @@ class ServerMaintenance
     public function handle(Request $request, Closure $next)
     {
         try {
-            $Maintenance = ModelServerMaintenance::select('maintenances')->find(1);
+            $Maintenance = ServerMaintenanceModel::select('maintenances')->find(1);
             if ($Maintenance['maintenances'] == true) {
                 return response()->json(['err' => '伺服器維修中']);
             }

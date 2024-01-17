@@ -25,7 +25,7 @@ class ResturantComment
         }
     }
 
-    public function getJoin($where, $option)
+    public function get($where, $option)
     {
         //select
         $stmt = null;

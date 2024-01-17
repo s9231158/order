@@ -129,7 +129,7 @@ class Pay extends Controller
             $rid = $order[0]['rid'];
             $where = ['restaurants.id', '=', $rid];
             $option = [];
-            $restaurantService = new Restaurant;
+            $restaurantService = new Restaurant();
             $restaurantInfo = $restaurantService->getJoinist($where, $option)[0];
             if (!$restaurantInfo || $restaurantInfo['enable'] != 1) {
                 return response()->json([
@@ -176,11 +176,11 @@ class Pay extends Controller
             $takeTime = $request['take_time'];
             $address = $request['address'];
             $phone = $request['phone'];
-            $tokenService = new Token;
+            $tokenService = new Token();
             $userId = $tokenService->getUserId();
             $uuid = Str::uuid();
-            $orderInfoService = new OrderInfo;
-            $walltRecordService = new WalletRecord;
+            $orderInfoService = new OrderInfo();
+            $walltRecordService = new WalletRecord();
             //非本地餐廳訂餐
             if ($restaurantInfo['api']) {
                 $apiOrderInfo = [
@@ -256,7 +256,7 @@ class Pay extends Controller
             if ($request['payment'] === 'local') {
                 //檢查User錢包是否足夠付款
                 $money = $request['total_price'];
-                $userWalletService = new UserWallet;
+                $userWalletService = new UserWallet();
                 $userWalletData = ['option' => ['column' => ['balance']]];
                 $walletMoney = $userWalletService->get($userId, $userWalletData['option']);
                 if ($walletMoney['balance'] < $money) {
@@ -297,8 +297,8 @@ class Pay extends Controller
                 $date = date('Y/m/d H:i:s');
                 $orderMenuNames = array_column($order, 'name');
                 $itemsString = implode(",", $orderMenuNames);
-                $ecpayApiService = new EcpayApi;
-                $ecpayService = new Ecpay;
+                $ecpayApiService = new EcpayApi();
+                $ecpayService = new Ecpay();
                 $ecpayInfo = [
                     "merchant_trade_no" => $uuid,
                     "merchant_trade_date" => $date,
@@ -324,9 +324,9 @@ class Pay extends Controller
                     return $sendEcpayResponse[0];
                 }
                 if (!isset($sendEcpayResponse[0]->transaction_url)) {
-                    $walletRecordService = new WalletRecord;
+                    $walletRecordService = new WalletRecord();
                     $status = ['status' => $this->statusCode['ecpayFail']];
-                    $walletRecordService->update(['oid',$oid], $status);
+                    $walletRecordService->update(['oid', $oid], $status);
                     return response()->json([
                         'err' => $sendEcpayResponse[0]->error_code,
                         'message' => '第三方金流錯誤'
@@ -363,22 +363,22 @@ class Pay extends Controller
                 'payment_date' => $paymentDate,
                 'merchant_trade_no' => $request['merchant_trade_no']
             ];
-            $orderService = new Order;
-            $ecpayBackService = new EcpayBack;
+            $orderService = new Order();
+            $ecpayBackService = new EcpayBack();
             $ecpayBackService->create($ecpayBackInfo);
-            $walletRecordService = new WalletRecord;
+            $walletRecordService = new WalletRecord();
             $option = [];
             $wallerRecord = $walletRecordService->get($request['merchant_trade_no'], $option);
             $oid = $wallerRecord['oid'];
             if ($request['rtn_code'] == 0) {
                 //將WalletRecord的status改為失敗代碼
                 $status = ['status' => $this->statusCode['ecpayFail']];
-                $walletRecordService->update(['oid',$oid], $status);
+                $walletRecordService->update(['oid', $oid], $status);
                 //將order的status改為失敗代碼
                 $orderService->update($oid, $status);
             } else {
                 $status = ['status' => $this->statusCode['success']];
-                $walletRecordService->update(['oid',$oid], $status);
+                $walletRecordService->update(['oid', $oid], $status);
                 $orderService->update($oid, $status);
             }
         } catch (Exception $e) {
@@ -424,7 +424,7 @@ class Pay extends Controller
             $offset = $request['offset'] ?? 0;
             //取出訂單
             $userId = $this->tokenService->getUserId();
-            $orderService = new Order;
+            $orderService = new Order();
             $oid = $request['oid'] ?? null;
             if ($oid) {
                 $where = [
@@ -487,24 +487,30 @@ class Pay extends Controller
             }
             $oid = $request['oid'];
             $userId = $this->tokenService->getUserId();
-            $where = ['orders.uid', $userId, 'orders.id', $oid];
-            $option = [
-                'column' => [
-                    'order_infos.name',
-                    'order_infos.quanlity',
-                    'order_infos.price',
-                    'order_infos.description'
-                ]
-            ]
-            ;
-            $orderInfoService = new OrderInfo;
-            $orderInfo = $orderInfoService->getJoinList($where, $option);
-            if (!$orderInfo) {
+            $orderData = [
+                'where' => ['id', $oid, 'uid', $userId],
+                'option' => []
+            ];
+            $isUser = $this->orderService->get($orderData['where'], $orderData['option']);
+            if (!$isUser) {
                 return response()->json([
                     'err' => $this->keys[19],
                     'message' => $this->err[19]
                 ]);
             }
+            $orderInfoData = [
+                'where' => ['oid', '=', $oid],
+                'option' => [
+                    'column' => [
+                        'name',
+                        'quanlity',
+                        'price',
+                        'description'
+                    ]
+                ]
+            ];
+            $orderInfoService = new OrderInfo();
+            $orderInfo = $orderInfoService->getList($orderInfoData['where'], $orderInfoData['option']);
             return response()->json([
                 'err' => $this->keys[0],
                 'message' => $this->err[0],

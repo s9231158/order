@@ -14,11 +14,10 @@ return new class extends Migration {
     {
         Schema::create('restaruant_favorit_counts', function (Blueprint $table) {
             $table->id();
-            $table->integer('count')->default(0);
-            $table->integer('rid')->nullable();
+            $table->integer('count');
+            $table->integer('rid');
             $table->dateTime('starttime');
             $table->dateTime('endtime');
-            $table->timestamps();
         });
     }
 

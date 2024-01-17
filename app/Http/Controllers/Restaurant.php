@@ -3,6 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Factorise;
+use App\Models\FailOrderCount;
+use App\Models\LoginTotal;
+use App\Models\PaymentCount;
+use App\Models\RestaruantFavoritCount;
+use App\Models\RestaruantTotalMoney;
+use App\Models\User_favorite;
+use App\Models\User_recode;
+use App\Models\Wallet_Record;
 use App\Services\ErrorCode;
 use App\Services\Order;
 use App\Services\Restaurant as RestaurantService;
@@ -10,6 +18,8 @@ use App\Services\RestaurantHistory;
 use App\Services\ResturantComment;
 use App\Services\Token;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Validator;
 use Exception;
@@ -140,7 +150,7 @@ class Restaurant extends Controller
             $restaurant = Factorise::setMenu($rid);
             $menu = $restaurant->getMenu($offset, $limit);
             //檢查是否有登入
-            $tokenService = new Token;
+            $tokenService = new Token();
             $token = $request->header('Authorization');
             if ($token) {
                 $email = $tokenService->getEamil();
@@ -153,7 +163,7 @@ class Restaurant extends Controller
                     ]);
                 }
                 //是否已存在資料庫,有的話更新時間,沒有則建立紀錄
-                $restaurantHistoryService = new RestaurantHistory;
+                $restaurantHistoryService = new RestaurantHistory();
                 $restaurantHistoryService->updateOrCreate($userId, $rid);
             }
             $response = [
@@ -221,7 +231,7 @@ class Restaurant extends Controller
                 ]);
             }
             //評論者是否在此訂餐廳訂過餐且訂單狀態是成功且記錄在24小時內
-            $tokenService = new Token;
+            $tokenService = new Token();
             $userId = $tokenService->getUserId();
             $orderData = [
                 'where' => ['uid', '=', $userId],
@@ -231,7 +241,7 @@ class Restaurant extends Controller
                     'limit' => 1
                 ]
             ];
-            $orderService = new Order;
+            $orderService = new Order();
             $lastOrder = $orderService->getList($orderData['where'], $orderData['option']);
             $yesterday = date("Y-m-d H:i:s", strtotime('-1 day'));
             if ($lastOrder[0]['ordertime'] < $yesterday) {
@@ -241,12 +251,12 @@ class Restaurant extends Controller
                 ]);
             }
             //是否第一次評論該餐廳
-            $restaurantCommentService = new ResturantComment;
+            $restaurantCommentService = new ResturantComment();
             $restaurantCommentData = [
                 'where' => ['uid', $userId, 'rid', $rid],
                 'option' => [],
             ];
-            $restaurantComment = $restaurantCommentService->getJoin($restaurantCommentData['where'], $restaurantCommentData['option']);
+            $restaurantComment = $restaurantCommentService->get($restaurantCommentData['where'], $restaurantCommentData['option']);
             if ($restaurantComment) {
                 return response()->json([
                     'err' => $this->keys[14],
@@ -319,7 +329,7 @@ class Restaurant extends Controller
                 ]);
             }
             //取出評論
-            $restaurantCommentService = new ResturantComment;
+            $restaurantCommentService = new ResturantComment();
             $restaurantCommentData = [
                 'where' => ['rid', '=', $rid],
                 'option' => [
@@ -355,5 +365,25 @@ class Restaurant extends Controller
                 'other_err' => $e->getMessage()
             ]);
         }
+    }
+
+    public function apple()
+    {
+        $a = now()->subYear();
+        $start = now()->minute(0)->second(0);
+        $end = now()->addHour()->minute(0)->second(0);
+        //取出訂單
+        $recordCount = User_recode::
+            whereBetween('created_at', [$a, $end])
+            ->count();
+        if (!$recordCount) {
+            return;
+        }
+        $result = [
+            'count' => $recordCount,
+            'starttime' => $start,
+            'endtime' => $end
+        ];
+        LoginTotal::insert($result);
     }
 }

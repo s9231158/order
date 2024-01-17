@@ -99,7 +99,6 @@ class Restaurant
         }
         if (!empty($redisKeys)) {
             foreach (Redis::hmget('restaurantjoinInfo', $redisKeys) as $item) {
-
                 $response[] = json_decode($item, true);
             }
         }

@@ -43,7 +43,7 @@ class TokenSessionValid
                 ]);
             }
             JWT::decode($this->token, new Key(env('JWT_SECRET'), 'HS256'));
-            $tokenService = new Token;
+            $tokenService = new Token();
             $email = $tokenService->getEamil();
             $redisToken = Cache::get($email);
             if (Cache::has($email) && $this->token !== $redisToken) {

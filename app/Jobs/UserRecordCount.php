@@ -2,14 +2,13 @@
 
 namespace App\Jobs;
 
+use App\Models\User_recode as UserRecodeModel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Carbon;
-use App\Models\LoginTotal as Login_Total;
-use Illuminate\Support\Facades\Cache;
+use App\Models\LoginTotal as LoginTotalModel;
 
 class UserRecordCount implements ShouldQueue
 {
@@ -30,56 +29,21 @@ class UserRecordCount implements ShouldQueue
      *
      * @return void
      */
-    private $time = [
-        '0' => 0,
-        '1' => 0,
-        '2' => 0,
-        '3' => 0,
-        '4' => 0,
-        '5' => 0,
-        '6' => 0,
-        '7' => 0,
-        '8' => 0,
-        '9' => 0,
-        '10' => 0,
-        '11' => 0,
-        '12' => 0,
-        '13' => 0,
-        '14' => 0,
-        '15' => 0,
-        '16' => 0,
-        '17' => 0,
-        '18' => 0,
-        '19' => 0,
-        '20' => 0,
-        '21' => 0,
-        '22' => 0,
-        '23' => 0,
-        '24' => 0,
-    ];
     public function handle()
     {
-        $count = Cache::get('login_record');
-        Cache::set('login_record', $this->time);
-        $go = Carbon::today();
-        $to = Carbon::today()->addHour();
-        $list = [];
-        for ($i = 0; $i < 25; $i++) {
-            if (!$count[$i]) {
-                $go = $go->addHour();
-                $to = $to->addHour();
-                continue;
-            }
-            $list[] = [
-                'count' => $count[$i],
-                'starttime' => $go->copy(),
-                'endtime' => $to->copy(),
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now()
-            ];
-            $go = $go->addHour();
-            $to = $to->addHour();
+        $start = now()->minute(0)->second(0);
+        $end = now()->addHour()->minute(0)->second(0);
+        //取出訂單
+        $recordCount = UserRecodeModel::whereBetween('created_at', [$start, $end])
+            ->count();
+        if (!$recordCount) {
+            return;
         }
-        Login_Total::insert($list);
+        $result = [
+            'count' => $recordCount,
+            'starttime' => $start,
+            'endtime' => $end
+        ];
+        LoginTotalModel::insert($result);
     }
 }

@@ -76,11 +76,17 @@ class Wallet extends Controller
                 "encrypt_type" => 1,
                 "lang" => "en"
             ];
-            $ecpayApiService = new EcpayApi;
+            $ecpayApiService = new EcpayApi();
             $sendEcpayResponse = $ecpayApiService->sendEcpayApi($ecpayInfo);
-            $ecpayService = new Ecpay;
+            $ecpayService = new Ecpay();
             $ecpayService->create($sendEcpayResponse[1]);
-            $walletRecordInfo = ['uid' => $userId, 'eid' => $uuid, 'in' => $money, 'status' => 11, 'pid' => 2];
+            $walletRecordInfo = [
+                'uid' => $userId,
+                'eid' => $uuid,
+                'in' => $money,
+                'status' => $this->statusCode['responseFail'],
+                'pid' => 2
+            ];
             $this->walletRecordService->create($walletRecordInfo);
             if (isset($sendEcpayResponse[0]->transaction_url)) {
                 return $sendEcpayResponse[0];
@@ -122,7 +128,7 @@ class Wallet extends Controller
                 'payment_date' => $paymentDate,
                 'merchant_trade_no' => $request['merchant_trade_no']
             ];
-            $ecpayBackService = new EcpayBack;
+            $ecpayBackService = new EcpayBack();
             $ecpayBackService->create($ecpayBackInfo);
             if ($request['rtn_code'] == 0) {
                 //將WalletRecord的 status改為false
@@ -134,7 +140,7 @@ class Wallet extends Controller
                 $this->walletRecordService->update(['oid' => $request['merchant_id']], $status);
                 $userId = $this->tokenService->getUserId();
                 //將金額加入使用者錢包
-                $userWalletService = new UserWallet;
+                $userWalletService = new UserWallet();
                 $userWalletData = ['option' => ['column' => ['balance']]];
                 $walletMoney = $userWalletService->get($userId, $userWalletData['option']);
                 $balance = $walletMoney['balance'] + $money;

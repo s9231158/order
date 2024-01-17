@@ -22,19 +22,19 @@ class Kernel extends ConsoleKernel
     {
         $schedule->call(function () {
             UserRecordCount::dispatch();
-        })->dailyAt('6:32');
+        })->hourlyAt(10);
         $schedule->call(function () {
             RestaruantMoneyTotal::dispatch();
-        })->dailyAt('6:32');
+        })->hourlyAt(10);
         $schedule->call(function () {
             FailOrderCount::dispatch();
-        })->dailyAt('6:32');
+        })->hourlyAt(10);
         $schedule->call(function () {
             PaymentCount::dispatch();
-        })->dailyAt('6:32');
+        })->hourlyAt(10);
         $schedule->call(function () {
             RestaurantFavoritrCount::dispatch();
-        })->dailyAt('6:32');
+        })->hourlyAt(10);
     }
 
     /**

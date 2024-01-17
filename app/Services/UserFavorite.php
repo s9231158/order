@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\User_favorite;
+use App\Models\User_favorite as UserFavoriteModel;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 use Exception;
@@ -16,7 +16,7 @@ class UserFavorite
                 'uid' => $info['uid'],
                 'rid' => $info['rid'],
             ];
-            $response = User_favorite::create($goodInfo);
+            $response = UserFavoriteModel::create($goodInfo);
             $hour = intval(date('H', strtotime(now())));
             $restaurantFavorite = Cache::get('restaurant_favorite');
             if (isset($restaurantFavorite[$hour][$info['rid']])) {
@@ -36,7 +36,7 @@ class UserFavorite
     public function get($userId)
     {
         try {
-            return User_favorite::where('uid', '=', $userId)->get()->toArray();
+            return UserFavoriteModel::where('uid', '=', $userId)->get()->toArray();
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
         } catch (Throwable $e) {
@@ -47,7 +47,7 @@ class UserFavorite
     public function delete($userId, $rid)
     {
         try {
-            return User_favorite::where('uid', '=', $userId)->where('rid', '=', $rid)->delete();
+            return UserFavoriteModel::where('uid', '=', $userId)->where('rid', '=', $rid)->delete();
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
         } catch (Throwable $e) {

@@ -4,7 +4,7 @@ namespace App;
 
 use GuzzleHttp\Client;
 use App\Contract\RestaurantInterface;
-use App\Models\Steakhome_menu;
+use App\Models\Steakhome_menu as SteakhomeMenuModel;
 use Illuminate\Support\Facades\Redis;
 use Throwable;
 
@@ -66,7 +66,7 @@ class SHmenu implements RestaurantInterface
     
     public function menuEnable(array $menuIds): bool
     {
-        $menu = Steakhome_menu::wherein('id', $menuIds)->get();
+        $menu = SteakhomeMenuModel::wherein('id', $menuIds)->get();
         $orderCount = count($menuIds);
         $notEnableCount = $menu->where('enable', '=', 1)->count();
         if ($orderCount !== $notEnableCount) {

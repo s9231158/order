@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Wallet_Record;
+use App\Models\Wallet_Record as WalletRecordModel;
 
 class WalletRecord
 {
@@ -16,7 +16,7 @@ class WalletRecord
             'pid' => $info['pid'] ?? null,
             'uid' => $info['uid'] ?? null
         ]);
-        return Wallet_Record::where($where)->update($goodInfo);
+        return WalletRecordModel::where($where)->update($goodInfo);
     }
     public function create($info)
     {
@@ -29,7 +29,7 @@ class WalletRecord
             'pid' => $info['pid'],
             'uid' => $info['uid'],
         ];
-        return Wallet_Record::create($goodInfo);
+        return WalletRecordModel::create($goodInfo);
     }
 
     public function get($where, $option)
@@ -37,9 +37,9 @@ class WalletRecord
         //select
         $stmt = null;
         if (isset($option['column'])) {
-            $stmt = Wallet_Record::select($option['column']);
+            $stmt = WalletRecordModel::select($option['column']);
         } else {
-            $stmt = Wallet_Record::select('*');
+            $stmt = WalletRecordModel::select('*');
         }
         //where
         if (!empty($where)) {
@@ -54,9 +54,9 @@ class WalletRecord
     {
         $stmt = null;
         if (isset($option['column'])) {
-            $stmt = Wallet_Record::select($option['column']);
+            $stmt = WalletRecordModel::select($option['column']);
         } else {
-            $stmt = Wallet_Record::select('*');
+            $stmt = WalletRecordModel::select('*');
         }
         $chunks = array_chunk($where, 3);
         if (!empty($where)) {

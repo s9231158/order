@@ -2,14 +2,13 @@
 
 namespace App\Jobs;
 
+use App\Models\Order as OrderModel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Carbon;
 use App\Models\FailOrderCount as FailOrderCountModel;
-use Illuminate\Support\Facades\Cache;
 
 class FailOrderCount implements ShouldQueue
 {
@@ -29,58 +28,24 @@ class FailOrderCount implements ShouldQueue
      *
      * @return void
      */
-    private $time = [
-        '0' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '1' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '2' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '3' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '4' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '5' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '6' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '7' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '8' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '9' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '10' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '11' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '12' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '13' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '14' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '15' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '16' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '17' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '18' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '19' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '20' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '21' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '22' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '23' => ['order' => 0, 'fail' => 0, 'success' => 0],
-        '24' => ['order' => 0, 'fail' => 0, 'success' => 0],
-    ];
     public function handle()
     {
-        $orderTotal = Cache::get('order_total');
-        Cache::set('order_total', $this->time);
-        $go = Carbon::today();
-        $to = Carbon::today()->addHour();
-        $list = [];
-        for ($i = 0; $i < 25; $i++) {
-            if (!$orderTotal[$i]['order']) {
-                $go = $go->addHour();
-                $to = $to->addHour();
-                continue;
-            }
-            $list[] = [
-                'totalcount' => $orderTotal[$i]['order'],
-                'failcount' => $orderTotal[$i]['fail'],
-                'success' => $orderTotal[$i]['success'],
-                'starttime' => $go->copy(),
-                'endtime' => $to->copy(),
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now()
-            ];
-            $go = $go->addHour();
-            $to = $to->addHour();
+        $start = now()->minute(0)->second(0);
+        $end = now()->addHour()->minute(0)->second(0);
+        //取出訂單
+        $orders = OrderModel::whereBetween('created_at', [$start, $end])->get();
+        if ($orders->isEmpty()) {
+            return;
         }
-        FailOrderCountModel::insert($list);
+        $ordersCount = $orders->count();
+        $failOrders = $orders->whereBetween('status', [10, 20]);
+        $failOrdersCount = $failOrders->count();
+        $result = [
+            'failcount' => $failOrdersCount,
+            'totalcount' => $ordersCount,
+            'starttime' => $start,
+            'endtime' => $end
+        ];
+        FailOrderCountModel::insert($result);
     }
 }

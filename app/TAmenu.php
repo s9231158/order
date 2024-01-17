@@ -3,7 +3,7 @@
 namespace App;
 
 use App\Contract\RestaurantInterface;
-use App\Models\Tasty_menu;
+use App\Models\Tasty_menu as TastyMenuModel;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Redis;
@@ -69,7 +69,7 @@ class TAmenu implements RestaurantInterface
     
     public function menuEnable(array $menuIds): bool
     {
-        $menu = Tasty_menu::wherein('id', $menuIds)->get();
+        $menu = TastyMenuModel::wherein('id', $menuIds)->get();
         $orderCount = count($menuIds);
         $notEnableCount = $menu->where('enable', '=', 1)->count();
         if ($orderCount !== $notEnableCount) {

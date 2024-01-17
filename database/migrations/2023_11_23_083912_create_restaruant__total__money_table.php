@@ -14,11 +14,10 @@ return new class extends Migration {
     {
         Schema::create('restaruant__total__money', function (Blueprint $table) {
             $table->id();
-            $table->integer('money')->default(0);
+            $table->integer('money');
             $table->dateTime('starttime');
             $table->dateTime('endtime');
-            $table->timestamps();
-            $table->bigInteger('rid')->unsigned()->nullable();
+            $table->bigInteger('rid')->unsigned();
             $table->foreign('rid')->references('id')->on('restaurants');
         });
     }

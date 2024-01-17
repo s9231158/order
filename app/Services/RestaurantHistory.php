@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Restaurant_history;
+use App\Models\Restaurant_history as RestauranthistoryModel;
 use Throwable;
 use Exception;
 
@@ -11,7 +11,7 @@ class RestaurantHistory
     public function getListByUser($userId)
     {
         try {
-            return Restaurant_history::where('uid', '=', $userId)->get()->toArray();
+            return RestauranthistoryModel::where('uid', '=', $userId)->get()->toArray();
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
         } catch (Throwable $e) {
@@ -22,7 +22,7 @@ class RestaurantHistory
     public function updateOrCreate($userId, $rid)
     {
         try {
-            return Restaurant_history::updateOrCreate(
+            return RestauranthistoryModel::updateOrCreate(
                 ['uid' => $userId, 'rid' => $rid],
                 ['created_at' => now(), 'updated_at' => now()]
             );

@@ -2,14 +2,13 @@
 
 namespace App\Jobs;
 
+use App\Models\Order as OrderModel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Carbon;
-use App\Models\RestaruantTotalMoney as Restaruant_Total_Money;
-use Illuminate\Support\Facades\Cache;
+use App\Models\RestaruantTotalMoney as RestaruantTotalMoneyModel;
 
 class RestaruantMoneyTotal implements ShouldQueue
 {
@@ -32,30 +31,29 @@ class RestaruantMoneyTotal implements ShouldQueue
      */
     public function handle()
     {
-        $restaurantTotalMoney = Cache::get('restaurant_total_money');
-        $go = Carbon::today();
-        $to = Carbon::today()->addHour();
-        $list = [];
-        for ($i = 0; $i < 25; $i++) {
-            if (!$restaurantTotalMoney[$i]) {
-                $go = $go->addHour();
-                $to = $to->addHour();
-                continue;
-            }
-            foreach ($restaurantTotalMoney[$i] as $key => $value) {
-                $list[] = [
-                    'rid' => $key,
-                    'money' => $value,
-                    'starttime' => $go->copy(),
-                    'endtime' => $to->copy(),
-                    'created_at' => Carbon::now(),
-                    'updated_at' => Carbon::now()
-                ];
-            }
-            $go = $go->addHour();
-            $to = $to->addHour();
+        $start = now()->minute(0)->second(0);
+        $end = now()->addHour()->minute(0)->second(0);
+        //取出訂單
+        $orders = OrderModel::select('total', 'rid')
+            ->whereBetween('created_at', [$start, $end])
+            ->whereBetween('status', [0, 9])
+            ->get();
+        if ($orders->isEmpty()) {
+            return;
+        }
+        $restaurantTotal = $orders->groupBy('rid')->map(function ($group) {
+            return $group->sum('total');
+        });
+        $result = [];
+        foreach ($restaurantTotal as $key => $value) {
+            $result[] = [
+                'rid' => $key,
+                'money' => $value,
+                'starttime' => $start,
+                'endtime' => $end
+            ];
         }
         //存入資料庫
-        Restaruant_Total_Money::insert($list);
+        RestaruantTotalMoneyModel::insert($result);
     }
 }

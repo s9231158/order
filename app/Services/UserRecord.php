@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\User_recode;
+use App\Models\User_recode as UserRecodeModel;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 use Exception;
@@ -46,16 +46,7 @@ class UserRecord
                 'device' => $info['device'],
                 'email' => $info['email'],
             ];
-            $response = User_recode::create($goodInfo);
-            //使用memcached來儲存
-            $hour = intval(date('H', strtotime($info['login'])));
-            $loginRecordTotal = Cache::get('login_record');
-            if (!isset($loginRecordTotal[$hour])) {
-                $loginRecordTotal[$hour] = 1;
-            } else {
-                $loginRecordTotal[$hour] += 1;
-            }
-            Cache::put('login_record', $loginRecordTotal);
+            $response = UserRecodeModel::create($goodInfo);
             return $response;
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
@@ -70,9 +61,9 @@ class UserRecord
             //select
             $stmt = null;
             if (isset($option['column'])) {
-                $stmt = User_recode::select($option['column']);
+                $stmt = UserRecodeModel::select($option['column']);
             } else {
-                $stmt = User_recode::select('*');
+                $stmt = UserRecodeModel::select('*');
             }
             //where
             $chunks = array_chunk($where, 3);

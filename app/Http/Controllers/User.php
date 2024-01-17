@@ -119,7 +119,7 @@ class User extends Controller
             // 將使用者資訊存入UserWallet
             $balance = 0;
             $userId = $response->id;
-            $userWalletService = new UserWallet;
+            $userWalletService = new UserWallet();
             $walletResponse = $userWalletService->updateOrCreate($userId, $balance);
             if (!$walletResponse) {
                 return response()->json([
@@ -212,7 +212,7 @@ class User extends Controller
                 'device' => $device,
                 'email' => $email,
             ];
-            $userRecordService = new UserRecord;
+            $userRecordService = new UserRecord();
             $userRecordService->create($recordInfo);
             //製做token
             $time = Carbon::now()->addDay();
@@ -315,7 +315,7 @@ class User extends Controller
             $limit = $request['limit'] ?? 20;
             //取得登入紀錄
             $userId = $this->tokenService->getUserId();
-            $userRecordService = new UserRecord;
+            $userRecordService = new UserRecord();
             $where = [
                 'uid',
                 '=',
@@ -373,7 +373,7 @@ class User extends Controller
             //餐廳是否存在且啟用
             $rid = $request['rid'];
             $option = [];
-            $restaurantService = new Restaurant;
+            $restaurantService = new Restaurant();
             $restaurant = $restaurantService->get($rid, $option);
             if (!$restaurant || $restaurant['enable'] != 1) {
                 return response()->json([
@@ -383,7 +383,7 @@ class User extends Controller
             }
             //檢查使用者我的最愛資料表內是否超過20筆
             $userId = $this->tokenService->getUserId();
-            $userFavoriteService = new UserFavorite;
+            $userFavoriteService = new UserFavorite();
             $userFavorite = $userFavoriteService->get($userId);
             $count = count($userFavorite);
             if ($count >= 20) {
@@ -433,10 +433,10 @@ class User extends Controller
         try {
             //取的我的最愛
             $userId = $this->tokenService->getUserId();
-            $userFavoriteService = new UserFavorite;
+            $userFavoriteService = new UserFavorite();
             $userFavorite = $userFavoriteService->get($userId);
             $favoriteRids = array_column($userFavorite, 'rid');
-            $reataurantService = new Restaurant;
+            $reataurantService = new Restaurant();
             $userFavorite = $reataurantService->getListByRids($favoriteRids);
             $count = count($userFavorite);
             $response = array_map(function ($item) {
@@ -492,7 +492,7 @@ class User extends Controller
             //檢查此餐廳是否存在我的最愛內
             $rid = $request['rid'];
             $userId = $this->tokenService->getUserId();
-            $userFavoriteService = new UserFavorite;
+            $userFavoriteService = new UserFavorite();
             $userFavorite = $userFavoriteService->get($userId);
             $favoriteRids = array_column($userFavorite, 'rid');
             if (!in_array($rid, $favoriteRids)) {
@@ -533,10 +533,10 @@ class User extends Controller
         try {
             //取出歷史紀錄餐廳的資訊
             $userId = $this->tokenService->getUserId();
-            $restaurantHistoryService = new RestaurantHistory;
+            $restaurantHistoryService = new RestaurantHistory();
             $restaurantHistory = $restaurantHistoryService->getListByUser($userId);
             $rIds = array_column($restaurantHistory, 'rid');
-            $restaurantService = new Restaurant;
+            $restaurantService = new Restaurant();
             $restaurantInfo = $restaurantService->getListByRids($rIds);
             $response = array_map(function ($item) {
                 return [
