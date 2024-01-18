@@ -33,7 +33,7 @@ class UserFavorite
         }
     }
 
-    public function get($userId)
+    public function getList($userId)
     {
         try {
             return UserFavoriteModel::where('uid', '=', $userId)->get()->toArray();

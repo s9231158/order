@@ -3,23 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Factorise;
-use App\Models\FailOrderCount;
-use App\Models\LoginTotal;
-use App\Models\PaymentCount;
-use App\Models\RestaruantFavoritCount;
-use App\Models\RestaruantTotalMoney;
-use App\Models\User_favorite;
-use App\Models\User_recode;
-use App\Models\Wallet_Record;
 use App\Services\ErrorCode;
 use App\Services\Order;
 use App\Services\Restaurant as RestaurantService;
 use App\Services\RestaurantHistory;
 use App\Services\ResturantComment;
 use App\Services\Token;
+use App\Services\WalletRecord;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Validator;
 use Exception;
@@ -138,8 +129,7 @@ class Restaurant extends Controller
             $limit = $request['limit'] ?? 20;
             //是否有該餐廳
             $rid = $request['rid'];
-            $option = [];
-            $restaurantInfo = $this->restaurantService->get($rid, $option);
+            $restaurantInfo = $this->restaurantService->get($rid);
             if (!$restaurantInfo || $restaurantInfo['enable'] != 1) {
                 return response()->json([
                     'message' => $this->keys[16],
@@ -222,15 +212,14 @@ class Restaurant extends Controller
             }
             //是否有該餐廳
             $rid = $request['rid'];
-            $option = [];
-            $restaurantInfo = $this->restaurantService->get($rid, $option);
+            $restaurantInfo = $this->restaurantService->get($rid);
             if (!$restaurantInfo || $restaurantInfo['enable'] != 1) {
                 return response()->json([
                     'err' => $this->keys[16],
                     'message' => $this->err[16]
                 ]);
             }
-            //評論者是否在此訂餐廳訂過餐且訂單狀態是成功且記錄在24小時內
+            // //評論者是否在此訂餐廳訂過餐且訂單狀態是成功且記錄在24小時內
             $tokenService = new Token();
             $userId = $tokenService->getUserId();
             $orderData = [
@@ -252,12 +241,8 @@ class Restaurant extends Controller
             }
             //是否第一次評論該餐廳
             $restaurantCommentService = new ResturantComment();
-            $restaurantCommentData = [
-                'where' => ['uid', $userId, 'rid', $rid],
-                'option' => [],
-            ];
-            $restaurantComment = $restaurantCommentService->get($restaurantCommentData['where'], $restaurantCommentData['option']);
-            if ($restaurantComment) {
+            $firstComment = $restaurantCommentService->firstComment($userId, $rid);
+            if ($firstComment) {
                 return response()->json([
                     'err' => $this->keys[14],
                     'message' => $this->err[14]
@@ -318,10 +303,7 @@ class Restaurant extends Controller
             $limit = $request['limit'] ?? 20;
             //是否有該餐廳 
             $rid = $request['rid'];
-            $restaurantData = [
-                'option' => []
-            ];
-            $restaurantInfo = $this->restaurantService->get($rid, $restaurantData['option']);
+            $restaurantInfo = $this->restaurantService->get($rid);
             if (!$restaurantInfo || $restaurantInfo['enable'] != 1) {
                 return response()->json([
                     'err' => $this->keys[16],
@@ -331,20 +313,12 @@ class Restaurant extends Controller
             //取出評論
             $restaurantCommentService = new ResturantComment();
             $restaurantCommentData = [
-                'where' => ['rid', '=', $rid],
                 'option' => [
-                    'column' => [
-                        'users.name',
-                        'restaurant_comments.point',
-                        'restaurant_comments.comment',
-                        'restaurant_comments.created_at'
-                    ],
-                    'orderby' => ['restaurant_comments.created_at', 'desc'],
                     'limit' => $limit,
                     'offset' => $offset
                 ]
             ];
-            $restaurantComment = $restaurantCommentService->getList($restaurantCommentData['where'], $restaurantCommentData['option']);
+            $restaurantComment = $restaurantCommentService->getJoinUserList($rid, $restaurantCommentData['option']);
             $count = count($restaurantComment);
             return response()->json([
                 'err' => $this->keys[0],
@@ -369,21 +343,28 @@ class Restaurant extends Controller
 
     public function apple()
     {
-        $a = now()->subYear();
-        $start = now()->minute(0)->second(0);
-        $end = now()->addHour()->minute(0)->second(0);
-        //取出訂單
-        $recordCount = User_recode::
-            whereBetween('created_at', [$a, $end])
-            ->count();
-        if (!$recordCount) {
-            return;
-        }
-        $result = [
-            'count' => $recordCount,
-            'starttime' => $start,
-            'endtime' => $end
-        ];
-        LoginTotal::insert($result);
+
+
+        $rid1 = [1];
+        $rid2 = [2];
+        $rrr1 = $this->restaurantService->getListByRids($rid1);
+        $rrr2 = $this->restaurantService->getListByRids($rid2);
+
+        $a1 = ['r' . $rrr1[0]['id'] => json_encode($rrr1), 'r' . $rrr2[0]['id'] => json_encode($rrr2)];
+
+
+
+        //存
+        Redis::mset($a1);
+        return 1;
+
+
+
+        //取
+        $keys = ['r1', 'r2', 'r3', 'r4', 'rr', 'dd'];
+        $values = Redis::mget(...$keys);
+        return array_keys(array_filter(array_combine($keys, $values), function ($a) {
+            return $a === null;
+        }));
     }
 }

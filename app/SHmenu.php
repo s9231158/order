@@ -17,53 +17,30 @@ class SHmenu implements RestaurantInterface
     {
         $url = $this->getMenuUrl . '?LT=' . $limit . '&PG=' . $offset;
         try {
-            /* 需要尋找的keys */$keys = range($offset + 1, $limit + $offset);
-            /* redis內已有的所有keys */$redisKeys = Redis::hkeys('1menus');
-            /* 扣除redis內已有的keys 還需要的keys */$needKeys = array_values(array_diff($keys, $redisKeys));
-            /* 需要尋找的keys 但redis內已有的keys */$redisKeys = array_values(array_intersect($redisKeys, $keys));
-            /* 如果還需要到database找資料 */
-            $need = false;
-            $response = [];
-            if (empty($needKeys)) {
-                foreach (Redis::hmget('3menus', $keys) as $item) {
-                    $response[] = json_decode($item, true);
-                }
-                return $response;
+            $client = new Client();
+            $response = $client->request('GET', $url);
+            $goodResponse = $response->getBody();
+            $arrayGoodResponse = json_decode($goodResponse, true);
+            $apiMenu = $arrayGoodResponse['LS'];
+            $result = [];
+            foreach ($apiMenu as $item) {
+                $menu = [
+                    'rid' => 3,
+                    'id' => $item['ID'],
+                    'info' => '',
+                    'name' => $item['NA'],
+                    'price' => $item['PRC'],
+                    'img' => ''
+                ];
+                Redis::hset('3menus', $item['ID'], json_encode($menu));
+                $result[] = $menu;
             }
-            if (!empty($needKeys)) {
-                $need = true;
-            }
-            if (!empty($redisKeys)) {
-                foreach (Redis::hmget('3menus', $redisKeys) as $item) {
-
-                    $response[] = json_decode($item, true);
-                }
-            }
-            if ($need) {
-                $client = new Client();
-                $response = $client->request('GET', $url);
-                $goodResponse = $response->getBody();
-                $arrayGoodResponse = json_decode($goodResponse, true);
-                $apiMenu = $arrayGoodResponse['LS'];
-                foreach ($apiMenu as $item) {
-                    $menu = [
-                        'rid' => 3,
-                        'id' => $item['ID'],
-                        'info' => '',
-                        'name' => $item['NA'],
-                        'price' => $item['PRC'],
-                        'img' => ''
-                    ];
-                    Redis::hset('3menus', $item['ID'], json_encode($menu));
-                    $response[] = $menu;
-                }
-            }
-            return $response;
+            return $result;
         } catch (Throwable $e) {
             return ['取得菜單錯誤:500'];
         }
     }
-    
+
     public function menuEnable(array $menuIds): bool
     {
         $menu = SteakhomeMenuModel::wherein('id', $menuIds)->get();

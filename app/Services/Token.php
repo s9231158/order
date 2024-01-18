@@ -16,7 +16,7 @@ class Token
         $authorizationHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? null;
         $this->token = str_replace('Bearer ', '', $authorizationHeader);
     }
-    
+
     public function checkToken($email)
     {
         try {
@@ -68,7 +68,6 @@ class Token
                 return true;
             }
             return false;
-
         } catch (Throwable $e) {
             throw new Exception("token_service_err:" . 500);
         }

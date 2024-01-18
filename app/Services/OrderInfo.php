@@ -27,22 +27,11 @@ class OrderInfo
             throw new Exception("order_info_service_err:" . 500 . $e);
         }
     }
-    public function getList($where, $option)
+    public function getList($oid, $option)
     {
-        $stmt = null;
-        if (isset($option['column'])) {
-            $stmt = OrderInfoModel::select($option['column']);
-        } else {
-            $stmt = OrderInfoModel::select('*');
-        }
-        //where
-        $chunks = array_chunk($where, 3);
-        if (!empty($where)) {
-            foreach ($chunks as $chunk) {
-                $stmt->where($chunk[0], $chunk[1], $chunk[2]);
-            }
-        }
-        $response = $stmt->get();
-        return $response->toArray();
+        $column = $option['column'] ?? '*';
+        //select
+        $stmt = OrderInfoModel::select($column);
+        return $stmt->where('oid', $oid)->get()->toArray();
     }
 }

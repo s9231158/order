@@ -257,10 +257,9 @@ class Pay extends Controller
                 //檢查User錢包是否足夠付款
                 $money = $request['total_price'];
                 $userWalletService = new UserWallet();
-                $userWalletData = ['option' => ['column' => ['balance']]];
-                $walletMoney = $userWalletService->get($userId, $userWalletData['option']);
+                $walletMoney = $userWalletService->get($userId);
                 if ($walletMoney['balance'] < $money) {
-                    $status = $this->statusCode['walletNoMoneyFail'];
+                    $status = ['status' => $this->statusCode['walletNoMoneyFail']];
                     $this->orderService->update($oid, $status);
                     return response()->json([
                         'err' => $this->keys[18],
@@ -280,7 +279,7 @@ class Pay extends Controller
                 ];
                 $walltRecordService->create($walletRecordInfo);
                 //修改訂單狀態
-                $status = $this->statusCode['success'];
+                $status = ['status' => $this->statusCode['success']];
                 $this->orderService->update($oid, $status);
                 return response()->json([
                     'name' => $request['name'],
@@ -367,8 +366,7 @@ class Pay extends Controller
             $ecpayBackService = new EcpayBack();
             $ecpayBackService->create($ecpayBackInfo);
             $walletRecordService = new WalletRecord();
-            $option = [];
-            $wallerRecord = $walletRecordService->get($request['merchant_trade_no'], $option);
+            $wallerRecord = $walletRecordService->get($request['merchant_trade_no']);
             $oid = $wallerRecord['oid'];
             if ($request['rtn_code'] == 0) {
                 //將WalletRecord的status改為失敗代碼
@@ -498,19 +496,16 @@ class Pay extends Controller
                     'message' => $this->err[19]
                 ]);
             }
-            $orderInfoData = [
-                'where' => ['oid', '=', $oid],
-                'option' => [
-                    'column' => [
-                        'name',
-                        'quanlity',
-                        'price',
-                        'description'
-                    ]
+            $orderInfoService = new OrderInfo();
+            $option = [
+                'column' => [
+                    'name',
+                    'quanlity',
+                    'price',
+                    'description'
                 ]
             ];
-            $orderInfoService = new OrderInfo();
-            $orderInfo = $orderInfoService->getList($orderInfoData['where'], $orderInfoData['option']);
+            $orderInfo = $orderInfoService->getList($oid, $option);
             return response()->json([
                 'err' => $this->keys[0],
                 'message' => $this->err[0],

@@ -84,8 +84,7 @@ class User extends Controller
             }
             //檢查email是否重複
             $email = $request['email'];
-            $option = ['column' => ['email']];
-            $eamilRepeat = $this->userService->get($email, $option);
+            $eamilRepeat = $this->userService->get($email);
             if ($eamilRepeat) {
                 return response()->json([
                     'err' => $this->keys[3],
@@ -191,10 +190,7 @@ class User extends Controller
                 return response()->json(['err' => $this->err['7']]);
             }
             //驗證帳號密碼
-            $option = [
-                'column' => ['password', 'id', 'name', 'email'],
-            ];
-            $user = $this->userService->get($email, $option);
+            $user = $this->userService->get($email);
             if (!$user || !password_verify($request['password'], $user['password'])) {
                 return response()->json([
                     'err' => $this->keys[8],
@@ -266,14 +262,17 @@ class User extends Controller
     {
         try {
             $email = $this->tokenService->getEamil();
-            $option = [
-                'column' => ['email', 'name', 'address', 'phone', 'age']
-            ];
-            $userInfo = $this->userService->get($email, $option);
+            $userInfo = $this->userService->get($email);
             return response()->json([
                 'err' => $this->keys[0],
                 'message' => $this->err[0],
-                'user_info' => $userInfo
+                'user_info' => [
+                    'email' => $userInfo['email'],
+                    'name' => $userInfo['name'],
+                    'address' => $userInfo['address'],
+                    'phone' => $userInfo['phone'],
+                    'age' => $userInfo['age']
+                ]
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -323,7 +322,6 @@ class User extends Controller
             ];
             $option = [
                 'column' => ['ip', 'device', 'login'],
-                'orderby' => ['login', 'desc'],
                 'offset' => $offset,
                 'limit' => $limit,
             ];
@@ -372,9 +370,8 @@ class User extends Controller
             }
             //餐廳是否存在且啟用
             $rid = $request['rid'];
-            $option = [];
             $restaurantService = new Restaurant();
-            $restaurant = $restaurantService->get($rid, $option);
+            $restaurant = $restaurantService->get($rid);
             if (!$restaurant || $restaurant['enable'] != 1) {
                 return response()->json([
                     'err' => $this->keys[16],
@@ -384,7 +381,7 @@ class User extends Controller
             //檢查使用者我的最愛資料表內是否超過20筆
             $userId = $this->tokenService->getUserId();
             $userFavoriteService = new UserFavorite();
-            $userFavorite = $userFavoriteService->get($userId);
+            $userFavorite = $userFavoriteService->getList($userId);
             $count = count($userFavorite);
             if ($count >= 20) {
                 return response()->json([
@@ -434,15 +431,15 @@ class User extends Controller
             //取的我的最愛
             $userId = $this->tokenService->getUserId();
             $userFavoriteService = new UserFavorite();
-            $userFavorite = $userFavoriteService->get($userId);
-            $favoriteRids = array_column($userFavorite, 'rid');
+            $userFavorite = $userFavoriteService->getList($userId);
+            $favoriteRIds = array_column($userFavorite, 'rid');
             $reataurantService = new Restaurant();
-            $userFavorite = $reataurantService->getListByRids($favoriteRids);
+            $userFavorite = $reataurantService->getList($favoriteRIds);
             $count = count($userFavorite);
             $response = array_map(function ($item) {
                 return [
-                    'id' => $item['totalpoint'],
-                    'total_point' => $item['deleted_at'],
+                    'id' => $item['id'],
+                    'total_point' => $item['totalpoint'],
                     'count_point' => $item['countpoint'],
                     'title' => $item['title'],
                     'img' => $item['img']
@@ -493,7 +490,7 @@ class User extends Controller
             $rid = $request['rid'];
             $userId = $this->tokenService->getUserId();
             $userFavoriteService = new UserFavorite();
-            $userFavorite = $userFavoriteService->get($userId);
+            $userFavorite = $userFavoriteService->getList($userId);
             $favoriteRids = array_column($userFavorite, 'rid');
             if (!in_array($rid, $favoriteRids)) {
                 return response()->json([
@@ -534,10 +531,10 @@ class User extends Controller
             //取出歷史紀錄餐廳的資訊
             $userId = $this->tokenService->getUserId();
             $restaurantHistoryService = new RestaurantHistory();
-            $restaurantHistory = $restaurantHistoryService->getListByUser($userId);
+            $restaurantHistory = $restaurantHistoryService->getList($userId);
             $rIds = array_column($restaurantHistory, 'rid');
             $restaurantService = new Restaurant();
-            $restaurantInfo = $restaurantService->getListByRids($rIds);
+            $restaurantInfo = $restaurantService->getList($rIds);
             $response = array_map(function ($item) {
                 return [
                     'id' => $item['id'],

@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\User_wallets as UserWalletModel;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use PDOException;
 use Throwable;
 use Exception;
 
@@ -21,20 +23,15 @@ class UserWallet
             throw new Exception("user_record_service_err:" . 500 . $e);
         }
     }
-    
-    public function get($where, $option)
+
+    public function get($userId)
     {
-        //select
-        $stmt = null;
-        if (isset($option['column'])) {
-            $stmt = UserWalletModel::select($option['column']);
-        } else {
-            $stmt = UserWalletModel::select('*');
-        }
-        //where
-        if (!empty($where)) {
-            $response = $stmt->find($where);
-            return $response ? $response->toArray() : null;
+        try {
+            return UserWalletModel::findorfail($userId)->toArray();
+        } catch (ModelNotFoundException $e) {
+            return [];
+        } catch (PDOException $e) {
+            return [];
         }
     }
 }

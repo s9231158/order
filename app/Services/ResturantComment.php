@@ -25,59 +25,31 @@ class ResturantComment
         }
     }
 
-    public function get($where, $option)
+    public function firstComment($uid, $rid)
     {
-        //select
-        $stmt = null;
-        if (isset($option['column'])) {
-            $stmt = RestaurantCommentModel::select($option['column']);
-        } else {
-            $stmt = RestaurantCommentModel::select('*');
-        }
-        //where
-        $chunks = array_chunk($where, 2);
-        if (!empty($where)) {
-            foreach ($chunks as $chunk) {
-                $stmt->where($chunk[0], $chunk[1]);
-            }
-        }
-        $response = $stmt->first();
-        if (!$response) {
-            return $response;
-        }
-        return $response->toArray();
+        return RestaurantCommentModel::where('uid', $uid)->where('rid', $rid)->exists();
     }
 
-    public function getList($where, $option)
+    public function getJoinUserList($rid, $option)
     {
+        $limit = $option['limit'] ?? 20;
+        $offset = $option['offset'] ?? 0;
         //select
-        $stmt = null;
-        if (isset($option['column'])) {
-            $stmt = RestaurantCommentModel::select($option['column']);
-        } else {
-            $stmt = RestaurantCommentModel::select('*');
-        }
+        $stmt = RestaurantCommentModel::select(
+            'users.name',
+            'restaurant_comments.point',
+            'restaurant_comments.comment',
+            'restaurant_comments.created_at'
+        );
         //join
         $stmt->join('users', 'users.id', '=', 'restaurant_comments.uid');
         //where
-        $chunks = array_chunk($where, 3);
-        if (!empty($where)) {
-            foreach ($chunks as $chunk) {
-                $stmt->where($chunk[0], $chunk[1], $chunk[2]);
-            }
-        }
+        $stmt->where('rid', '=', $rid);
         //orderBy
-        if (isset($option['orderby'])) {
-            $stmt->orderby($option['orderby'][0], $option['orderby'][1]);
-        }
-        //limit
-        if (isset($option['limit'])) {
-            $stmt->limit($option['limit']);
-        }
-        if (isset($option['offset'])) {
-            $stmt->offset($option['offset']);
-        }
+        $stmt->orderby('restaurant_comments.created_at', 'desc');
+        //range
+        $stmt->limit($limit);
+        $stmt->offset($offset);
         return $stmt->get()->toArray();
     }
-
 }

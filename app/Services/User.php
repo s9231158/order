@@ -3,29 +3,24 @@
 namespace App\Services;
 
 use App\Models\User as UserModel;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use PDOException;
 use Throwable;
 use Exception;
 
 class User
 {
-    public function get($where, $option)
+    public function get($email)
     {
-        //select
-        $stmt = null;
-        if (isset($option['column'])) {
-            $stmt = UserModel::select($option['column']);
-        } else {
-            $stmt = UserModel::select('*');
+        try {
+            return UserModel::findorfail($email)->toArray();
+        } catch (ModelNotFoundException $e) {
+            return [];
+        } catch (PDOException $e) {
+            return [];
         }
-        //where
-        if (!empty($where)) {
-            $response = $stmt->find($where);
-        }
-        if (!$response) {
-            return $response;
-        }
-        return $response->toArray();
     }
+
     public function getPhone($phone)
     {
         return UserModel::where('phone', $phone)->exists();

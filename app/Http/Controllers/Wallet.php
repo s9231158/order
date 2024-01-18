@@ -132,17 +132,16 @@ class Wallet extends Controller
             $ecpayBackService->create($ecpayBackInfo);
             if ($request['rtn_code'] == 0) {
                 //將WalletRecord的 status改為false
-                $status = $this->statusCode['responseFail'];
+                $status = ['status' => $this->statusCode['responseFail']];
                 $this->walletRecordService->update(['eid' => $request['merchant_id']], $status);
             } else {
                 //將WalletRecord的 status改為success
-                $status = $this->statusCode['success'];
+                $status = ['status' => $this->statusCode['success']];
                 $this->walletRecordService->update(['oid' => $request['merchant_id']], $status);
                 $userId = $this->tokenService->getUserId();
                 //將金額加入使用者錢包
                 $userWalletService = new UserWallet();
-                $userWalletData = ['option' => ['column' => ['balance']]];
-                $walletMoney = $userWalletService->get($userId, $userWalletData['option']);
+                $walletMoney = $userWalletService->get($userId);
                 $balance = $walletMoney['balance'] + $money;
                 $userWalletService->updateOrCreate($userId, $balance);
             }
@@ -187,7 +186,6 @@ class Wallet extends Controller
                     : ['in', 'out', 'pid', 'created_at'],
                 'limit' => $limit,
                 'offset' => $offset,
-                'orderby' => ['wallet__records.created_at', 'desc']
             ];
             $walletRecord = $this->walletRecordService->getList($where, $option);
             $count = count($walletRecord);

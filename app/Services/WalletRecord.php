@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use App\Models\Wallet_Record as WalletRecordModel;
+use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use PDOException;
 
 class WalletRecord
 {
@@ -18,6 +21,7 @@ class WalletRecord
         ]);
         return WalletRecordModel::where($where)->update($goodInfo);
     }
+
     public function create($info)
     {
         $goodInfo = [
@@ -32,49 +36,45 @@ class WalletRecord
         return WalletRecordModel::create($goodInfo);
     }
 
-    public function get($where, $option)
+    public function get($uuId)
     {
-        //select
-        $stmt = null;
-        if (isset($option['column'])) {
-            $stmt = WalletRecordModel::select($option['column']);
-        } else {
-            $stmt = WalletRecordModel::select('*');
+        try {
+            return WalletRecordModel::findorfail($uuId)->toArray();
+        } catch (ModelNotFoundException $e) {
+            return [];
+        } catch (PDOException $e) {
+            return [];
         }
-        //where
-        if (!empty($where)) {
-            $response = $stmt->find($where);
-        }
-        if (!$response) {
-            return $response;
-        }
-        return $response->toArray();
     }
-    public function getList($where, $option)
+
+    public function getList(array $where, array $option)
     {
-        $stmt = null;
-        if (isset($option['column'])) {
-            $stmt = WalletRecordModel::select($option['column']);
-        } else {
-            $stmt = WalletRecordModel::select('*');
-        }
-        $chunks = array_chunk($where, 3);
-        if (!empty($where)) {
-            foreach ($chunks as $chunk) {
-                $stmt->where($chunk[0], $chunk[1], $chunk[2]);
+        try {
+            $limit = $option['limit'] ?? 20;
+            $offset = $option['offset'] ?? 0;
+            $column = $option['column'] ?? '*';
+            //select
+            $stmt = WalletRecordModel::select($column);
+            //where
+            if (count($where) % 3 != 0) {
+                throw new Exception('where參數應為三元組的倍數,where參數正確示範[0]:uid,[1]:=[3]:2');
             }
+            $chunks = array_chunk($where, 3);
+            if (!empty($where)) {
+                foreach ($chunks as $chunk) {
+                    $stmt->where($chunk[0], $chunk[1], $chunk[2]);
+                }
+            }
+            //orderBy
+            $stmt->orderBy('created_at', 'desc');
+            //range
+            $stmt->limit($limit);
+            $stmt->offset($offset);
+            return $stmt->get()->toArray();
+        } catch (PDOException $e) {
+            return [];
+        } catch (Exception $e) {
+            return $e->getMessage();
         }
-        //orderBy
-        if (isset($option['orderby'])) {
-            $stmt->orderby($option['orderby'][0], $option['orderby'][1]);
-        }
-        //limit
-        if (isset($option['limit'])) {
-            $stmt->limit($option['limit']);
-        }
-        if (isset($option['offset'])) {
-            $stmt->offset($option['offset']);
-        }
-        return $stmt->get()->toArray();
     }
 }
