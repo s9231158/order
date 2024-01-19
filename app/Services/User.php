@@ -13,7 +13,7 @@ class User
     public function get($email)
     {
         try {
-            return UserModel::findorfail($email)->toArray();
+            return UserModel::where('email', $email)->firstorfail()->toArray();
         } catch (ModelNotFoundException $e) {
             return [];
         } catch (PDOException $e) {

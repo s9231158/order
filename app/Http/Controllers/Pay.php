@@ -130,7 +130,7 @@ class Pay extends Controller
             $where = ['restaurants.id', '=', $rid];
             $option = [];
             $restaurantService = new Restaurant();
-            $restaurantInfo = $restaurantService->getJoinist($where, $option)[0];
+            $restaurantInfo = $restaurantService->getJoinList($where, $option)[0];
             if (!$restaurantInfo || $restaurantInfo['enable'] != 1) {
                 return response()->json([
                     'err' => $this->keys[16],
@@ -425,18 +425,24 @@ class Pay extends Controller
             $orderService = new Order();
             $oid = $request['oid'] ?? null;
             if ($oid) {
-                $where = [
-                    'id',
-                    $oid,
-                    'uid',
-                    $userId
+                $order = $orderService->get($oid);
+                if (!$order || $order['uid'] !== $userId) {
+                    return response()->json([
+                        'err' => $this->keys[19],
+                        'message' => $this->err[19]
+                    ]);
+                }
+                $result = [
+                    'id' => $order['id'],
+                    'ordertime' => $order['ordertime'],
+                    'taketime' => $order['taketime'],
+                    'total' => $order['total'],
+                    'status' => $order['status']
                 ];
-                $option = ['column' => ['id', 'ordertime', 'taketime', 'total', 'status']];
-                $order = $orderService->get($where, $option);
                 return response()->json([
                     'err' => $this->keys[0],
                     'message' => $this->err[0],
-                    'order' => $order
+                    'order' => $result
                 ]);
             } else {
                 $where = ['uid', '=', $userId];
@@ -485,12 +491,8 @@ class Pay extends Controller
             }
             $oid = $request['oid'];
             $userId = $this->tokenService->getUserId();
-            $orderData = [
-                'where' => ['id', $oid, 'uid', $userId],
-                'option' => []
-            ];
-            $isUser = $this->orderService->get($orderData['where'], $orderData['option']);
-            if (!$isUser) {
+            $isUser = $this->orderService->get($oid);
+            if (!$isUser || $isUser['uid'] !== $userId) {
                 return response()->json([
                     'err' => $this->keys[19],
                     'message' => $this->err[19]

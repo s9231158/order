@@ -6,7 +6,6 @@ use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Date;
 use App\Models\OishiiMenu as OishiiMenuModel;
 use App\Contract\RestaurantInterface;
-use Illuminate\Support\Facades\Redis;
 use Throwable;
 
 class OSmenu implements RestaurantInterface
@@ -34,7 +33,6 @@ class OSmenu implements RestaurantInterface
                     'price' => $item['price'],
                     'img' => ''
                 ];
-                Redis::hset('1menus', $item['id'], json_encode($menu));
                 $result[] = $menu;
             }
             return $result;

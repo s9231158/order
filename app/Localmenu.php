@@ -4,7 +4,6 @@ namespace App;
 
 use App\Contract\RestaurantInterface;
 use App\Models\LocalMenu as LocalMenuModel;
-use Illuminate\Support\Facades\Redis;
 use Throwable;
 
 class Localmenu implements RestaurantInterface
@@ -12,16 +11,11 @@ class Localmenu implements RestaurantInterface
     public function getMenu(int $offset, int $limit): array
     {
         try {
-            $menu = LocalMenuModel::select('rid', 'id', 'info', 'name', 'price', 'img')
+            return LocalMenuModel::select('rid', 'id', 'info', 'name', 'price', 'img')
                 ->limit($limit)
                 ->offset($offset)
                 ->get()
                 ->toArray();
-            foreach ($menu as $item) {
-                Redis::hset('4menus', $item['id'], json_encode($item));
-                $response[] = $item;
-            }
-            return $response;
         } catch (Throwable $e) {
             return ['取得菜單錯誤:500'];
         }

@@ -23,7 +23,7 @@ class EcpayApi
                 "choose_payment" => "Credit",
             ];
             $ecpayInfo = array_merge($ecpayInfo, $ecpayRestaurantInfo);
-            $ecpayInfo['check_mac_value'] = $checkMacValueService->Generate($ecpayInfo);
+            $ecpayInfo['check_mac_value'] = $checkMacValueService->generate($ecpayInfo);
             $client = new Client();
             $response = $client->Request('POST', env('ECPAY_APIURL'), ['json' => $ecpayInfo]);
             $arrayGoodResponse = json_decode($response->getBody());

@@ -27,8 +27,6 @@ class User extends Authenticatable implements JWTSubject
         'phone',
 
     ];
-    protected $primaryKey = 'email';
-
     /**
      * The attributes that should be hidden for serialization.
      *

@@ -45,14 +45,14 @@ class Wallet extends Controller
             'money' => ['required', 'numeric', 'min:0'],
         ];
         //什麼錯誤報什麼錯誤訊息
-        $rulsmessage = [
+        $rulsMessage = [
             'money.numeric' => '無效的範圍',
             'money.required' => '必填資料未填',
             'money.min' => '無效的範圍'
         ];
         try {
             //驗證參輸入數
-            $validator = Validator::make($request->all(), $ruls, $rulsmessage);
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
             if ($validator->fails()) {
                 return response()->json([
                     'err' => array_search($validator->errors()->first(), $this->err),
@@ -160,13 +160,13 @@ class Wallet extends Controller
             'offset' => ['integer'],
         ];
         //什麼錯誤報什麼錯誤訊息
-        $rulsmessage = [
+        $rulsMessage = [
             'type.in' => '請填入正確格式',
             'limit.integer' => '無效的範圍',
             'offset.integer' => '無效的範圍',
         ];
         try {
-            $validator = Validator::make($request->all(), $ruls, $rulsmessage);
+            $validator = Validator::make($request->all(), $ruls, $rulsMessage);
             if ($validator->fails()) {
                 return response()->json([
                     'err' => array_search($validator->errors()->first(), $this->err),

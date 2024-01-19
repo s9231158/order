@@ -6,7 +6,6 @@ use App\Contract\RestaurantInterface;
 use App\Models\Tasty_menu as TastyMenuModel;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Date;
-use Illuminate\Support\Facades\Redis;
 use Throwable;
 
 class TAmenu implements RestaurantInterface
@@ -35,7 +34,6 @@ class TAmenu implements RestaurantInterface
                         'img' => ''
                     ];
                     $result[] = $menu;
-                    Redis::hset('2menus', $item['id'], json_encode($menu));
                 }
             }
             return $result;
@@ -114,9 +112,9 @@ class TAmenu implements RestaurantInterface
                 $orderPrice = $item['price'];
                 $orderId = $item['id'];
                 //取出店家回傳菜單價格.名稱,餐點Id
-                $responseName = $item['data']['list'][0]['name'];
-                $responseId = $item['data']['list'][0]['id'];
-                $responsePrice = $item['data']['list'][0]['price'];
+                $responseName = $arrayResponse['data']['list'][0]['name'];
+                $responseId = $arrayResponse['data']['list'][0]['id'];
+                $responsePrice = $arrayResponse['data']['list'][0]['price'];
                 //比對是否不一致
                 if ($orderName != $responseName) {
                     return false;

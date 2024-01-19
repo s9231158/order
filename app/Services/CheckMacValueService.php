@@ -6,94 +6,79 @@ use Exception;
 
 class CheckMacValueService
 {
-    /**
-     * Hash 方式
-     *
-     * @var string
-     */
-    private $Method;
-    protected $HashIv;
-    protected $HashKey;
+    protected $hashIv;
+    protected $hashKey;
 
-
-    public function __construct($Key, $Iv)
+    public function __construct($key, $iv)
     {
-        $this->setHashKey($Key);
-        $this->setHashIv($Iv);
+        $this->setHashKey($key);
+        $this->setHashIv($iv);
     }
 
-    public function Generate($Source)
+    public function generate($source)
     {
         try {
             //如果有checkvalue 移除他
-            $Filtered = $this->filter($Source);
+            $filtered = $this->filter($source);
             //對key進行大小寫排序
-            $Sorted = $this->NaturalSort($Filtered);
+            $sorted = $this->naturalSort($filtered);
             //array to string & add hashiv,key
-            $Combined = $this->ToEncodeSourceString($Sorted);
+            $combined = $this->toEncodeSourceString($sorted);
             //進行URL encode & 轉成小寫
-            $Encoded = $this->EcpayUrlEncode($Combined);
+            $encoded = $this->ecpayUrlEncode($combined);
             //使用sha256產生雜湊
-            $Hash = $this->GenerateHash($Encoded);
+            $hash = $this->generateHash($encoded);
             //轉大寫
-            $CheckMacValue = strtoupper($Hash);
-            return $CheckMacValue;
+            $checkMacValue = strtoupper($hash);
+            return $checkMacValue;
         } catch (Exception $e) {
             throw $e;
         }
     }
 
-    public function GenerateHash($Source)
+    public function generateHash($source)
     {
-        $Hash = hash('sha256', $Source);
-        return $Hash;
+        $hash = hash('sha256', $source);
+        return $hash;
     }
 
-    public static function NaturalSort($Source)
+    public static function naturalSort($source)
     {
-        uksort($Source, function ($First, $Second) {
-
-            return strcasecmp($First, $Second);
+        uksort($source, function ($first, $second) {
+            return strcasecmp($first, $second);
         });
-        return $Source;
+        return $source;
     }
 
-    public function Filter($Source)
+    public function filter($source)
     {
-        if (isset($Source[$this->getFieldName()])) {
-            unset($Source[$this->getFieldName()]);
+        if (isset($source[$this->getFieldName()])) {
+            unset($source[$this->getFieldName()]);
         }
-        return $Source;
+        return $source;
     }
-    public function ToEncodeSourceString($Source)
+
+    public function toEncodeSourceString($source)
     {
-        $Combined = 'hash_key=' . $this->GetHashKey();
-        foreach ($Source as $Name => $Value) {
-            $Combined .= '&' . $Name . '=' . $Value;
+        $combined = 'hash_key=' . $this->getHashKey();
+        foreach ($source as $name => $value) {
+            $combined .= '&' . $name . '=' . $value;
         }
-        $Combined .= '&hash_iv=' . $this->GetHashIv();
-        return $Combined;
+        $combined .= '&hash_iv=' . $this->getHashIv();
+        return $combined;
     }
 
-
-    public static function EcpayUrlEncode($Source)
+    public static function ecpayUrlEncode($source)
     {
-        $Encoded = urlencode($Source);
-        $Lower = strtolower($Encoded);
-        $DotNetFormat = self::ToDotNetUrlEncode($Lower);
-
-        return $DotNetFormat;
+        $encoded = urlencode($source);
+        $lower = strtolower($encoded);
+        $dotNetFormat = self::toDotNetUrlEncode($lower);
+        return $dotNetFormat;
     }
 
-    /**
-     * 轉換為 .net URL 編碼結果
-     *
-     * @param  string $source
-     * @return string
-     */
-    public static function ToDotNetUrlEncode($Source)
+    public static function toDotNetUrlEncode($source)
     {
-        $Search = [
+        $search = [
             '%2d',
             '%5f',
             '%2e',
@@ -102,7 +87,7 @@ class CheckMacValueService
             '%28',
             '%29',
         ];
-        $Replace = [
+        $replace = [
             '-',
             '_',
             '.',
@@ -111,49 +96,32 @@ class CheckMacValueService
             '(',
             ')',
         ];
-        $Replaced = str_replace($Search, $Replace, $Source);
-
-        return $Replaced;
+        $replaced = str_replace($search, $replace, $source);
+        return $replaced;
     }
-    public function GetFieldName()
+
+    public function getFieldName()
     {
         return 'check_mac_value';
     }
 
-    public function GetHashIv()
+    public function getHashIv()
     {
-        return $this->HashIv;
+        return $this->hashIv;
     }
 
-    /**
-     * 取得 Hash Key
-     *
-     * @return string
-     */
-    public function GetHashKey()
+    public function getHashKey()
     {
-        return $this->HashKey;
+        return $this->hashKey;
     }
 
-    /**
-     * 設定 Hash IV
-     *
-     * @param  string $Iv
-     * @return void
-     */
-    public function setHashIv($Iv)
+    public function setHashIv($iv)
     {
-        $this->HashIv = $Iv;
+        $this->hashIv = $iv;
     }
 
-    /**
-     * 設定 Hash Key
-     *
-     * @param  string $Key
-     * @return void
-     */
-    public function setHashKey($Key)
+    public function setHashKey($key)
     {
-        $this->HashKey = $Key;
+        $this->hashKey = $key;
     }
 }

@@ -57,7 +57,7 @@ class WalletRecord
             $stmt = WalletRecordModel::select($column);
             //where
             if (count($where) % 3 != 0) {
-                throw new Exception('where參數應為三元組的倍數,where參數正確示範[0]:uid,[1]:=[3]:2');
+                throw new Exception('where參數數量除三應餘為0,where參數正確示範[0]:uid,[1]:=[3]:2');
             }
             $chunks = array_chunk($where, 3);
             if (!empty($where)) {

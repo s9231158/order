@@ -31,16 +31,12 @@ class RestaruantMoneyTotal implements ShouldQueue
      */
     public function handle()
     {
-        $start = now()->minute(0)->second(0);
-        $end = now()->addHour()->minute(0)->second(0);
-        //取出訂單
+        $start = now()->subHour()->minute(0)->second(0);
+        $end = now()->minute(0)->second(0);
         $orders = OrderModel::select('total', 'rid')
             ->whereBetween('created_at', [$start, $end])
             ->whereBetween('status', [0, 9])
             ->get();
-        if ($orders->isEmpty()) {
-            return;
-        }
         $restaurantTotal = $orders->groupBy('rid')->map(function ($group) {
             return $group->sum('total');
         });

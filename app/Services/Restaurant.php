@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Restaurant as RestaurantModel;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Redis;
 use PDOException;
 use Throwable;
 use Exception;
@@ -36,7 +35,7 @@ class Restaurant
         }
     }
 
-    public function getJoinist($where, $option)
+    public function getJoinList($where, $option)
     {
         $offset = $option['offset'] ?? 0;
         $limit = $option['limit'] ?? 20;
@@ -46,15 +45,14 @@ class Restaurant
         //join
         $stmt->join('restaurant_open_days', 'restaurant_open_days.id', '=', 'restaurants.id');
         //where
+        if (count($where) % 3 != 0) {
+            throw new Exception('where參數數量除三應餘為0,where參數正確示範[0]:uid,[1]:=[3]:2');
+        }
         $whereChunks = array_chunk($where, 3);
         if (!empty($where)) {
             foreach ($whereChunks as $whereChunk) {
                 $stmt->where($whereChunk[0], $whereChunk[1], $whereChunk[2]);
             }
-        }
-        //orderBy
-        if (isset($option['orderby'])) {
-            $stmt->orderby($option['orderby'][0], $option['orderby'][1]);
         }
         //range
         $stmt->limit($limit);

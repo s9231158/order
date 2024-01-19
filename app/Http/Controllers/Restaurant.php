@@ -9,7 +9,6 @@ use App\Services\Restaurant as RestaurantService;
 use App\Services\RestaurantHistory;
 use App\Services\ResturantComment;
 use App\Services\Token;
-use App\Services\WalletRecord;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Validator;
@@ -61,7 +60,7 @@ class Restaurant extends Controller
                 'limit' => $limit,
                 'offset' => $offset,
             ];
-            $restaurantInfo = $this->restaurantService->getJoinist($where, $option);
+            $restaurantInfo = $this->restaurantService->getJoinList($where, $option);
             $count = count($restaurantInfo);
             $keys = array_keys($restaurantInfo);
             shuffle($keys);
@@ -343,7 +342,8 @@ class Restaurant extends Controller
 
     public function apple()
     {
-
+         $start = now()->subHour()->minute(0)->second(0);
+       return $end = now()->minute(0)->second(0);
 
         $rid1 = [1];
         $rid2 = [2];

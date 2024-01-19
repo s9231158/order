@@ -31,15 +31,11 @@ class RestaurantFavoritrCount implements ShouldQueue
      */
     public function handle()
     {
-        $start = now()->minute(0)->second(0);
-        $end = now()->addHour()->minute(0)->second(0);
-        //取出訂單
+        $start = now()->subHour()->minute(0)->second(0);
+        $end = now()->minute(0)->second(0);
         $favorite = UserFavoriteModel::select('rid')
             ->whereBetween('created_at', [$start, $end])
             ->get();
-        if ($favorite->isEmpty()) {
-            return;
-        }
         $favoriteTotal = $favorite->groupBy('rid')->map(function ($group) {
             return count($group);
         });

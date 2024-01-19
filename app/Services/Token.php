@@ -5,7 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 use Exception;
-use \Firebase\JWT\JWT;
+use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
 class Token

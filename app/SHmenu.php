@@ -5,7 +5,6 @@ namespace App;
 use GuzzleHttp\Client;
 use App\Contract\RestaurantInterface;
 use App\Models\Steakhome_menu as SteakhomeMenuModel;
-use Illuminate\Support\Facades\Redis;
 use Throwable;
 
 class SHmenu implements RestaurantInterface
@@ -32,7 +31,6 @@ class SHmenu implements RestaurantInterface
                     'price' => $item['PRC'],
                     'img' => ''
                 ];
-                Redis::hset('3menus', $item['ID'], json_encode($menu));
                 $result[] = $menu;
             }
             return $result;
@@ -105,9 +103,9 @@ class SHmenu implements RestaurantInterface
                 $orderPrice = $item['price'];
                 $orderId = $item['id'];
                 //取出店家回傳菜單價格.名稱,餐點Id
-                $responseName = $item['LS'][0]['NA'];
-                $responseId = $item['LS'][0]['ID'];
-                $responsePrice = $item['LS'][0]['PRC'];
+                $responseName = $arrayResponse['LS'][0]['NA'];
+                $responseId = $arrayResponse['LS'][0]['ID'];
+                $responsePrice = $arrayResponse['LS'][0]['PRC'];
                 //比對是否不一致
                 if ($orderName != $responseName) {
                     return false;

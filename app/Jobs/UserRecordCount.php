@@ -31,14 +31,10 @@ class UserRecordCount implements ShouldQueue
      */
     public function handle()
     {
-        $start = now()->minute(0)->second(0);
-        $end = now()->addHour()->minute(0)->second(0);
-        //取出訂單
+        $start = now()->subHour()->minute(0)->second(0);
+        $end = now()->minute(0)->second(0);
         $recordCount = UserRecodeModel::whereBetween('created_at', [$start, $end])
             ->count();
-        if (!$recordCount) {
-            return;
-        }
         $result = [
             'count' => $recordCount,
             'starttime' => $start,

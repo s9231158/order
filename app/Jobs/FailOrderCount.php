@@ -30,13 +30,9 @@ class FailOrderCount implements ShouldQueue
      */
     public function handle()
     {
-        $start = now()->minute(0)->second(0);
-        $end = now()->addHour()->minute(0)->second(0);
-        //取出訂單
+        $start = now()->subHour()->minute(0)->second(0);
+        $end = now()->minute(0)->second(0);
         $orders = OrderModel::whereBetween('created_at', [$start, $end])->get();
-        if ($orders->isEmpty()) {
-            return;
-        }
         $ordersCount = $orders->count();
         $failOrders = $orders->whereBetween('status', [10, 20]);
         $failOrdersCount = $failOrders->count();

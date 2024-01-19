@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Order as OrderModel;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Throwable;
 
 class Order
@@ -20,8 +21,7 @@ class Order
             'rid' => $info['rid'] ?? null,
             'uid' => $info['uid'] ?? null,
         ]);
-        $response = OrderModel::find($oid)->update($goodInfo);
-        return $response;
+        return OrderModel::find($oid)->update($goodInfo);
     }
 
     public function create($info)
@@ -37,8 +37,8 @@ class Order
                 'rid' => $info['rid'],
                 'uid' => $info['uid'],
             ];
-            $response = OrderModel::create($goodInfo);
-            return $response;
+            return OrderModel::create($goodInfo);
+
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
         } catch (Throwable $e) {
@@ -46,56 +46,36 @@ class Order
         }
     }
 
-    public function get($where, $option)
+    public function get($oid)
     {
-        $stmt = null;
-        if (isset($option['column'])) {
-            $stmt = OrderModel::select($option['column']);
-        } else {
-            $stmt = OrderModel::select('*');
+        try {
+            return OrderModel::findorfail($oid);
+        } catch (ModelNotFoundException $e) {
+            return [];
         }
-        //where
-        $chunks = array_chunk($where, 2);
-        if (!empty($where)) {
-            foreach ($chunks as $chunk) {
-                $stmt->where($chunk[0], $chunk[1]);
-            }
-        }
-        $response = $stmt->first();
-        if (!$response) {
-            return $response;
-        }
-        return $response->toArray();
     }
 
     public function getList($where, $option)
     {
+        $limit = $option['limit'] ?? 20;
+        $offset = $option['offset'] ?? 0;
+        $column = $option['column'] ?? '*';
         //select
-        $stmt = null;
-        if (isset($option['column'])) {
-            $stmt = OrderModel::select($option['column']);
-        } else {
-            $stmt = OrderModel::select('*');
-        }
+        $stmt = OrderModel::select($column);
         //where
+        if (count($where) % 3 != 0) {
+            throw new Exception('where參數數量除三應餘為0,where參數正確示範[0]:uid,[1]:=[3]:2');
+        }
         $chunks = array_chunk($where, 3);
         if (!empty($where)) {
             foreach ($chunks as $chunk) {
                 $stmt->where($chunk[0], $chunk[1], $chunk[2]);
             }
         }
-        //orderBy
-        if (isset($option['orderby'])) {
-            $stmt->orderby($option['orderby'][0], $option['orderby'][1]);
-        }
-        //limit
-        if (isset($option['limit'])) {
-            $stmt->limit($option['limit']);
-        }
-        if (isset($option['offset'])) {
-            $stmt->offset($option['offset']);
-        }
-        //get
+        $stmt->orderBy('created_at', 'desc');
+        //reage
+        $stmt->limit($limit);
+        $stmt->offset($offset);
         return $stmt->get()->toArray();
     }
 }

@@ -31,13 +31,9 @@ class PaymentCount implements ShouldQueue
      */
     public function handle()
     {
-        $start = now()->minute(0)->second(0);
-        $end = now()->addHour()->minute(0)->second(0);
-        //取出訂單
+        $start = now()->subHour()->minute(0)->second(0);
+        $end = now()->minute(0)->second(0);
         $records = WalletRecordModel::select('pid')->whereBetween('created_at', [$start, $end])->get();
-        if ($records->isEmpty()) {
-            return;
-        }
         $ecpayCount = $records->where('pid', '=', '1')->count();
         $localCount = $records->where('pid', '=', '2')->count();
         $result = [

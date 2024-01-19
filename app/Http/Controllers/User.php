@@ -192,6 +192,7 @@ class User extends Controller
             //驗證帳號密碼
             $user = $this->userService->get($email);
             if (!$user || !password_verify($request['password'], $user['password'])) {
+                RateLimiter::hit(Str::lower($email) . '|' . $ip, 60);
                 return response()->json([
                     'err' => $this->keys[8],
                     'message' => $this->err[8]
@@ -398,8 +399,7 @@ class User extends Controller
                 ]);
             }
             //新增至我得最愛
-            $favoriteInfo = ['uid' => $userId, 'rid' => $rid];
-            $response = $userFavoriteService->create($favoriteInfo);
+            $response = $userFavoriteService->create($userId, $rid);
             if ($response) {
                 return response()->json([
                     'err' => $this->keys[0],
@@ -432,9 +432,9 @@ class User extends Controller
             $userId = $this->tokenService->getUserId();
             $userFavoriteService = new UserFavorite();
             $userFavorite = $userFavoriteService->getList($userId);
-            $favoriteRIds = array_column($userFavorite, 'rid');
+            $favoriteRids = array_column($userFavorite, 'rid');
             $reataurantService = new Restaurant();
-            $userFavorite = $reataurantService->getList($favoriteRIds);
+            $userFavorite = $reataurantService->getList($favoriteRids);
             $count = count($userFavorite);
             $response = array_map(function ($item) {
                 return [
@@ -532,9 +532,9 @@ class User extends Controller
             $userId = $this->tokenService->getUserId();
             $restaurantHistoryService = new RestaurantHistory();
             $restaurantHistory = $restaurantHistoryService->getList($userId);
-            $rIds = array_column($restaurantHistory, 'rid');
+            $rids = array_column($restaurantHistory, 'rid');
             $restaurantService = new Restaurant();
-            $restaurantInfo = $restaurantService->getList($rIds);
+            $restaurantInfo = $restaurantService->getList($rids);
             $response = array_map(function ($item) {
                 return [
                     'id' => $item['id'],
