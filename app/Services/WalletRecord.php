@@ -4,46 +4,57 @@ namespace App\Services;
 
 use App\Models\Wallet_Record as WalletRecordModel;
 use Exception;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use PDOException;
+use Throwable;
 
 class WalletRecord
 {
     public function update($where, $info)
     {
-        $goodInfo = array_filter([
-            'oid' => $info['oid'] ?? null,
-            'out' => $info['out'] ?? null,
-            'eid' => $info['eid'] ?? null,
-            'status' => $info['status'] ?? null,
-            'pid' => $info['pid'] ?? null,
-            'uid' => $info['uid'] ?? null
-        ]);
-        return WalletRecordModel::where($where)->update($goodInfo);
+        try {
+            $goodInfo = array_filter([
+                'oid' => $info['oid'] ?? null,
+                'out' => $info['out'] ?? null,
+                'eid' => $info['eid'] ?? null,
+                'status' => $info['status'] ?? null,
+                'pid' => $info['pid'] ?? null,
+                'uid' => $info['uid'] ?? null
+            ]);
+            return WalletRecordModel::where($where)->update($goodInfo);
+        } catch (Exception $e) {
+            throw new Exception($e->getMessage());
+        } catch (Throwable $e) {
+            throw new Exception("wallet_record_service_err:" . 500 . $e->getMessage());
+        }
     }
 
     public function create($info)
     {
-        $goodInfo = [
-            'oid' => $info['oid'] ?? null,
-            'in' => $info['in'] ?? null,
-            'out' => $info['out'] ?? null,
-            'eid' => $info['eid'] ?? null,
-            'status' => $info['status'],
-            'pid' => $info['pid'],
-            'uid' => $info['uid'],
-        ];
-        return WalletRecordModel::create($goodInfo);
+        try {
+            $goodInfo = [
+                'oid' => $info['oid'] ?? null,
+                'in' => $info['in'] ?? null,
+                'out' => $info['out'] ?? null,
+                'eid' => $info['eid'] ?? null,
+                'status' => $info['status'],
+                'pid' => $info['pid'],
+                'uid' => $info['uid'],
+            ];
+            return WalletRecordModel::create($goodInfo);
+        } catch (Exception $e) {
+            throw new Exception($e->getMessage());
+        } catch (Throwable $e) {
+            throw new Exception("wallet_record_service_err:" . 500 . $e->getMessage());
+        }
     }
 
     public function get($uuId)
     {
         try {
-            return WalletRecordModel::findorfail($uuId)->toArray();
-        } catch (ModelNotFoundException $e) {
-            return [];
-        } catch (PDOException $e) {
-            return [];
+            return WalletRecordModel::find($uuId)->toArray();
+        } catch (Exception $e) {
+            throw new Exception($e->getMessage());
+        } catch (Throwable $e) {
+            throw new Exception("wallet_record_service_err:" . 500 . $e->getMessage());
         }
     }
 
@@ -71,10 +82,10 @@ class WalletRecord
             $stmt->limit($limit);
             $stmt->offset($offset);
             return $stmt->get()->toArray();
-        } catch (PDOException $e) {
-            return [];
         } catch (Exception $e) {
-            return $e->getMessage();
+            throw new Exception($e->getMessage());
+        } catch (Throwable $e) {
+            throw new Exception("wallet_record_service_err:" . 500 . $e->getMessage());
         }
     }
 }

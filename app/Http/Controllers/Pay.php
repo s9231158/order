@@ -52,8 +52,8 @@ class Pay extends Controller
             'name' => ['required', 'string', 'max:25', 'min:3'],
             'address' => ['required', 'string', 'min:10', 'max:25'],
             'phone' => ['required', 'string', 'digits_between:1,9'],
-            'total_price' => ['required', 'numeric', 'min:0'],
-            'take_time' => ['required', 'date'],
+            'totalprice' => ['required', 'numeric', 'min:0'],
+            'taketime' => ['required', 'date'],
             'orders' => ['required', 'array'],
             'orders.*.rid' => ['required', 'integer'],
             'orders.*.id' => ['required', 'integer'],
@@ -76,11 +76,11 @@ class Pay extends Controller
             'phone.required' => '必填資料未填',
             'phone.string' => '資料填寫與規格不符',
             'phone.digits_between' => '資料填寫與規格不符',
-            'total_price.required' => '必填資料未填',
-            'total_price.numeric' => '資料填寫與規格不符',
-            'total_price.min' => '資料填寫與規格不符',
-            'take_time.required' => '必填資料未填',
-            'take_time.date' => '資料填寫與規格不符',
+            'totalprice.required' => '必填資料未填',
+            'totalprice.numeric' => '資料填寫與規格不符',
+            'totalprice.min' => '資料填寫與規格不符',
+            'taketime.required' => '必填資料未填',
+            'taketime.date' => '資料填寫與規格不符',
             'orders.required' => '資料填寫與規格不符',
             'orders.array' => '資料填寫與規格不符',
             'orders.*.rid.required' => '資料填寫與規格不符',
@@ -140,7 +140,7 @@ class Pay extends Controller
             //訂單總金額是否正確
             $orderCollection = collect($order);
             $realTotalPrice = $orderCollection->sum('price');
-            if ($realTotalPrice !== $request['total_price']) {
+            if ($realTotalPrice !== $request['totalprice']) {
                 return response()->json([
                     'err' => $this->keys[20],
                     'message' => $this->err[20]
@@ -153,7 +153,7 @@ class Pay extends Controller
                     'message' => $this->err[17]
                 ]);
             }
-            // //檢查菜單金額名稱id是否與店家一致
+            //檢查菜單金額名稱id是否與店家一致
             $restaurant = Factorise::setMenu($rid);
             $menuCorrect = $restaurant->menuCorrect($order);
             if (!$menuCorrect) {
@@ -162,36 +162,36 @@ class Pay extends Controller
                     'message' => $this->err[30]
                 ]);
             }
-            // 餐點是否停用
+            //餐點是否停用
             $menuIds = array_column($order, 'id');
-            $menuEnable = $restaurant->MenuEnable($menuIds);
+            $menuEnable = $restaurant->menuEnable($menuIds);
             if (!$menuEnable) {
                 return response()->json([
                     'err' => $this->keys[25],
                     'message' => $this->err[25]
                 ]);
             }
-            $money = $request['total_price'];
+            $money = $request['totalprice'];
             $now = now();
-            $takeTime = $request['take_time'];
+            $takeTime = $request['taketime'];
             $address = $request['address'];
             $phone = $request['phone'];
             $tokenService = new Token();
             $userId = $tokenService->getUserId();
             $uuid = Str::uuid();
             $orderInfoService = new OrderInfo();
-            $walltRecordService = new WalletRecord();
+            $walletRecordService = new WalletRecord();
             //非本地餐廳訂餐
             if ($restaurantInfo['api']) {
                 $apiOrderInfo = [
                     'uuid' => $uuid,
                     'name' => $request['name'],
                     'phone' => $request['phone'],
-                    'taketime' => $request['take_time'],
-                    'total_price' => $request['total_price']
+                    'taketime' => $request['taketime'],
+                    'totalprice' => $request['totalprice']
                 ];
-                //將訂餐資訊傳至供應商     
-                $response = $restaurant->SendApi($apiOrderInfo, $order);
+                //將訂餐資訊傳至供應商
+                $response = $restaurant->sendApi($apiOrderInfo, $order);
                 if ($response) {
                     //訂單傳送成功將訂單存至資料庫
                     $saveOrderInfo = [
@@ -259,8 +259,8 @@ class Pay extends Controller
                 $userWalletService = new UserWallet();
                 $walletMoney = $userWalletService->get($userId);
                 if ($walletMoney['balance'] < $money) {
-                    $status = ['status' => $this->statusCode['walletNoMoneyFail']];
-                    $this->orderService->update($oid, $status);
+                    $info = ['status' => $this->statusCode['walletNoMoneyFail']];
+                    $this->orderService->update($oid, $info);
                     return response()->json([
                         'err' => $this->keys[18],
                         'message' => $this->err[18]
@@ -277,10 +277,10 @@ class Pay extends Controller
                     'pid' => $this->payment[$request['payment']],
                     'uid' => $userId,
                 ];
-                $walltRecordService->create($walletRecordInfo);
+                $walletRecordService->create($walletRecordInfo);
                 //修改訂單狀態
-                $status = ['status' => $this->statusCode['success']];
-                $this->orderService->update($oid, $status);
+                $info = ['status' => $this->statusCode['success']];
+                $this->orderService->update($oid, $info);
                 return response()->json([
                     'name' => $request['name'],
                     'phone' => $request['phone'],
@@ -318,14 +318,14 @@ class Pay extends Controller
                     'pid' => $this->payment[$request['payment']],
                     'uid' => $userId,
                 ];
-                $walltRecordService->create($walletRecordInfo);
+                $walletRecordService->create($walletRecordInfo);
                 if (isset($sendEcpayResponse[0]->transaction_url)) {
                     return $sendEcpayResponse[0];
                 }
                 if (!isset($sendEcpayResponse[0]->transaction_url)) {
                     $walletRecordService = new WalletRecord();
-                    $status = ['status' => $this->statusCode['ecpayFail']];
-                    $walletRecordService->update(['oid', $oid], $status);
+                    $info = ['status' => $this->statusCode['ecpayFail']];
+                    $walletRecordService->update(['oid' => $oid], $info);
                     return response()->json([
                         'err' => $sendEcpayResponse[0]->error_code,
                         'message' => '第三方金流錯誤'
@@ -370,14 +370,14 @@ class Pay extends Controller
             $oid = $wallerRecord['oid'];
             if ($request['rtn_code'] == 0) {
                 //將WalletRecord的status改為失敗代碼
-                $status = ['status' => $this->statusCode['ecpayFail']];
-                $walletRecordService->update(['oid', $oid], $status);
+                $info = ['status' => $this->statusCode['ecpayFail']];
+                $walletRecordService->update(['oid' => $oid], $info);
                 //將order的status改為失敗代碼
-                $orderService->update($oid, $status);
+                $orderService->update($oid, $info);
             } else {
-                $status = ['status' => $this->statusCode['success']];
-                $walletRecordService->update(['oid', $oid], $status);
-                $orderService->update($oid, $status);
+                $info = ['status' => $this->statusCode['success']];
+                $walletRecordService->update(['oid' => $oid], $info);
+                $orderService->update($oid, $info);
             }
         } catch (Exception $e) {
             return response()->json([
@@ -555,6 +555,5 @@ class Pay extends Controller
                 'OtherErr' => $e->getMessage()
             ]);
         }
-
     }
 }

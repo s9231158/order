@@ -62,7 +62,7 @@ class OSmenu implements RestaurantInterface
                 'name' => $orderInfo['name'],
                 'phone_number' => '0' . $orderInfo['phone'],
                 'pickup_time' => $iso8601String,
-                'total_price' => $orderInfo['total_price'],
+                'total_price' => $orderInfo['totalprice'],
                 'orders' => [],
             ];
             //如果再Service先把description處理好 萬一某些餐廳部接收description是空值

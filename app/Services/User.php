@@ -3,27 +3,30 @@
 namespace App\Services;
 
 use App\Models\User as UserModel;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use PDOException;
 use Throwable;
 use Exception;
 
 class User
 {
-    public function get($email)
+    public function getList($where)
     {
         try {
-            return UserModel::where('email', $email)->firstorfail()->toArray();
-        } catch (ModelNotFoundException $e) {
-            return [];
-        } catch (PDOException $e) {
-            return [];
+            //where
+            if (count($where) % 3 != 0) {
+                throw new Exception('where參數數量除三應餘為0,where參數正確示範[0]:uid,[1]:=[3]:2');
+            }
+            $chunks = array_chunk($where, 3);
+            if (!empty($where)) {
+                foreach ($chunks as $chunk) {
+                    $response = UserModel::where($chunk[0], $chunk[1], $chunk[2]);
+                }
+            }
+            return $response ? $response->get()->toArray() : $response->get();
+        } catch (Exception $e) {
+            throw new Exception($e->getMessage());
+        } catch (Throwable $e) {
+            throw new Exception("user_service_err:" . 500);
         }
-    }
-
-    public function getPhone($phone)
-    {
-        return UserModel::where('phone', $phone)->exists();
     }
 
     public function create($info)
@@ -41,7 +44,7 @@ class User
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
         } catch (Throwable $e) {
-            throw new Exception("user_record_service_err:" . 500);
+            throw new Exception("user_service_err:" . 500);
         }
     }
 }

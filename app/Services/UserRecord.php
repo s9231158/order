@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\User_recode as UserRecodeModel;
-use PDOException;
 use Throwable;
 use Exception;
 
@@ -23,7 +22,7 @@ class UserRecord
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
         } catch (Throwable $e) {
-            throw new Exception("user_record_service_err:" . 500);
+            throw new Exception("user_record_service_err:" . 500 . $e->getMessage());
         }
     }
 
@@ -51,10 +50,10 @@ class UserRecord
             $stmt->limit($limit);
             $stmt->offset($offset);
             return $stmt->get()->toArray();
-        } catch (PDOException $e) {
-            return [];
         } catch (Exception $e) {
-            return $e->getMessage();
+            throw new Exception($e->getMessage());
+        } catch (Throwable $e) {
+            throw new Exception("user_record_service_err:" . 500 . $e->getMessage());
         }
     }
 }

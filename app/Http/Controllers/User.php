@@ -84,7 +84,8 @@ class User extends Controller
             }
             //檢查email是否重複
             $email = $request['email'];
-            $eamilRepeat = $this->userService->get($email);
+            $where = ['email', '=', $email];
+            $eamilRepeat = $this->userService->getList($where);
             if ($eamilRepeat) {
                 return response()->json([
                     'err' => $this->keys[3],
@@ -92,7 +93,8 @@ class User extends Controller
                 ]);
             }
             //檢查電話是否重複
-            $phone = $this->userService->getPhone($request['phone']);
+            $where = ['phone', '=', $request['phone']];
+            $phone = $this->userService->getList($where);
             if ($phone) {
                 return response()->json([
                     'err' => $this->keys[4],
@@ -190,7 +192,9 @@ class User extends Controller
                 return response()->json(['err' => $this->err['7']]);
             }
             //驗證帳號密碼
-            $user = $this->userService->get($email);
+            $where = ['email', '=', $email];
+            $user = $this->userService->getList($where);
+
             if (!$user || !password_verify($request['password'], $user['password'])) {
                 RateLimiter::hit(Str::lower($email) . '|' . $ip, 60);
                 return response()->json([
@@ -263,7 +267,8 @@ class User extends Controller
     {
         try {
             $email = $this->tokenService->getEamil();
-            $userInfo = $this->userService->get($email);
+            $where = ['email', '=', $email];
+            $userInfo = $this->userService->getList($where);
             return response()->json([
                 'err' => $this->keys[0],
                 'message' => $this->err[0],
@@ -382,7 +387,8 @@ class User extends Controller
             //檢查使用者我的最愛資料表內是否超過20筆
             $userId = $this->tokenService->getUserId();
             $userFavoriteService = new UserFavorite();
-            $userFavorite = $userFavoriteService->getList($userId);
+            $where = ['uid', '=', $userId];
+            $userFavorite = $userFavoriteService->getList($where);
             $count = count($userFavorite);
             if ($count >= 20) {
                 return response()->json([
@@ -431,7 +437,8 @@ class User extends Controller
             //取的我的最愛
             $userId = $this->tokenService->getUserId();
             $userFavoriteService = new UserFavorite();
-            $userFavorite = $userFavoriteService->getList($userId);
+            $where = ['uid', '=', $userId];
+            $userFavorite = $userFavoriteService->getList($where);
             $favoriteRids = array_column($userFavorite, 'rid');
             $reataurantService = new Restaurant();
             $userFavorite = $reataurantService->getList($favoriteRids);
@@ -490,7 +497,8 @@ class User extends Controller
             $rid = $request['rid'];
             $userId = $this->tokenService->getUserId();
             $userFavoriteService = new UserFavorite();
-            $userFavorite = $userFavoriteService->getList($userId);
+            $where = ['uid', '=', $userId];
+            $userFavorite = $userFavoriteService->getList($where);
             $favoriteRids = array_column($userFavorite, 'rid');
             if (!in_array($rid, $favoriteRids)) {
                 return response()->json([

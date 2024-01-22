@@ -25,9 +25,9 @@ class ResturantComment
         }
     }
 
-    public function firstComment($userId, $rid)
+    public function firstComment($uid, $rid)
     {
-        return RestaurantCommentModel::where('uid', $userId)->where('rid', $rid)->exists();
+        return RestaurantCommentModel::where('uid', $uid)->where('rid', $rid)->exists();
     }
 
     public function getJoinUserList($rid, $option)

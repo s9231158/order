@@ -63,7 +63,7 @@ class TAmenu implements RestaurantInterface
                 'name' => $orderInfo['name'],
                 'phone_number' => '0' . $orderInfo['phone'],
                 'pickup_time' => '2016-06-01T14:41:36+08:00',
-                'total_price' => $orderInfo['total_price'],
+                'total_price' => $orderInfo['totalprice'],
                 'order' => ['list' => []],
             ];
             foreach ($order as $item) {

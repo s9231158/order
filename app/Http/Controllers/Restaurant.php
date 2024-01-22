@@ -36,7 +36,6 @@ class Restaurant extends Controller
             'limit' => ['integer'],
             'offset' => ['integer']
         ];
-
         //什麼錯誤報什麼錯誤訊息
         $rulsMessage = [
             'limit.integer' => '無效的範圍',
@@ -218,7 +217,7 @@ class Restaurant extends Controller
                     'message' => $this->err[16]
                 ]);
             }
-            // //評論者是否在此訂餐廳訂過餐且訂單狀態是成功且記錄在24小時內
+            //評論者是否在此訂餐廳訂過餐且訂單狀態是成功且記錄在24小時內
             $tokenService = new Token();
             $userId = $tokenService->getUserId();
             $orderData = [
@@ -248,7 +247,12 @@ class Restaurant extends Controller
                 ]);
             }
             //將評論存入資料庫
-            $commentInfo = ['uid' => $userId, 'rid' => $rid, 'comment' => $request['comment'], 'point' => $request['point']];
+            $commentInfo = [
+                'uid' => $userId,
+                'rid' => $rid,
+                'comment' => $request['comment'],
+                'point' => $request['point']
+            ];
             $response = $restaurantCommentService->create($commentInfo);
             if (!$response) {
                 return response()->json([
@@ -274,6 +278,7 @@ class Restaurant extends Controller
             ]);
         }
     }
+
     public function getComment(Request $request)
     {
         //規則
@@ -311,19 +316,17 @@ class Restaurant extends Controller
             }
             //取出評論
             $restaurantCommentService = new ResturantComment();
-            $restaurantCommentData = [
-                'option' => [
-                    'limit' => $limit,
-                    'offset' => $offset
-                ]
+            $restaurantCommentOption = [
+                'limit' => $limit,
+                'offset' => $offset
             ];
-            $restaurantComment = $restaurantCommentService->getJoinUserList($rid, $restaurantCommentData['option']);
+            $restaurantComment = $restaurantCommentService->getJoinUserList($rid, $restaurantCommentOption);
             $count = count($restaurantComment);
             return response()->json([
                 'err' => $this->keys[0],
                 'message' => $this->err[0],
                 'count' => $count,
-                'Comment' => $restaurantComment
+                'comment' => $restaurantComment
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -338,33 +341,5 @@ class Restaurant extends Controller
                 'other_err' => $e->getMessage()
             ]);
         }
-    }
-
-    public function apple()
-    {
-         $start = now()->subHour()->minute(0)->second(0);
-       return $end = now()->minute(0)->second(0);
-
-        $rid1 = [1];
-        $rid2 = [2];
-        $rrr1 = $this->restaurantService->getListByRids($rid1);
-        $rrr2 = $this->restaurantService->getListByRids($rid2);
-
-        $a1 = ['r' . $rrr1[0]['id'] => json_encode($rrr1), 'r' . $rrr2[0]['id'] => json_encode($rrr2)];
-
-
-
-        //存
-        Redis::mset($a1);
-        return 1;
-
-
-
-        //取
-        $keys = ['r1', 'r2', 'r3', 'r4', 'rr', 'dd'];
-        $values = Redis::mget(...$keys);
-        return array_keys(array_filter(array_combine($keys, $values), function ($a) {
-            return $a === null;
-        }));
     }
 }
