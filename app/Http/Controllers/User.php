@@ -194,7 +194,9 @@ class User extends Controller
             //驗證帳號密碼
             $where = ['email', '=', $email];
             $user = $this->userService->getList($where);
-
+            if ($user) {
+                $user = $user[0];
+            }
             if (!$user || !password_verify($request['password'], $user['password'])) {
                 RateLimiter::hit(Str::lower($email) . '|' . $ip, 60);
                 return response()->json([

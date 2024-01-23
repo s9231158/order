@@ -16,7 +16,6 @@ return new class extends Migration
         Schema::create('restaurants', function (Blueprint $table) {
             $table->id();
             $table->string('info')->nullable();
-            $table->string('openday');
             $table->dateTime('opentime');
             $table->dateTime('closetime');
             $table->boolean('enable')->default(true);

@@ -58,7 +58,7 @@ class WalletRecord
         }
     }
 
-    public function getList(array $where, array $option)
+    public function getList(array $where, array $option = null)
     {
         try {
             $limit = $option['limit'] ?? 20;

@@ -18,10 +18,10 @@ class User
             $chunks = array_chunk($where, 3);
             if (!empty($where)) {
                 foreach ($chunks as $chunk) {
-                    $response = UserModel::where($chunk[0], $chunk[1], $chunk[2]);
+                    $response = UserModel::where($chunk[0], $chunk[1], $chunk[2])->get();
                 }
             }
-            return $response ? $response->get()->toArray() : $response->get();
+            return $response ? $response->toArray() : $response;
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
         } catch (Throwable $e) {

@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Order as OrderModel;
 use Exception;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Throwable;
 
 class Order
@@ -38,24 +37,27 @@ class Order
                 'uid' => $info['uid'],
             ];
             return OrderModel::create($goodInfo);
-
         } catch (Exception $e) {
-            throw new Exception($e->getMessage());
+            throw new Exception("order_service_err:" . 500 . $e->getMessage());
         } catch (Throwable $e) {
-            throw new Exception("order_service_err:" . 500 . $e);
+            throw new Exception("order_service_err:" . 500 . $e->getMessage());
         }
     }
 
     public function get($oid)
     {
         try {
-            return OrderModel::findorfail($oid);
-        } catch (ModelNotFoundException $e) {
-            return [];
+            $order = OrderModel::find($oid)->first();
+            $response = $order ? $order->toArray() : $order;
+            return $response;
+        } catch (Exception $e) {
+            throw new Exception("order_service_err:" . 500 . $e->getMessage());
+        } catch (Throwable $e) {
+            throw new Exception("order_service_err:" . 500 . $e->getMessage());
         }
     }
 
-    public function getList($where, $option)
+    public function getList($where, $option = null)
     {
         $limit = $option['limit'] ?? 20;
         $offset = $option['offset'] ?? 0;

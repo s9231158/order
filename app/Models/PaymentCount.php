@@ -8,5 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 class PaymentCount extends Model
 {
     use HasFactory;
-    protected $fillable = ['local', 'ecpay', 'starttime', 'endtime'];
+    protected $fillable = [
+        'local',
+        'ecpay',
+        'starttime',
+        'endtime'
+    ];
 }

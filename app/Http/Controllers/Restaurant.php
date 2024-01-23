@@ -10,7 +10,6 @@ use App\Services\RestaurantHistory;
 use App\Services\ResturantComment;
 use App\Services\Token;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Validator;
 use Exception;
 use Throwable;
@@ -220,6 +219,7 @@ class Restaurant extends Controller
             //評論者是否在此訂餐廳訂過餐且訂單狀態是成功且記錄在24小時內
             $tokenService = new Token();
             $userId = $tokenService->getUserId();
+            $userName = $tokenService->getName();
             $orderData = [
                 'where' => ['uid', '=', $userId],
                 'option' => [
@@ -239,8 +239,8 @@ class Restaurant extends Controller
             }
             //是否第一次評論該餐廳
             $restaurantCommentService = new ResturantComment();
-            $firstComment = $restaurantCommentService->firstComment($userId, $rid);
-            if ($firstComment) {
+            $comment = $restaurantCommentService->get($rid, $userId);
+            if ($comment) {
                 return response()->json([
                     'err' => $this->keys[14],
                     'message' => $this->err[14]
@@ -248,6 +248,7 @@ class Restaurant extends Controller
             }
             //將評論存入資料庫
             $commentInfo = [
+                'name' => $userName,
                 'uid' => $userId,
                 'rid' => $rid,
                 'comment' => $request['comment'],
@@ -318,9 +319,18 @@ class Restaurant extends Controller
             $restaurantCommentService = new ResturantComment();
             $restaurantCommentOption = [
                 'limit' => $limit,
-                'offset' => $offset
+                'offset' => $offset,
             ];
-            $restaurantComment = $restaurantCommentService->getJoinUserList($rid, $restaurantCommentOption);
+            $restaurantComment = $restaurantCommentService->getList($rid, $restaurantCommentOption);
+            $restaurantComment = array_map(function ($item) {
+                return [
+                    'name' => $item['name'],
+                    'point' => $item['point'],
+                    'comment' => $item['comment'],
+                    'created_at' => $item['created_at']
+                ];
+            }, $restaurantComment);
+
             $count = count($restaurantComment);
             return response()->json([
                 'err' => $this->keys[0],

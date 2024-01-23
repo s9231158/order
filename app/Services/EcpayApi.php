@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Services\CheckMacValueService;
+use Exception;
 use GuzzleHttp\Client;
 use Throwable;
 
@@ -28,8 +29,10 @@ class EcpayApi
             $response = $client->Request('POST', env('ECPAY_APIURL'), ['json' => $ecpayInfo]);
             $arrayGoodResponse = json_decode($response->getBody());
             return [$arrayGoodResponse, $ecpayInfo];
+        } catch (Exception $e) {
+            throw new Exception("ecpay_api_service_err:" . 500 . $e);
         } catch (Throwable $e) {
-            throw new \Exception("EcpayServiceErr:" . 500);
+            throw new Exception("ecpay_api_service_err:" . 500 . $e);
         }
     }
 }

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\OrderInfo as OrderInfoModel;
 use Exception;
+use Throwable;
 
 class OrderInfo
 {
@@ -25,13 +26,22 @@ class OrderInfo
             return OrderInfoModel::insert($goodInfo);
         } catch (Exception $e) {
             throw new Exception("order_info_service_err:" . 500 . $e);
+        } catch (Throwable $e) {
+            throw new Exception("order_info_service_err:" . 500 . $e);
         }
     }
     public function getList($oid, $option)
     {
-        $column = $option['column'] ?? '*';
-        //select
-        $stmt = OrderInfoModel::select($column);
-        return $stmt->where('oid', $oid)->get()->toArray();
+        try {
+            $column = $option['column'] ?? '*';
+            //select
+            $stmt = OrderInfoModel::select($column);
+            return $stmt->where('oid', $oid)->get()->toArray();
+        } catch (Exception $e) {
+            throw new Exception("order_info_service_err:" . 500 . $e);
+        } catch (Throwable $e) {
+            throw new Exception("order_info_service_err:" . 500 . $e);
+        }
+
     }
 }

@@ -72,7 +72,16 @@ class Token
             throw new Exception("token_service_err:" . 500);
         }
     }
-
+    public function getName()
+    {
+        try {
+            $payload = JWT::decode($this->token, new Key(env('JWT_SECRET'), 'HS256'));
+            $name = $payload->name;
+            return $name;
+        } catch (Throwable $e) {
+            throw new Exception('系統錯誤請重新登入');
+        }
+    }
     public function getEamil()
     {
         try {

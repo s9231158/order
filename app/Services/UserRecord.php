@@ -26,7 +26,7 @@ class UserRecord
         }
     }
 
-    public function getList($where, $option)
+    public function getList($where, $option = null)
     {
         try {
             $limit = $option['limit'] ?? 20;

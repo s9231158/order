@@ -7,6 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class RestaurantComment extends Model
 {
-    protected $fillable = ['point', 'comment', 'uid', 'rid'];
+    protected $fillable = [
+        'point',
+        'comment',
+        'uid',
+        'rid',
+        'name'
+    ];
     use HasFactory;
 }

@@ -7,6 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class RestaruantTotalMoney extends Model
 {
-    protected $fillable = ['money', 'starttime', 'endtime','rid'];
+    protected $fillable = [
+        'money',
+        'starttime',
+        'endtime',
+        'rid'
+    ];
     use HasFactory;
 }

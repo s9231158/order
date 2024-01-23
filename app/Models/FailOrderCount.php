@@ -8,6 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class FailOrderCount extends Model
 {
     protected $table = 'fail_order_counts';
-    protected $fillable = ['failcount', 'starttime', 'endtime', 'totalcount'];
+    protected $fillable = [
+        'failcount',
+        'starttime',
+        'endtime',
+        'totalcount'
+    ];
     use HasFactory;
 }

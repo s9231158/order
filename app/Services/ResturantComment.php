@@ -12,6 +12,7 @@ class ResturantComment
     {
         try {
             $goodInfo = [
+                'name' => $info['name'],
                 'uid' => $info['uid'],
                 'rid' => $info['rid'],
                 'comment' => $info['comment'],
@@ -25,26 +26,17 @@ class ResturantComment
         }
     }
 
-    public function firstComment($uid, $rid)
+    public function get($rid, $uid)
     {
-        return RestaurantCommentModel::where('uid', $uid)->where('rid', $rid)->exists();
+        return RestaurantCommentModel::where('rid', $rid)->where('uid', $uid)->get()->toArray();
     }
 
-    public function getJoinUserList($rid, $option)
+    public function getList($rid, $option = null)
     {
         $limit = $option['limit'] ?? 20;
         $offset = $option['offset'] ?? 0;
-        //select
-        $stmt = RestaurantCommentModel::select(
-            'users.name',
-            'restaurant_comments.point',
-            'restaurant_comments.comment',
-            'restaurant_comments.created_at'
-        );
-        //join
-        $stmt->join('users', 'users.id', '=', 'restaurant_comments.uid');
         //where
-        $stmt->where('rid', '=', $rid);
+        $stmt = RestaurantCommentModel::where('rid', '=', $rid);
         //orderBy
         $stmt->orderby('restaurant_comments.created_at', 'desc');
         //range

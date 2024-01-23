@@ -7,6 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class RestaruantFavoritCount extends Model
 {
-    protected $fillable = ['Count', 'starttime', 'endtime', 'rid'];
+    protected $fillable = [
+        'Count',
+        'starttime',
+        'endtime',
+        'rid'
+    ];
     use HasFactory;
 }
