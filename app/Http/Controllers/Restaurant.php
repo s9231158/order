@@ -53,12 +53,11 @@ class Restaurant extends Controller
             $offset = $request['offset'] ?? 0;
             $limit = $request['limit'] ?? 20;
             //取得餐廳info並打亂順序
-            $where = [];
             $option = [
                 'limit' => $limit,
                 'offset' => $offset,
             ];
-            $restaurantInfo = $this->restaurantService->getJoinList($where, $option);
+            $restaurantInfo = $this->restaurantService->getJoinList($option);
             $count = count($restaurantInfo);
             $keys = array_keys($restaurantInfo);
             shuffle($keys);

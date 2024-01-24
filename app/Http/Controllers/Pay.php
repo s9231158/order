@@ -128,15 +128,15 @@ class Pay extends Controller
             //餐廳是否存在且啟用
             $rid = $order[0]['rid'];
             $where = ['restaurants.id', '=', $rid];
-            $option = [];
             $restaurantService = new Restaurant();
-            $restaurantInfo = $restaurantService->getJoinList($where, $option)[0];
+            $restaurantInfo = $restaurantService->getJoinList($where);
             if (!$restaurantInfo || $restaurantInfo['enable'] != 1) {
                 return response()->json([
                     'err' => $this->keys[16],
                     'message' => $this->err[16]
                 ]);
             }
+            $restaurantInfo = $restaurantInfo[0];
             //訂單總金額是否正確
             $orderCollection = collect($order);
             $realTotalPrice = $orderCollection->sum('price');
