@@ -1,66 +1,44 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+點餐系統文件https://www.notion.so/7cbc7240a75f4689827755b063181946?pvs=4
+1. **會員系統：** 
+    1. 註冊、登入及登出
+    2. 個人資料
+    3. 登入記錄
+2. **餐廳系統：** 會員可以快速瀏覽各家餐廳及菜單
+    1. 餐廳資訊
+    2. 營業時間
+    3. 評論和評分
+    4. 我的最愛 (會員限制20筆資料)
+    5. 菜單資訊 (餐點的詳細信息、價格和圖片)
+    6. 餐廳瀏覽紀錄 (會員)
+3. **訂購和付款：** 會員可以選擇餐點，添加到訂單中，並使用會員錢包進行付款來完成訂單。
+    1. 訂單建立
+    2. 歷史訂單 
+4. **錢包系統：** 可以瀏覽近期的錢包異動紀錄。
+    1. 會員錢包功能
+    2. 扣款及加值的紀錄
+5. **付款整合：** 整合第三方付款閘道以處理儲值功能。
+    1. 串接第三方金流
+6. **多方合作：**
+    1. 串接其他平台
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
-
-## About Laravel
-
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
-
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
-
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-## Laravel Sponsors
-
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
-
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+**資料庫設計：**  <br>
+    1. 會員系統:註冊、登入、登出、個人資料、登入紀錄。<br>
+    2. 餐廳系統:餐廳資訊、評論與評分、我的最愛、菜單資訊、餐廳瀏覽紀錄。<br>
+    3. 訂單系統:第三方&本地訂單建立、歷史訂單、歷史訂單詳情。<br>
+    4. 錢包系統:會員錢包加值、加值&扣款紀錄。<br>
+    5. 報表系統:登入記數報表、各間餐廳總營業額、各間餐廳評分高低。<br>
+**報表系統：** <br>
+    1.透過排程來設定每小時將jobs送至後台執行,而jobs負責透過資料庫來撈取每小時所需的報表統計數據，再對數據進行處理（例如將同時段同一間餐廳的營業額進行相加）存入資料庫。<br>
+**中間層：** <br>
+    1.使用Middleware透過JWT來解析使用者攜帶的Token是否是正確且Redis內有此組Token才能繼續使用者的Api操作。<br>
+    2.需要達到讓所有Api通通返回系統維護中的話,只要判斷資料庫的維修欄位為Ture時就通通返回系統維護,維修完畢只須改回False即可正常使用。<br>
+**一般功能：**  <br>
+    1.透過Validator限制使用者輸入。<br>
+    2.預防使用者暴力破解他人密碼所以使用RateLimiter對使用者限制短時間使用次數。<br>
+    3.當使用者登入後使用JWT把使用者emial.id.name當為payload製作成Token並限時24小時失效,而該Token可用於後續代表此使用者身分來使用其他Api,並存入Redis限時24小時後需重新登入。<br>
+    4.取得菜單是透過商家提供的Api返回菜單,再將菜單格式整理後返回給用戶。<br>
+    5.為了解決選擇不同的餐廳要回傳不同餐廳菜單,使用簡單工廠模式來達到依照使用者所選擇的餐廳來回傳菜單。<br>
+    6.Errcode複用性高的功能額外寫成file來達成重複使用,且需要修改時只需修該此file。<br>
+    7.使用工廠模式返還的實例使用裡面的function把訂單資訊傳給各間餐廳提供的訂單Api。<br>
+    8.第三方交易使用GuzzleHttp來達成在客戶端對金流方提供的Api傳送支付訊息,並將金流方CallBack資訊存入資料庫內。<br>
+    9.因應金流方提供的傳送支付Api須符合規範格式,可用返回實例內的functon來轉換成對應的格式後再送出。<br>
